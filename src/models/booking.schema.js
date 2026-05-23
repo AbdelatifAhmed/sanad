@@ -48,7 +48,7 @@ const bookingSchema = new mongoose.Schema(
 
 bookingSchema.pre('save', function (next) {
   this.totalPrice = this.totalHours * this.hourlyRateAtBooking;
-  next();
+  if (typeof next === 'function') next();
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);
