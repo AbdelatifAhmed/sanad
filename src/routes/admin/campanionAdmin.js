@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const companionAdminController = require("../../controllers/admin/companionAdminController");
-const authMiddleware = require("../../middlewares/authMiddleware");
-const { isAdmin } = require("../../middlewares/roleMiddleware");
+const { authenticate } = require("../../middleware/authMiddleware");
+const { isAdmin } = require("../../middleware/RoleMiddleware");
 
-router.use(authMiddleware, isAdmin);
+router.use(authenticate, isAdmin);
 
 router.get(
   "/pending-companions",
