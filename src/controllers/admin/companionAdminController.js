@@ -1,4 +1,4 @@
-const Companion = require('../../models/Companion');
+const Companion = require("../../models/companion.schema");
 
 
 const getPendingCompanions = async (req, res) => {

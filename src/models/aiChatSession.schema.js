@@ -1,24 +1,37 @@
 const mongoose = require('mongoose');
 
-const aiChatSessionSchema = new mongoose.Schema(
-{
-  _id: ObjectId,
-  userId: { type: ObjectId, ref: 'User' },
-  agentType: { type: String, enum: ['family_assistant', 'companion_support'] },
-  messages: [
-    {
-      sender: { type: String, enum: ['user', 'agent'] },
-      text: String,
-      timestamp: { type: Date, default: Date.now }
-    }
-  ],
-  updatedAt: Date
-})
-
-
-aiChatSessionSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
+const messageSchema = new mongoose.Schema({
+  sender: {
+    type: String,
+    enum: ['user', 'ai'], 
+    required: true
+  },
+  text: {
+    type: String,
+    required: [true, 'نص الرسالة لا يمكن أن يكون فارغاً']
+  }, timestamps: {
+    type: Date,
+    default: Date.now
+  }
 });
+
+const aiChatSessionSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    agentType: {
+      type: String,
+      enum: ['family_assistant', 'companion_support'],
+      required: true
+    },
+    messages: [messageSchema]
+  },
+  { timestamps: true }
+);
+
+aiChatSessionSchema.index({ userId: 1, agentType: 1 });
 
 module.exports = mongoose.model('AIChatSession', aiChatSessionSchema);
