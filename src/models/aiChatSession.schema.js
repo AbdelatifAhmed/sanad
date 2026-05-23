@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
+const { ObjectId } = mongoose.Schema.Types;
 
 const aiChatSessionSchema = new mongoose.Schema(
 {
-  _id: ObjectId,
   userId: { type: ObjectId, ref: 'User' },
   agentType: { type: String, enum: ['family_assistant', 'companion_support'] },
   messages: [
@@ -18,7 +18,7 @@ const aiChatSessionSchema = new mongoose.Schema(
 
 aiChatSessionSchema.pre('save', function(next) {
   this.updatedAt = new Date();
-  next();
+  if (typeof next === 'function') next();
 });
 
 module.exports = mongoose.model('AIChatSession', aiChatSessionSchema);
