@@ -1,11 +1,12 @@
-// Notifications Schema
 const mongoose = require('mongoose');
+const { ObjectId } = mongoose.Schema.Types; 
+
 const notificationSchema = new mongoose.Schema(
 {
   _id: ObjectId,
-  recipientId: { type: ObjectId, ref: 'User' }, // العائلة أو المرافق
-  title: String,                                // مثال: "وصول السند"
-  message: String,                              // مثال: "وصل أحمد الآن إلى موقع الخدمة"
+  recipientId: { type: ObjectId, ref: 'User' }, 
+  title: String,
+  message: String,
   isRead: { type: Boolean, default: false },
   type: { type: String, enum: ['tracking', 'booking', 'system_alert'] },
   createdAt: Date
