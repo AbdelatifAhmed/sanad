@@ -1,14 +1,16 @@
+const AppError = require("../utiles/AppError");
+
 const authorizeRoles =
   (...allowedRoles) =>
   (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: "Authentication required." });
+      return next(new AppError("Authentication required.", 401));
     }
 
     if (!allowedRoles.includes(req.user.role)) {
-      return res
-        .status(403)
-        .json({ message: "Access denied. Insufficient permissions." });
+      return next(
+        new AppError("Access denied. Insufficient permissions.", 403)
+      );
     }
 
     next();
@@ -24,3 +26,4 @@ module.exports = {
   isFamily,
   isCompanion,
 };
+

@@ -1,43 +1,31 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.schema");
-// const {
-//   authorizeRoles,
-//   isAdmin,
-//   isFamily,
-//   isCompanion,
-// } = require("./RoleMiddleware");
+const AppError = require("../utiles/AppError");
+const catchAsync = AppError.catchAsync;
 
-const authenticate = async (req, res, next) => {
+const authenticate = catchAsync(async (req, res, next) => {
   const authHeader = req.headers.authorization || req.headers.Authorization;
   const token =
-    authHeader && authHeader.startsWith("Bearer ")
-      ? authHeader.split(" ")[1]
-      : null;
+    authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
 
-  if (!token) {
-    return res.status(401).json({ message: "Authentication required." });
-  }
+  if (!token) return next(new AppError("Authentication required.", 401));
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select("-passwordHash");
-
-    if (!user) {
-      return res.status(401).json({ message: "Invalid authentication token." });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    console.error("Authentication middleware error:", error);
-    return res.status(401).json({ message: "Invalid or expired token." });
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (err) {
+    const msg =
+      err.name === "TokenExpiredError"
+        ? "Your token has expired! Please log in again."
+        : "Invalid token. Please log in again!";
+    return next(new AppError(msg, 401));
   }
-};
 
-module.exports = {
-  authenticate,
-  // authorizeRoles,
-  // isAdmin,
-  // isFamily,
-  // isCompanion,
-};
+  const user = await User.findById(decoded.id).select("-passwordHash");
+  if (!user) return next(new AppError("Invalid authentication token.", 401));
+
+  req.user = user;
+  next();
+});
+
+module.exports = { authenticate };
