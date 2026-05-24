@@ -3,7 +3,7 @@ const router = express.Router();
 const aiController = require('../controllers/aiController');
 const { authenticate } = require('../middleware/authMiddleware');
 
-router.post('/chat/family', authenticate, aiController.handleFamilyChat);
-router.post('/chat/companion', authenticate, aiController.handleCompanionChat);
-
+router.post('/session/family', authenticate, aiController.handleFamilyChat);
+router.post('/session/companion', authenticate, aiController.handleCompanionChat);
+router.post('/search/companions', authenticate, aiController.smartSearch);
 module.exports = router;
