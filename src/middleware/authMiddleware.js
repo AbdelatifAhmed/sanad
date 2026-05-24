@@ -5,8 +5,9 @@ const catchAsync = AppError.catchAsync;
 
 const authenticate = catchAsync(async (req, res, next) => {
   const authHeader = req.headers.authorization || req.headers.Authorization;
-  const token =
-    authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.split(" ")[1]
+    : null;
 
   if (!token) return next(new AppError("Authentication required.", 401));
 

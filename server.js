@@ -1,4 +1,3 @@
-
 const express = require("express");
 const dotenv = require("dotenv");
 const connectDB = require("./src/config/db.js");
@@ -57,5 +56,3 @@ server.listen(PORT, () => {
     `Sanad Backend running in ${process.env.NODE_ENV} mode on port ${PORT}`,
   );
 });
-
-

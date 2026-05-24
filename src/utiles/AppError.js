@@ -20,11 +20,16 @@ class AppError extends Error {
 
     if (error.code === 11000) {
       const value = error.errmsg?.match(/([\"'])(\\?.)*?\1/)?.[0] ?? "";
-      error = new AppError(`Duplicate field value: ${value}. Please use another value!`, 409);
+      error = new AppError(
+        `Duplicate field value: ${value}. Please use another value!`,
+        409,
+      );
     }
 
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((e) => e.message).join(". ");
+      const messages = Object.values(error.errors)
+        .map((e) => e.message)
+        .join(". ");
       error = new AppError(`Invalid input data. ${messages}`, 400);
     }
 
@@ -42,10 +47,14 @@ class AppError extends Error {
 
     if (!error.isOperational) {
       console.error("ERROR 💥", error);
-      return res.status(500).json({ status: "error", message: "Something went wrong!" });
+      return res
+        .status(500)
+        .json({ status: "error", message: "Something went wrong!" });
     }
 
-    res.status(error.statusCode).json({ status: error.status, message: error.message });
+    res
+      .status(error.statusCode)
+      .json({ status: error.status, message: error.message });
   }
 }
 

@@ -9,7 +9,7 @@ const authorizeRoles =
 
     if (!allowedRoles.includes(req.user.role)) {
       return next(
-        new AppError("Access denied. Insufficient permissions.", 403)
+        new AppError("Access denied. Insufficient permissions.", 403),
       );
     }
 
@@ -26,4 +26,3 @@ module.exports = {
   isFamily,
   isCompanion,
 };
-

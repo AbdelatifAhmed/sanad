@@ -3,8 +3,9 @@ const AppError = require("../../utiles/AppError");
 const catchAsync = AppError.catchAsync;
 
 const getPendingCompanions = catchAsync(async (req, res, next) => {
-  const pendingCompanions = await Companion.find({ verificationStatus: "pending" })
-    .populate("userId", "name email phone");
+  const pendingCompanions = await Companion.find({
+    verificationStatus: "pending",
+  }).populate("userId", "name email phone");
 
   return res.status(200).json({
     status: "success",
