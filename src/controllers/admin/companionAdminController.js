@@ -1,5 +1,5 @@
 const Companion = require("../../models/companion.schema");
-const AppError = require("../../utiles/AppError");
+const AppError = require("../../utils/AppError");
 const catchAsync = AppError.catchAsync;
 
 const getPendingCompanions = catchAsync(async (req, res, next) => {

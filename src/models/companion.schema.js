@@ -32,7 +32,6 @@ const companionSchema = new mongoose.Schema(
       min: 0,
     },
 
-    //needed for rag search and filtering
     skills: [{ type: String, trim: true }],
     hobbies: [{ type: String, trim: true }],
 

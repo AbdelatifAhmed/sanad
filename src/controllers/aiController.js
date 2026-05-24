@@ -1,6 +1,6 @@
 const { sessionAgent } = require("../services/ai/sessionAgent");
 const ragService = require("../services/ai/ragService");
-const AppError = require("../utiles/AppError");
+const AppError = require("../utils/AppError");
 
 const catchAsync = AppError.catchAsync;
 
@@ -8,16 +8,17 @@ const getLang = (req) =>
   req.headers["accept-language"] || req.body.lang || "ar";
 
 const requireMessage = (message, lang) => {
-  if (!message)
+  if (!message) {
     throw new AppError(
       lang === "en"
         ? "Message content is required"
         : "محتوى الرسالة مطلوب ولا يمكن أن يكون فارغاً",
       400
     );
+  }
 };
 
-const handleFamilyChat = catchAsync(async (req, res, next) => {
+const handleFamilyChat = catchAsync(async (req, res) => {
   const lang = getLang(req);
   const { message } = req.body;
 
@@ -36,7 +37,7 @@ const handleFamilyChat = catchAsync(async (req, res, next) => {
   });
 });
 
-const handleCompanionChat = catchAsync(async (req, res, next) => {
+const handleCompanionChat = catchAsync(async (req, res) => {
   const lang = getLang(req);
   const { message } = req.body;
 
@@ -56,15 +57,13 @@ const handleCompanionChat = catchAsync(async (req, res, next) => {
 });
 
 const smartSearch = catchAsync(async (req, res, next) => {
-  const { query, limit } = req.body;
   const lang = getLang(req);
+  const { query, limit } = req.body;
 
   if (!query) {
     return next(
       new AppError(
-        lang === "en"
-          ? "Search query is required"
-          : "جملة البحث مطلوبة",
+        lang === "en" ? "Search query is required" : "جملة البحث مطلوبة",
         400
       )
     );

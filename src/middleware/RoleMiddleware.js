@@ -1,4 +1,4 @@
-const AppError = require("../utiles/AppError");
+const AppError = require("../utils/AppError");
 
 const authorizeRoles =
   (...allowedRoles) =>

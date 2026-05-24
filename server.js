@@ -1,24 +1,25 @@
 const express = require("express");
 const dotenv = require("dotenv");
-const connectDB = require("./src/config/db.js");
-const routes = require("./src/routes");
-const AppError = require("./src/utiles/AppError");
 const http = require("http");
 const { Server } = require("socket.io");
+
+const connectDB = require("./src/config/db.js");
 const routes = require("./src/routes");
+const AppError = require("./src/utils/AppError");
+
 const socketManager = require("./src/utils/socketManager");
 const socketAuth = require("./src/middleware/socketMiddleware");
 
 dotenv.config();
-const app = express();
 
+const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+  },
 });
 
 io.use(socketAuth);
@@ -29,7 +30,7 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.userId}`);
-    socketManager.removeUser(socket.userId, socket.id); 
+    socketManager.removeUser(socket.userId, socket.id);
   });
 });
 
@@ -53,6 +54,6 @@ const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
   console.log(
-    `Sanad Backend running in ${process.env.NODE_ENV} mode on port ${PORT}`,
+    `Sanad Backend running in ${process.env.NODE_ENV} mode on port ${PORT}`
   );
 });
