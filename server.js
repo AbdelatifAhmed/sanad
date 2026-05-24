@@ -5,7 +5,13 @@ const dotenv = require('dotenv');
 dotenv.config();
 const app = express();
 
+app.use(express.json());
+
 connectDB();
+
+app.use('/api/family', require('./src/routes/family'));
+app.use('/api/companion', require('./src/routes/companion'));
+app.use('/api/bookings', require('./src/routes/booking'));
 
 const PORT = process.env.PORT || 5000;
 
