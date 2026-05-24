@@ -8,7 +8,7 @@ const messageSchema = new mongoose.Schema({
   },
   text: {
     type: String,
-    required: [true, 'نص الرسالة لا يمكن أن يكون فارغاً']
+    required: [true, 'message text is required']
   }, timestamps: {
     type: Date,
     default: Date.now

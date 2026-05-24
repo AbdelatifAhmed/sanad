@@ -20,11 +20,15 @@ const companionSchema = new mongoose.Schema(
     },
     bio: {
       type: String,
-      required: [true, "النبذة الشخصية مطلوبة لمساعدة العائلات في التعرف عليك"],
+      required: [true, "bio is required "],
+    },
+    bioEmbedding: {
+      type: [Number],
+      required: false,
     },
     hourlyRate: {
       type: Number,
-      required: [true, "سعر الساعة مطلوب"],
+      required: [true, "hourly rate is required"],
       min: 0,
     },
 
@@ -46,7 +50,7 @@ const companionSchema = new mongoose.Schema(
             "Saturday",
           ],
         },
-        slots: [String], 
+        slots: [String],
       },
     ],
     // (Background Checks)
@@ -56,8 +60,8 @@ const companionSchema = new mongoose.Schema(
       default: "pending",
     },
     documents: {
-      nationalIdUrl: { type: String, required: true }, 
-      criminalRecordUrl: { type: String, required: true }, 
+      nationalIdUrl: { type: String, required: true },
+      criminalRecordUrl: { type: String, required: true },
       syndicateCardUrl: { type: String },
     },
     rating: {

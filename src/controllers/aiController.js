@@ -1,5 +1,5 @@
 const { sessionAgent } = require("../services/ai/sessionAgent");
-
+const ragService = require("../services/ai/ragService");
 const handleFamilyChat = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -43,9 +43,36 @@ const handleCompanionChat = async (req, res) => {
       req.user.id,
       message,
       "companion_support",
-      clientLang
+      clientLang,
     );
     return res.status(200).json({ status: "success", data: { reply } });
+  } catch (error) {
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+const smartSearch = async (req, res) => {
+  try {
+    const { query, limit } = req.body;
+    const lang = req.headers["accept-language"] || "ar";
+    
+    if (!query) {
+      return res
+        .status(400)
+        .json({
+          status:  "fail",
+          message:
+            lang === "en" ? "search query is required" : "جملة البحث مطلوبة",
+        });
+    }
+
+    const companions = await ragService.searchCompanions(query, limit);
+
+    return res.status(200).json({
+      status: "success",
+      results: companions.length,
+      data: { companions },
+    });
   } catch (error) {
     return res.status(500).json({ status: "error", message: error.message });
   }
@@ -54,4 +81,5 @@ const handleCompanionChat = async (req, res) => {
 module.exports = {
   handleFamilyChat,
   handleCompanionChat,
+  smartSearch,
 };
