@@ -27,7 +27,7 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.userId}`);
-    socketManager.removeUser(socket.userId);
+    socketManager.removeUser(socket.userId, socket.id); 
   });
 });
 

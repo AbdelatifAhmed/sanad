@@ -1,5 +1,5 @@
 const bookingService = require("../services/bookingService");
-const { getSocketId } = require("../utils/socketManager");
+const { getSocketIds } = require("../utils/socketManager");
 
 const checkIn = async (req, res) => {
     try {
@@ -9,7 +9,7 @@ const checkIn = async (req, res) => {
 
         const result = await bookingService.checkIn(id, scheduleId, companionId);
 
-        const familySocketId = getSocketId(result.familyId);
+        const familySocketIds = getSocketIds(result.familyId);
         const io = req.io;
 
         const message = "The companion has arrived at the location.";
@@ -19,8 +19,10 @@ const checkIn = async (req, res) => {
             message
         );
 
-        if (familySocketId && io) {
-            io.to(familySocketId).emit("notification", notification);
+        if (familySocketIds.length > 0 && io) {
+            familySocketIds.forEach(socketId => {
+                io.to(socketId).emit("notification", notification);
+            });
         }
 
         res.status(200).json({
@@ -40,7 +42,7 @@ const checkOut = async (req, res) => {
 
         const result = await bookingService.checkOut(id, scheduleId, companionId);
 
-        const familySocketId = getSocketId(result.familyId);
+        const familySocketIds = getSocketIds(result.familyId);
         const io = req.io;
 
         const message = "The companion has left the location.";
@@ -49,8 +51,10 @@ const checkOut = async (req, res) => {
             message
         );
 
-        if (familySocketId && io) {
-            io.to(familySocketId).emit("notification", notification);
+        if (familySocketIds.length > 0 && io) {
+            familySocketIds.forEach(socketId => {
+                io.to(socketId).emit("notification", notification);
+            });
         }
 
         res.status(200).json({

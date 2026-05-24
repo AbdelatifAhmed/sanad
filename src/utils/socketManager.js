@@ -1,19 +1,35 @@
 const connectedUsers = new Map();
 
 const addUser = (userId, socketId) => {
-  connectedUsers.set(userId.toString(), socketId);
+  if (!userId) return;
+  const idStr = userId.toString();
+  if (!connectedUsers.has(idStr)) {
+    connectedUsers.set(idStr, new Set());
+  }
+  connectedUsers.get(idStr).add(socketId);
 };
 
-const removeUser = (userId) => {
-  connectedUsers.delete(userId.toString());
+const removeUser = (userId, socketId) => {
+  if (!userId) return;
+  const idStr = userId.toString();
+  if (connectedUsers.has(idStr)) {
+    const userSockets = connectedUsers.get(idStr);
+    userSockets.delete(socketId);
+
+    if (userSockets.size === 0) {
+      connectedUsers.delete(idStr);
+    }
+  }
 };
 
-const getSocketId = (userId) => {
-  return connectedUsers.get(userId.toString());
+const getSocketIds = (userId) => {
+  if (!userId) return [];
+  const idStr = userId.toString();
+  return connectedUsers.has(idStr) ? Array.from(connectedUsers.get(idStr)) : [];
 };
 
 module.exports = {
   addUser,
   removeUser,
-  getSocketId
+  getSocketIds
 };
