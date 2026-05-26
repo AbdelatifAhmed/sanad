@@ -10,6 +10,8 @@ const socketAuth = require("./src/middleware/socketMiddleware");
 dotenv.config();
 const app = express();
 
+app.use(express.json());
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -39,6 +41,10 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use("/api", routes);
 connectDB();
+
+app.use('/api/family', require('./src/routes/family'));
+app.use('/api/companion', require('./src/routes/companion'));
+app.use('/api/bookings', require('./src/routes/booking'));
 
 const PORT = process.env.PORT || 5000;
 
