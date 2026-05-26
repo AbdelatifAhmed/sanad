@@ -3,12 +3,28 @@ const { SystemMessage, HumanMessage, AIMessage } = require('@langchain/core/mess
 const AIChatSession = require('../../models/aiChatSession.schema.js');
 const familyPrompt = require('./prompts/familyPrompt.js');
 const companionPrompt = require('./prompts/companionPrompt.js');
+const { z } = require('zod');
 
 const promptMap = {
   family_assistant: familyPrompt,
   companion_support: companionPrompt
 };
 
+const aiOutputSchema = z.object({
+  responseType: z.enum(["text", "filtered_data"]).describe(
+    "Choose 'text' for general chat or a normal question. Choose 'filtered_data' when the user specifies conditions or criteria (price, skill, days, date) that require database filtering."
+  ),
+  aiReply: z.string().describe("The natural and friendly text reply directed to the user"),
+  extractedFilters: z.object({
+    searchQuery: z.string().optional().describe("Semantic search (companion skills or details about the family's patient case)"),
+    maxRate: z.number().optional().describe("The maximum price or budget"),
+    days: z.array(z.string()).optional().describe("The selected days"),
+    startDate: z.string().optional().describe("The start date in YYYY-MM-DD format"),
+    endDate: z.string().optional().describe("The end date in YYYY-MM-DD format")
+  }).optional()
+});
+
+const structuredLlm = llm.withStructuredOutput(aiOutputSchema);
 
 const sessionAgent = async (userId, userMessage, agentType, lang = 'ar') => {
   let session = await AIChatSession.findOne({ userId, agentType });
@@ -17,8 +33,6 @@ const sessionAgent = async (userId, userMessage, agentType, lang = 'ar') => {
   }
 
   const recentMessages = session.messages.slice(-10);
-
-
   const selectedPromptStyle = promptMap[agentType](lang);
   const systemPrompt = new SystemMessage(selectedPromptStyle);
 
@@ -26,22 +40,21 @@ const sessionAgent = async (userId, userMessage, agentType, lang = 'ar') => {
     return msg.sender === 'user' ? new HumanMessage(msg.text) : new AIMessage(msg.text);
   });
 
-  const conversationQueue = [
+  const response = await structuredLlm.invoke([
     systemPrompt,
     ...formattedHistory,
     new HumanMessage(userMessage)
-  ];
-
-  const response = await llm.invoke(conversationQueue);
-  const aiReply = response.content;
+  ]);
 
   session.messages.push({ sender: 'user', text: userMessage });
-  session.messages.push({ sender: 'ai', text: aiReply });
+  session.messages.push({ sender: 'ai', text: response.aiReply });
   await session.save();
 
-  return aiReply;
+  return {
+    responseType: response.responseType,
+    reply: response.aiReply,
+    filters: response.extractedFilters || {}
+  };
 };
 
-module.exports = {
-  sessionAgent
-};
+module.exports = { sessionAgent };

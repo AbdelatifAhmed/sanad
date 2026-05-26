@@ -4,23 +4,23 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, 'الاسم مطلوب بالكامل'],
+      required: [true, 'Full name is required'],
       trim: true
     },
     email: {
       type: String,
-      required: [true, 'البريد الإلكتروني مطلوب'],
+      required: [true, 'Email is required'],
       unique: true,
       lowercase: true,
       trim: true
     },
     passwordHash: {
       type: String,
-      required: [true, 'كلمة المرور مطلوبة']
+      required: [true, 'Password is required']
     },
     phone: {
       type: String,
-      required: [true, 'رقم الهاتف مطلوب'],
+      required: [true, 'Phone number is required'],
       trim: true
     },
     role: {

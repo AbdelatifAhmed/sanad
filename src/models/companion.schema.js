@@ -31,11 +31,8 @@ const companionSchema = new mongoose.Schema(
       required: [true, "hourly rate is required"],
       min: 0,
     },
-
-    //needed for rag search and filtering
     skills: [{ type: String, trim: true }],
     hobbies: [{ type: String, trim: true }],
-
     availability: [
       {
         day: {
@@ -53,7 +50,6 @@ const companionSchema = new mongoose.Schema(
         slots: [String],
       },
     ],
-    // (Background Checks)
     verificationStatus: {
       type: String,
       enum: ["pending", "verified", "rejected"],
