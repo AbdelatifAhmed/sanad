@@ -6,7 +6,6 @@ const embeddings = new OpenAIEmbeddings({
   modelName: 'text-embedding-3-small', 
 });
 
-
 const generateEmbedding = async (text) => {
   if (!text) return null;
   try {
@@ -19,7 +18,7 @@ const generateEmbedding = async (text) => {
 };
 
 
-const searchCompanions = async (searchQuery, limit = 5) => {
+const searchCompanions = async (searchQuery, mongoFilter = {}, limit = 5) => {
   try {
     const queryVector = await generateEmbedding(searchQuery);
 
@@ -30,7 +29,8 @@ const searchCompanions = async (searchQuery, limit = 5) => {
           path: 'bioEmbedding',       
           queryVector: queryVector,     
           numCandidates: limit * 10,   
-          limit: limit                 
+          limit: limit,
+          filter: mongoFilter 
         }
       },
       {

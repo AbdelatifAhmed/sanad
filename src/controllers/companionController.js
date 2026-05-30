@@ -1,4 +1,5 @@
 const Companion = require('../models/companion.schema');
+const { generateEmbedding } = require('../services/ai/ragService');
 
 exports.updateCompanionProfile = async (req, res) => {
   try {
@@ -8,9 +9,23 @@ exports.updateCompanionProfile = async (req, res) => {
       return res.status(400).json({ error: 'userId is required' });
     }
 
+    const updateData = { bio, hourlyRate, skills, hobbies, availability };
+
+    if (bio || skills || hobbies) {
+      const bioText = bio || '';
+      const skillsText = Array.isArray(skills) ? skills.join(' ') : '';
+      const hobbiesText = Array.isArray(hobbies) ? hobbies.join(' ') : '';
+      
+      const fullText = `${bioText} ${skillsText} ${hobbiesText}`.trim();
+
+      if (fullText) {
+        updateData.bioEmbedding = await generateEmbedding(fullText);
+      }
+    }
+
     const updatedCompanion = await Companion.findOneAndUpdate(
       { userId },
-      { bio, hourlyRate, skills, hobbies, availability },
+      updateData,
       { new: true, runValidators: true }
     );
 
