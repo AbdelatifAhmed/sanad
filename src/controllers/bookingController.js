@@ -1,7 +1,6 @@
- feature/profile-booking-endpoints
 const Booking = require('../models/booking.schema');
 
-exports.createBooking = async (req, res) => {
+const createBooking = async (req, res) => {
   try {
     const {
       familyId,
@@ -42,7 +41,7 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-exports.updateBookingStatus = async (req, res) => {
+const updateBookingStatus = async (req, res) => {
   try {
     const { status } = req.body;
 
@@ -142,7 +141,8 @@ const checkOut = async (req, res) => {
 };
 
 module.exports = {
+    createBooking,
+    updateBookingStatus,
     checkIn,
     checkOut
 };
-dev
