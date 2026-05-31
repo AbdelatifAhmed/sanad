@@ -127,6 +127,12 @@ exports.login = async (req, res) => {
       });
     }
 
+    if (user.isBanned) {
+      return res.status(403).json({
+        message: "Your account has been banned. Access denied.",
+      });
+    }
+
     const token = generateToken(user);
 
     return res.status(200).json({
