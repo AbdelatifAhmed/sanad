@@ -27,6 +27,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['family', 'companion', 'admin'],
       required: true
+    },
+    isBanned: {
+      type: Boolean,
+      default: false
     }
   },
   { timestamps: true }
