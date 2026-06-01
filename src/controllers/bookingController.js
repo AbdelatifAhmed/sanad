@@ -1,4 +1,5 @@
 const Booking = require('../models/booking.schema');
+const Companion = require('../models/companion.schema');
 
 const createBooking = async (req, res) => {
   try {
@@ -8,23 +9,42 @@ const createBooking = async (req, res) => {
       beneficiaryId,
       hourlyRateAtBooking,
       totalHours,
-      schedule
+      schedule,
+      notes
     } = req.body;
 
-    if (!familyId || !companionId || !beneficiaryId || !hourlyRateAtBooking || !totalHours) {
-      return res.status(400).json({ error: 'Missing required booking fields' });
+    // Use authenticated user's ID as familyId if authenticate middleware is used
+    const resolvedFamilyId = familyId || (req.user ? req.user._id : null);
+
+    if (!resolvedFamilyId || !companionId || !beneficiaryId || !totalHours) {
+      return res.status(400).json({ error: 'Missing required booking fields (familyId/auth, companionId, beneficiaryId, totalHours)' });
     }
 
-    const totalPrice = totalHours * hourlyRateAtBooking;
+    // Resolve hourlyRateAtBooking from companion profile if not explicitly provided
+    let rate = hourlyRateAtBooking;
+    if (!rate) {
+      const companionProfile = await Companion.findOne({ userId: companionId });
+      if (!companionProfile) {
+        return res.status(404).json({ error: 'Companion profile not found' });
+      }
+      rate = companionProfile.hourlyRate;
+    }
+
+    if (!rate) {
+      return res.status(400).json({ error: 'Hourly rate could not be resolved for companion' });
+    }
+
+    const totalPrice = totalHours * rate;
 
     const newBooking = new Booking({
-      familyId,
+      familyId: resolvedFamilyId,
       companionId,
       beneficiaryId,
-      hourlyRateAtBooking,
+      hourlyRateAtBooking: rate,
       totalHours,
       totalPrice,
-      schedule
+      schedule,
+      notes
     });
 
     const savedBooking = await newBooking.save();
@@ -140,9 +160,79 @@ const checkOut = async (req, res) => {
     }
 };
 
+const getCompanionRequests = async (req, res) => {
+  try {
+    if (req.user.role !== 'companion') {
+      return res.status(403).json({ error: 'Access denied. Only companions can fetch their pending requests.' });
+    }
+
+    const pendingBookings = await Booking.find({
+      companionId: req.user._id,
+      status: 'pending'
+    }).populate('familyId', 'name email phone');
+
+    return res.status(200).json({
+      status: 'success',
+      results: pendingBookings.length,
+      data: {
+        bookings: pendingBookings
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching companion pending requests:', error);
+    return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+  }
+};
+
+const respondToBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body;
+
+    if (req.user.role !== 'companion') {
+      return res.status(403).json({ error: 'Access denied. Only companions can respond to bookings.' });
+    }
+
+    if (!action || !['accept', 'decline'].includes(action)) {
+      return res.status(400).json({ error: "Invalid action. Must be either 'accept' or 'decline'." });
+    }
+
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found.' });
+    }
+
+    if (booking.companionId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Access denied. You are not authorized to respond to this booking.' });
+    }
+
+    if (booking.status !== 'pending') {
+      return res.status(400).json({ error: `Cannot respond to a booking with status '${booking.status}'.` });
+    }
+
+    booking.status = action === 'accept' ? 'approved' : 'cancelled';
+    const updatedBooking = await booking.save();
+
+    return res.status(200).json({
+      status: 'success',
+      message: `Booking request has been successfully ${action === 'accept' ? 'accepted' : 'declined'}.`,
+      data: {
+        booking: updatedBooking
+      }
+    });
+  } catch (error) {
+    console.error('Error responding to booking:', error);
+    return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+  }
+
+};
+
 module.exports = {
     createBooking,
     updateBookingStatus,
     checkIn,
-    checkOut
+    checkOut,
+    getCompanionRequests,
+    respondToBooking
 };

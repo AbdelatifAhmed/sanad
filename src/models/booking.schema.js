@@ -41,7 +41,10 @@ const bookingSchema = new mongoose.Schema(
         checkInTime: { type: Date },
         checkOutTime: { type: Date }
       }
-    ]
+    ],
+    notes: {
+      type: String
+    }
   },
   { timestamps: true }
 );
