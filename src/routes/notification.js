@@ -17,4 +17,12 @@ router.patch(
   notificationController.markNotificationAsRead,
 );
 
+router.delete(
+  "/all",
+  authenticate,
+  notificationController.deleteAllNotifications,
+);
+
+router.delete("/:id", authenticate, notificationController.deleteNotification);
+
 module.exports = router;

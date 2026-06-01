@@ -6,4 +6,10 @@ const { isFamily } = require("../middleware/RoleMiddleware");
 
 router.post("/", authenticate, isFamily, reviewController.createReview);
 
+router.get("/my", authenticate, isFamily, reviewController.getMyReviews);
+
+router.get("/companion/:id", reviewController.getCompanionReviews);
+
+router.delete("/:id", authenticate, isFamily, reviewController.deleteReview);
+
 module.exports = router;
