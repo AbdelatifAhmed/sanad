@@ -90,7 +90,55 @@ const getCompanionSchedule = async (req, res) => {
   }
 };
 
+
+const updateCompanionAvailability = async (req, res) => {
+  try {
+    const { availability } = req.body;
+    const lang = req.headers['accept-language'] || 'ar';
+
+    if (!availability) {
+      return res.status(400).json({
+        status: 'fail',
+        message: lang === 'en' ? 'Availability data is required.' : 'بيانات التواجد والمواعيد مطلوبة.'
+      });
+    }
+
+    const updatedCompanion = await Companion.findOneAndUpdate(
+      { userId: req.user.id },
+      { $set: { availability } }, 
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedCompanion) {
+      return res.status(404).json({
+        status: 'fail',
+        message: lang === 'en' ? 'Companion profile not found.' : 'لم يتم العثور على ملف تعريف المرافق الخاص بك.'
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      message: lang === 'en' ? 'Availability schedule updated successfully.' : 'تم تحديث جدول مواعيد تواجدك بنجاح.',
+      data: {
+        availability: updatedCompanion.availability
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating companion availability:', error);
+    
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ status: 'fail', error: error.message });
+    }
+    
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+
+
 module.exports = {
   getCompanionSchedule,
-  updateCompanionProfile
+  updateCompanionProfile,
+  updateCompanionAvailability
 };
