@@ -1,7 +1,8 @@
 const Companion = require('../models/companion.schema');
 const { generateEmbedding } = require('../services/ai/ragService');
 
-exports.updateCompanionProfile = async (req, res) => {
+const Booking = require('../models/booking.schema.js'); 
+const updateCompanionProfile = async (req, res) => {
   try {
     const { userId, bio, hourlyRate, skills, hobbies, availability } = req.body;
 
@@ -44,4 +45,52 @@ exports.updateCompanionProfile = async (req, res) => {
     }
     return res.status(500).json({ error: 'Internal Server Error' });
   }
+};
+
+
+
+
+const getCompanionSchedule = async (req, res) => {
+  try {
+    const lang = req.headers['accept-language'] || 'ar';
+
+    const companionProfile = await Companion.findOne({ userId: req.user.id });
+    
+    if (!companionProfile) {
+      return res.status(404).json({
+        status: 'fail',
+        message: lang === 'en' ? 'Companion profile not found.' : 'لم يتم العثور على ملف تعريف المرافق الخاص بك.'
+      });
+    }
+
+    const confirmedBookings = await Booking.find({
+      companionId: companionProfile._id,
+      status: { $in: ['accepted', 'confirmed'] } 
+    })
+    .populate({
+      path: 'familyId',
+      select: 'name phoneNumber email' 
+    })
+    .sort({ startDate: 1 }); 
+
+    return res.status(200).json({
+      status: 'success',
+      results: confirmedBookings.length,
+      data: {
+        schedule: confirmedBookings
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching companion schedule:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+module.exports = {
+  getCompanionSchedule,
+  updateCompanionProfile
 };

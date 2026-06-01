@@ -66,7 +66,7 @@ const smartSearch = async (req, res) => {
       });
     }
 
-    const companions = await ragService.searchCompanions(query, {}, limit);
+    const companions = await ragService.searchCompanions(query, {}, limit || 5);
 
     return res.status(200).json({
       status: "success",
