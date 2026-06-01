@@ -45,6 +45,7 @@ connectDB();
 app.use('/api/family', require('./src/routes/family'));
 app.use('/api/companion', require('./src/routes/companion'));
 app.use('/api/bookings', require('./src/routes/booking'));
+app.use('/api/chat', require('./src/routes/chatRoutes'));
 
 const PORT = process.env.PORT || 5000;
 
