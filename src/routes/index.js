@@ -7,12 +7,13 @@ const authRoutes = require("./authRoutes");
 const bookingRoutes = require("./bookingRoutes");
 const companionRoutes = require("./companion");
 const familyRoutes = require("./family");
+const dashboardStatsRoutes = require("./admin/dashboradStats");
 router.use("/admin/companions", companionAdminRoutes);
 router.use("/admin/users", userAdminRoutes);
+router.use("/admin", dashboardStatsRoutes);
 router.use("/auth", authRoutes);
 router.use("/ai", aiRoutes);
 router.use("/bookings", bookingRoutes);
 router.use("/companion", companionRoutes);
 router.use("/family", familyRoutes);
-
 module.exports = router;
