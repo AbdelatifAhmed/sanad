@@ -8,6 +8,7 @@ const bookingRoutes = require("./bookingRoutes");
 const companionRoutes = require("./companion");
 const familyRoutes = require("./family");
 const dashboardStatsRoutes = require("./admin/dashboradStats");
+
 router.use("/admin/companions", companionAdminRoutes);
 router.use("/admin/users", userAdminRoutes);
 router.use("/admin", dashboardStatsRoutes);
