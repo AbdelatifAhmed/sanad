@@ -1,13 +1,7 @@
-const express = require("express");
-const router = express.Router();
 const User = require("../../models/user.schema");
-const { authenticate } = require("../../middleware/authMiddleware");
-const { isAdmin } = require("../../middleware/RoleMiddleware");
-
-router.use(authenticate, isAdmin);
 
 // Toggle user ban status
-router.put("/:id/toggle-ban", async (req, res) => {
+const toggleBan = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -45,13 +39,15 @@ router.put("/:id/toggle-ban", async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Error in toggle-ban route:", error);
+    console.error("Error in toggle-ban controller:", error);
     return res.status(500).json({
       status: "error",
       message: "An error occurred while toggling the user ban status.",
       error: error.message
     });
   }
-});
+};
 
-module.exports = router;
+module.exports = {
+  toggleBan
+};
