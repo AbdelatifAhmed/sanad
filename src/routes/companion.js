@@ -1,17 +1,22 @@
 const express = require("express");
 const router = express.Router();
-const {
-  updateCompanionProfile,
-  getCompanionSchedule,
+const { 
+  updateCompanionProfile, 
+  getCompanionSchedule, 
   updateCompanionAvailability,
-} = require("../controllers/companionController");
-const { getCompanionReviews } = require("../controllers/reviewController");
-const { authenticate } = require("../middleware/authMiddleware");
+  getVerifiedCompanions,
+  getCompanionById,
+  getMyCompanionProfile
+} = require('../controllers/companionController');
+const { authenticate } = require('../middleware/authMiddleware');
 
-router.get("/:id/reviews", getCompanionReviews);
+router.use(authenticate); 
 
-router.use(authenticate);
-router.put("/profile", updateCompanionProfile);
-router.get("/me/schedule", getCompanionSchedule);
-router.patch("/me/availability", updateCompanionAvailability);
+router.put('/profile', updateCompanionProfile);
+router.get('/me/schedule', getCompanionSchedule);
+router.patch('/me/availability', updateCompanionAvailability);
+router.get('/', getVerifiedCompanions);
+router.get('/me', getMyCompanionProfile);
+router.get('/:id', getCompanionById);
+
 module.exports = router;
