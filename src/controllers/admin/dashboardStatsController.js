@@ -1,6 +1,6 @@
-const User = require('../models/user.schema.js');
-const Companion = require('../models/companion.schema.js');
-const Booking = require('../models/booking.schema.js');
+const User = require('../../models/user.schema.js');
+const Companion = require('../../models/companion.schema.js');
+const Booking = require('../../models/booking.schema.js');
 
 const getAdminDashboardStats = async (req, res) => {
   try {
