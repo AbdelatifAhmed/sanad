@@ -7,7 +7,9 @@ const authRoutes = require("./authRoutes");
 const bookingRoutes = require("./bookingRoutes");
 const companionRoutes = require("./companion");
 const familyRoutes = require("./family");
+const chatRoutes = require("./chatRoutes");
 const dashboardStatsRoutes = require("./admin/dashboradStats");
+
 router.use("/admin/companions", companionAdminRoutes);
 router.use("/admin/users", userAdminRoutes);
 router.use("/admin", dashboardStatsRoutes);
@@ -16,4 +18,5 @@ router.use("/ai", aiRoutes);
 router.use("/bookings", bookingRoutes);
 router.use("/companion", companionRoutes);
 router.use("/family", familyRoutes);
+router.use("/chat", chatRoutes);
 module.exports = router;
