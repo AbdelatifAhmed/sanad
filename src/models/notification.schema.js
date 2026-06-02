@@ -1,15 +1,61 @@
-const mongoose = require('mongoose');
-const { ObjectId } = mongoose.Schema.Types; 
+const mongoose = require("mongoose");
+const { ObjectId } = mongoose.Schema.Types;
 
 const notificationSchema = new mongoose.Schema(
-{
-  _id: ObjectId,
-  recipientId: { type: ObjectId, ref: 'User' }, 
-  title: String,
-  message: String,
-  isRead: { type: Boolean, default: false },
-  type: { type: String, enum: ['tracking', 'booking', 'system_alert'] },
-  createdAt: Date
-})
+  {
+    recipientId: {
+      type: ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 150,
+    },
+    message: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 500,
+    },
+    type: {
+      type: String,
+      enum: ["booking", "tracking", "review", "payment", "system_alert"],
+      required: true,
+    },
+    relatedId: {
+      type: ObjectId,
+      default: null,
+    },
+    relatedModel: {
+      type: String,
+      enum: ["Booking", "Review", null],
+      default: null,
+    },
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
+    readAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
 
-module.exports = mongoose.model('Notification', notificationSchema);
+notificationSchema.index({ recipientId: 1, createdAt: -1 });
+
+notificationSchema.index({ recipientId: 1, isRead: 1 });
+
+notificationSchema.index(
+  { createdAt: 1 },
+  { expireAfterSeconds: 60 * 60 * 24 * 90 },
+);
+
+module.exports = mongoose.model("Notification", notificationSchema);

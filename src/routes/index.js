@@ -9,7 +9,8 @@ const companionRoutes = require("./companion");
 const familyRoutes = require("./family");
 const chatRoutes = require("./chatRoutes");
 const dashboardStatsRoutes = require("./admin/dashboradStats");
-
+const reviewRoutes = require("./review");
+const notificationRoutes = require("./notification");
 router.use("/admin/companions", companionAdminRoutes);
 router.use("/admin/users", userAdminRoutes);
 router.use("/admin", dashboardStatsRoutes);
@@ -18,5 +19,7 @@ router.use("/ai", aiRoutes);
 router.use("/bookings", bookingRoutes);
 router.use("/companion", companionRoutes);
 router.use("/family", familyRoutes);
+router.use("/reviews", reviewRoutes);
+router.use("/notifications", notificationRoutes);
 router.use("/chat", chatRoutes);
 module.exports = router;
