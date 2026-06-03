@@ -18,7 +18,7 @@ const generateEmbedding = async (text) => {
 };
 
 
-const searchCompanions = async (searchQuery, mongoFilter = {}, limit = 5) => {
+const searchCompanions = async (searchQuery, mongoFilter = {}, limit = 5, postLookupFilter = {}) => {
   try {
     const queryVector = await generateEmbedding(searchQuery);
 
@@ -28,8 +28,8 @@ const searchCompanions = async (searchQuery, mongoFilter = {}, limit = 5) => {
           index: 'vector_index',        
           path: 'bioEmbedding',       
           queryVector: queryVector,     
-          numCandidates: limit * 10,   
-          limit: limit,
+          numCandidates: limit * 20, 
+          limit: limit * 2,          
           filter: mongoFilter 
         }
       },
@@ -41,12 +41,20 @@ const searchCompanions = async (searchQuery, mongoFilter = {}, limit = 5) => {
           as: 'userInfo'
         }
       },
-      { $unwind: '$userInfo' },
+      { $unwind: '$userInfo' },  
+      {
+        $match: postLookupFilter
+      },
+      
       {
         $project: {
-          bioEmbedding: 0,             
-          'userInfo.password': 0
+          bioEmbedding: 0, 
+          'userInfo.passwordHash': 0,
+          'userInfo.__v': 0
         }
+      },
+      {
+        $limit: limit
       }
     ];
 
