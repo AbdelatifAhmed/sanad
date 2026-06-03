@@ -20,6 +20,10 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid authentication token." });
     }
 
+    if (user.isBanned) {
+      return res.status(403).json({ message: "Your account has been banned. Access denied." });
+    }
+
     req.user = user;
     next();
   } catch (error) {
