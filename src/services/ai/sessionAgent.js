@@ -12,7 +12,7 @@ const promptMap = {
 
 const aiOutputSchema = z.object({
   responseType: z.enum(["text", "filtered_data"]).describe(
-    "Choose 'text' for general chat or a normal question. Choose 'filtered_data' when the user specifies conditions or criteria (price, skill, days, date) that require database filtering."
+    "Choose 'text' for general chat or a normal question. Choose 'filtered_data' when the user specifies conditions or criteria (price, skill, days, date, or geographic location) that require database filtering."
   ),
   aiReply: z.string().describe("The natural and friendly text reply directed to the user"),
   extractedFilters: z.object({
@@ -20,7 +20,11 @@ const aiOutputSchema = z.object({
     maxRate: z.number().optional().describe("The maximum price or budget"),
     days: z.array(z.string()).optional().describe("The selected days"),
     startDate: z.string().optional().describe("The start date in YYYY-MM-DD format"),
-    endDate: z.string().optional().describe("The end date in YYYY-MM-DD format")
+    endDate: z.string().optional().describe("The end date in YYYY-MM-DD format"),
+    
+    city: z.string().optional().describe("The city extracted from text, e.g., 'مدينة نصر', 'المعادي', 'مصر الجديدة'"),
+    governorate: z.string().optional().describe("The governorate/state extracted, e.g., 'القاهرة', 'الجيزة', 'الإسكندرية'"),
+    readableAddress: z.string().optional().describe("Any specific neighborhood or street details mentioned by the user for location mapping")
   }).optional()
 });
 
