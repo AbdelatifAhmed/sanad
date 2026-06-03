@@ -1,11 +1,5 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.schema");
-// const {
-//   authorizeRoles,
-//   isAdmin,
-//   isFamily,
-//   isCompanion,
-// } = require("./RoleMiddleware");
 
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization || req.headers.Authorization;
@@ -40,8 +34,4 @@ const authenticate = async (req, res, next) => {
 
 module.exports = {
   authenticate,
-  // authorizeRoles,
-  // isAdmin,
-  // isFamily,
-  // isCompanion,
 };
