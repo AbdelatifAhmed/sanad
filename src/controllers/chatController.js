@@ -6,8 +6,8 @@ const { getSocketIds } = require('../utils/socketManager');
 const sendMessage = async (req, res) => {
   try {
     const { bookingId, messageText } = req.body;
-
     const trimmedMessage = messageText ? messageText.trim() : '';
+
     if (!bookingId || !trimmedMessage) {
       return res.status(400).json({ error: 'Missing required chat fields (bookingId, messageText cannot be empty)' });
     }
@@ -27,34 +27,30 @@ const sendMessage = async (req, res) => {
     const receiverId = isFamily ? booking.companionId : booking.familyId;
 
     const message = new ChatMessage({
-      _id: new mongoose.Types.ObjectId(),
       bookingId,
       senderId: req.user._id,
       receiverId,
-      messageText: trimmedMessage,
-      isRead: false,
-      createdAt: new Date()
+      messageText: trimmedMessage
     });
 
     const savedMessage = await message.save();
 
-    const recipientSocketIds = getSocketIds(receiverId);
     const io = req.io;
-    if (recipientSocketIds.length > 0 && io) {
-      recipientSocketIds.forEach(socketId => {
-        io.to(socketId).emit('newMessage', savedMessage);
-      });
+    if (io) {
+     
+      io.to(bookingId.toString()).emit('newMessage', savedMessage);
+      
+      const recipientSocketIds = getSocketIds(receiverId);
+      if (recipientSocketIds && recipientSocketIds.length > 0) {
+        recipientSocketIds.forEach(socketId => {
+          io.to(socketId).emit('newMessage', savedMessage);
+        });
+      }
     }
 
     return res.status(201).json(savedMessage);
   } catch (error) {
     console.error('Error sending chat message:', error);
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ error: error.message });
-    }
-    if (error.name === 'CastError') {
-      return res.status(400).json({ error: `Invalid field: ${error.path}` });
-    }
     return res.status(500).json({ error: 'Internal Server Error', message: error.message });
   }
 };
@@ -75,13 +71,12 @@ const getChatHistory = async (req, res) => {
       return res.status(403).json({ error: 'Access denied. You are not authorized to view the chat history for this booking.' });
     }
 
-    const [messages] = await Promise.all([
-      ChatMessage.find({ bookingId }).sort({ createdAt: 1 }),
-      ChatMessage.updateMany(
-        { bookingId, receiverId: req.user._id, isRead: false },
-        { $set: { isRead: true } }
-      )
-    ]);
+    await ChatMessage.updateMany(
+      { bookingId, receiverId: req.user._id, isRead: false },
+      { $set: { isRead: true } }
+    );
+
+    const messages = await ChatMessage.find({ bookingId }).sort({ createdAt: 1 });
 
     return res.status(200).json({
       status: 'success',
@@ -92,12 +87,6 @@ const getChatHistory = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching chat history:', error);
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ error: error.message });
-    }
-    if (error.name === 'CastError') {
-      return res.status(400).json({ error: `Invalid field: ${error.path}` });
-    }
     return res.status(500).json({ error: 'Internal Server Error', message: error.message });
   }
 };

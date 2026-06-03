@@ -40,11 +40,15 @@ const reviewSchema = new mongoose.Schema(
   },
 );
 
-reviewSchema.index({ bookingId: 1 }, { unique: true });
+// ✨ تعديل الـ Index الفريد ليصبح مركباً (Compound) لمنع الـ Spam من العائلة على نفس الحجز تماماً
+reviewSchema.index({ bookingId: 1, familyId: 1 }, { unique: true });
 
-reviewSchema.index({ companionId: 1, createdAt: -1 });
+// 🚀 تسريع جلب تقييمات المرافق (مثل بروفايل المرافق في الصفحة العامة) مرتبة من الأحدث للأقدم
+reviewSchema.index({ companionId: 1, isVisible: 1, createdAt: -1 });
 
+// 🚀 تسريع جلب التقييمات التي كتبتها عائلة معينة في لوحة تحكمها
 reviewSchema.index({ familyId: 1, createdAt: -1 });
+
 
 reviewSchema.statics.getAverageRating = async function (companionId) {
   const result = await this.aggregate([
