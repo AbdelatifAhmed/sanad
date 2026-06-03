@@ -52,13 +52,6 @@ const createReview = async (req, res) => {
         .json({ error: "You can only review completed bookings" });
     }
 
-    const existingReview = await Review.findOne({ bookingId }).lean();
-    if (existingReview) {
-      return res
-        .status(409)
-        .json({ error: "A review already exists for this booking" });
-    }
-
     const newReview = await Review.create({
       bookingId,
       familyId,
@@ -108,22 +101,27 @@ const getCompanionReviews = async (req, res) => {
       return res.status(404).json({ error: "Companion not found" });
     }
 
+    const companionProfileId = companion._id;
     const { limit, page, skip } = parsePagination(req.query);
 
     const [reviews, total, ratingStats] = await Promise.all([
-      Review.find({ companionId: id, isVisible: true })
+      Review.find({ companionId: companionProfileId, isVisible: true })
         .populate("familyId", "name")
         .populate("bookingId", "_id")
         .sort({ createdAt: -1 })
         .limit(limit)
         .skip(skip)
         .lean(),
-      Review.countDocuments({ companionId: id, isVisible: true }),
-      Review.getAverageRating(id),
+      Review.countDocuments({
+        companionId: companionProfileId,
+        isVisible: true,
+      }),
+      Review.getAverageRating(companionProfileId),
     ]);
 
     return res.status(200).json({
       companionId: id,
+      companionProfileId: companionProfileId,
       ...ratingStats,
       reviews,
       pagination: {
