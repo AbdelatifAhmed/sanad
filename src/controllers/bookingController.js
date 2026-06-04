@@ -1,6 +1,8 @@
 const Booking = require('../models/booking.schema');
 const Companion = require('../models/companion.schema');
 const { sendNotification } = require('../services/notificationService');
+const bookingService = require("../services/bookingService");
+const { getSocketIds } = require("../utils/socketManager");
 
 const createBooking = async (req, res) => {
   try {
@@ -93,8 +95,7 @@ const updateBookingStatus = async (req, res) => {
   }
 };
 
-const bookingService = require("../services/bookingService");
-const { getSocketIds } = require("../utils/socketManager");
+
 
 const checkIn = async (req, res) => {
     try {

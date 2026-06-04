@@ -2,6 +2,10 @@ const mongoose = require('mongoose');
 const Companion = require('../models/companion.schema');
 const Booking = require('../models/booking.schema.js'); 
 const { generateEmbedding } = require('../services/ai/ragService');
+const User = require('../models/user.schema');
+
+
+
 
 const updateCompanionProfile = async (req, res) => {
   try {
@@ -237,11 +241,42 @@ const getMyCompanionProfile = async (req, res) => {
   }
 };
 
+
+const updateMyLocation = async (req, res) => {
+  try {
+    const { coordinates, readableAddress, city, governorate } = req.body;
+
+    if (!coordinates || coordinates.length !== 2) {
+      return res.status(400).json({ error: "Coordinates must be an array of [longitude, latitude]" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $set: {
+          location: {
+            geo: { type: "Point", coordinates },
+            readableAddress,
+            city,
+            governorate
+          }
+        }
+      },
+      { new: true, runValidators: true }
+    ).select("-passwordHash");
+
+    return res.status(200).json({ status: "success", data: { user: updatedUser } });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getCompanionSchedule,
   updateCompanionProfile,
   updateCompanionAvailability,
   getVerifiedCompanions,
   getCompanionById,
-  getMyCompanionProfile
+  getMyCompanionProfile,
+  updateMyLocation
 };
