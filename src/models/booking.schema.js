@@ -13,7 +13,7 @@ const bookingSchema = new mongoose.Schema(
       required: true
     },
     beneficiaryId: {
-      type: mongoose.Schema.Types.ObjectId, 
+      type: mongoose.Schema.Types.ObjectId,
       required: true
     },
     status: {
@@ -21,20 +21,17 @@ const bookingSchema = new mongoose.Schema(
       enum: ['pending', 'approved', 'active', 'completed', 'cancelled'],
       default: 'pending'
     },
-    // تفاصيل الحساب المالي (Hourly Billing)
-    hourlyRateAtBooking: { type: Number, required: true }, // تثبيت السعر وقت الحجز لضمان عدم تغير الفاتورة لاحقاً
+    hourlyRateAtBooking: { type: Number, required: true },
     totalHours: { type: Number, required: true },
-    totalPrice: { type: Number, required: true }, // يحسب تلقائياً: الساعات × السعر
-    
-    // الجدول والمهام اليومية (يقوم الـ Agent بصياغتها آلياً وتوافق عليها العائلة)
+    totalPrice: { type: Number, required: true },
     schedule: [
       {
         date: { type: Date, required: true },
-        startTime: { type: String, required: true }, // مثال: "16:00"
-        endTime: { type: String, required: true },   // مثال: "20:00"
+        startTime: { type: String, required: true },
+        endTime: { type: String, required: true },
         tasksList: [
           {
-            taskDescription: { type: String, required: true }, // مثال: "المساعدة في الذهاب للجامعة"
+            taskDescription: { type: String, required: true },
             isCompleted: { type: Boolean, default: false }
           }
         ],
@@ -51,7 +48,7 @@ const bookingSchema = new mongoose.Schema(
 
 bookingSchema.pre('save', function (next) {
   this.totalPrice = this.totalHours * this.hourlyRateAtBooking;
-  next();
+  if (typeof next === 'function') next();
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);

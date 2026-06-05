@@ -317,6 +317,15 @@ const respondToBooking = async (req, res) => {
     booking.status = action === 'accept' ? 'approved' : 'cancelled';
     const updatedBooking = await booking.save();
 
+
+    await sendNotification(
+    booking.familyId,          
+    req.user.id,               
+    'your booking request has been updated',         
+    `Your booking request for companion ${req.user.name} has been ${action === 'accept' ? 'approved' : 'declined'}.`, 
+    'booking'                  
+  );
+
     return res.status(200).json({
       status: 'success',
       message: `Booking request has been successfully ${action === 'accept' ? 'accepted' : 'declined'}.`,

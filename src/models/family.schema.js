@@ -4,18 +4,18 @@ const beneficiarySchema = new mongoose.Schema({
   name: { type: String, required: true },
   age: { type: Number, required: true },
   gender: { type: String, enum: ['male', 'female'], required: true },
-  category: { 
-    type: String, 
+  category: {
+    type: String,
     enum: ['elderly', 'special_needs'],
-    required: true 
+    required: true
   },
-  conditionDetails: { type: String, required: true }, // الحالة العامة (شرح غير طبي)
-  interests: [{ type: String }] // اهتمامات المستفيد (مثال: روايات نجيب محفوظ، شطرنج، سياسة)
+  conditionDetails: { type: String, required: true },
+  interests: [{ type: String }]
 });
 
 const familySchema = new mongoose.Schema(
   {
-    familyId: { // الحساب الأساسي الذي يتكلم في الشات ويدفع (الأبناء/الأقارب)
+    familyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
@@ -26,7 +26,7 @@ const familySchema = new mongoose.Schema(
       area: { type: String, required: true },
       fullAddress: { type: String, required: true }
     },
-    beneficiaries: [beneficiarySchema] // مصفوفة تدعم إضافة أكثر من مستفيد للحساب الواحد
+    beneficiaries: [beneficiarySchema]
   },
   { timestamps: true }
 );
