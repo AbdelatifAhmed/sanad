@@ -1,5 +1,5 @@
 const { sessionAgent } = require("./sessionAgent");
-const Companion = require("../../models/Companion");
+const Companion = require("../../models/companion.schema");
 const rateFilter = require("./filters/rateFilter");
 const dayFilter = require("./filters/dayFilter");
 const dateFilter = require("./filters/dateFilter");
