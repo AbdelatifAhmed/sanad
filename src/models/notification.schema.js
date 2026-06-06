@@ -9,6 +9,7 @@ const notificationSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+
     senderId: {
       type: ObjectId,
       ref: "User",

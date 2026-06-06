@@ -52,17 +52,27 @@ const createReview = async (req, res) => {
         .json({ error: "You can only review completed bookings" });
     }
 
+    const companionProfile = await Companion.findOne({
+      userId: booking.companionId,
+    }).lean();
+
+    if (!companionProfile) {
+      return res
+        .status(404)
+        .json({ error: "Companion profile not found for this booking" });
+    }
+
     const newReview = await Review.create({
       bookingId,
       familyId,
-      companionId: booking.companionId,
+      companionId: companionProfile._id, // Companion profile _id, NOT the user ID
       rating: ratingNum,
       comment: comment?.trim() || "",
     });
 
     const populatedReview = await Review.findById(newReview._id)
       .populate("familyId", "name email")
-      .populate("companionId", "name")
+      .populate("companionId", "bio hourlyRate") 
       .lean();
 
     return res.status(201).json({

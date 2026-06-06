@@ -21,7 +21,9 @@ const authenticate = async (req, res, next) => {
     }
 
     if (user.isBanned) {
-      return res.status(403).json({ message: "Your account has been banned. Access denied." });
+      return res
+        .status(403)
+        .json({ message: "Your account has been banned. Access denied." });
     }
 
     req.user = user;

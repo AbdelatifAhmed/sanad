@@ -26,9 +26,10 @@ const userResponse = (user) => ({
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone } = req.body;
+    const defaultRole = "family";
 
-    if (!name || !email || !password || !phone || !role) {
+    if (!name || !email || !password || !phone) {
       return res.status(400).json({
         message: "All fields are required.",
       });
@@ -51,13 +52,8 @@ exports.register = async (req, res) => {
       });
     }
 
-    const allowedRoles = ["admin", "family", "companion"];
-
-    if (!allowedRoles.includes(role)) {
-      return res.status(400).json({
-        message: "Invalid role.",
-      });
-    }
+    // Ignore any client-provided role to prevent privilege escalation.
+    const role = defaultRole;
 
     const existingUser = await User.findOne({
       email: emailNormalized,
@@ -116,10 +112,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    const passwordMatch = await bcrypt.compare(
-      password,
-      user.passwordHash,
-    );
+    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
 
     if (!passwordMatch) {
       return res.status(401).json({
