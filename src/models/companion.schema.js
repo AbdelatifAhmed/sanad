@@ -31,7 +31,12 @@ const companionSchema = new mongoose.Schema(
       required: [true, "hourly rate is required"],
       min: 0,
     },
-    skills: [{ type: String, trim: true }],
+    skills: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Skill",
+      },
+    ],
     hobbies: [{ type: String, trim: true }],
     availability: [
       {
