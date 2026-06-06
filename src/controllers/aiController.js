@@ -58,18 +58,29 @@ const handleCompanionChat = async (req, res) => {
 
 const smartSearch = async (req, res) => {
   try {
-    const { query, limit } = req.body;
+    const { query, limit, city, governorate } = req.body;
     const lang = req.headers["accept-language"] || "ar";
 
     if (!query) {
       return res.status(400).json({
         status: "fail",
-        message:
-          lang === "en" ? "search query is required" : "جملة البحث مطلوبة",
+        message: lang === "en" ? "search query is required" : "جملة البحث مطلوبة",
       });
     }
 
-    const companions = await ragService.searchCompanions(query, {}, limit || 5);
+    const searchLimit = parseInt(limit) || 5;
+
+    let postLookupFilter = {};
+    if (city) postLookupFilter["userInfo.location.city"] = city;
+    if (governorate) postLookupFilter["userInfo.location.governorate"] = governorate;
+
+    
+    const companions = await ragService.searchCompanions(
+      query, 
+      {}, 
+      searchLimit, 
+      postLookupFilter
+    );
 
     return res.status(200).json({
       status: "success",
@@ -77,6 +88,7 @@ const smartSearch = async (req, res) => {
       data: { companions },
     });
   } catch (error) {
+    console.error("Error in smartSearch Controller:", error);
     return res.status(500).json({ status: "error", message: error.message });
   }
 };

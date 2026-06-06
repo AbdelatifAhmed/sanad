@@ -1,30 +1,19 @@
 const llm = require('../../config/llm');
 const { SystemMessage, HumanMessage, AIMessage } = require('@langchain/core/messages');
 const AIChatSession = require('../../models/aiChatSession.schema.js');
-const familyPrompt = require('./prompts/familyPrompt.js');
-const companionPrompt = require('./prompts/companionPrompt.js');
-const { z } = require('zod');
+
+const { familyOutputSchema, getFamilySystemPrompt } = require('./prompts/familyPrompt.js');
+const { companionOutputSchema, getCompanionSystemPrompt } = require('./prompts/companionPrompt.js');
 
 const promptMap = {
-  family_assistant: familyPrompt,
-  companion_support: companionPrompt
+  family_assistant: getFamilySystemPrompt,
+  companion_support: getCompanionSystemPrompt
 };
 
-const aiOutputSchema = z.object({
-  responseType: z.enum(["text", "filtered_data"]).describe(
-    "Choose 'text' for general chat or a normal question. Choose 'filtered_data' when the user specifies conditions or criteria (price, skill, days, date) that require database filtering."
-  ),
-  aiReply: z.string().describe("The natural and friendly text reply directed to the user"),
-  extractedFilters: z.object({
-    searchQuery: z.string().optional().describe("Semantic search (companion skills or details about the family's patient case)"),
-    maxRate: z.number().optional().describe("The maximum price or budget"),
-    days: z.array(z.string()).optional().describe("The selected days"),
-    startDate: z.string().optional().describe("The start date in YYYY-MM-DD format"),
-    endDate: z.string().optional().describe("The end date in YYYY-MM-DD format")
-  }).optional()
-});
-
-const structuredLlm = llm.withStructuredOutput(aiOutputSchema);
+const schemaMap = {
+  family_assistant: familyOutputSchema,
+  companion_support: companionOutputSchema
+};
 
 const sessionAgent = async (userId, userMessage, agentType, lang = 'ar') => {
   let session = await AIChatSession.findOne({ userId, agentType });
@@ -33,8 +22,12 @@ const sessionAgent = async (userId, userMessage, agentType, lang = 'ar') => {
   }
 
   const recentMessages = session.messages.slice(-10);
+  
   const selectedPromptStyle = promptMap[agentType](lang);
   const systemPrompt = new SystemMessage(selectedPromptStyle);
+
+  const currentSchema = schemaMap[agentType];
+  const structuredLlm = llm.withStructuredOutput(currentSchema);
 
   const formattedHistory = recentMessages.map((msg) => {
     return msg.sender === 'user' ? new HumanMessage(msg.text) : new AIMessage(msg.text);
