@@ -41,6 +41,10 @@ const userSchema = new mongoose.Schema(
       city: { type: String }, 
       governorate: { type: String },
     },
+    avatar: {
+      type: String, 
+      trim: true,
+    },
   },
   { timestamps: true },
 );
