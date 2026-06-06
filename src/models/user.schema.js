@@ -45,4 +45,15 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// علاقة افتراضية بين المستخدم والمرافق المهني (Companion) لسهولة الوصول إلى بيانات المرافق من خلال المستخدم
+// userSchema.virtual('companionProfile', {
+//   ref: 'Companion',         
+//   localField: '_id',         
+//   foreignField: 'userId',   
+//   justOne: true             
+// });
+
+// userSchema.set('toObject', { virtuals: true });
+// userSchema.set('toJSON', { virtuals: true });
+
 module.exports = mongoose.model("User", userSchema);

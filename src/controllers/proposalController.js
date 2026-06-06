@@ -1,6 +1,6 @@
 const Proposal = require("../models/proposal.schema");
 const JobPost = require("../models/jobPost.schema");
-
+const Booking = require("../models/booking.schema"); 
 const sendProposal = async (req, res) => {
   try {
     const { jobPostId, proposedRate, coverLetter } = req.body;
@@ -80,7 +80,96 @@ const getProposalsForJob = async (req, res) => {
   }
 };
 
+
+
+
+const updateProposalStatus = async (req, res) => {
+  try {
+    const { proposalId } = req.params;
+    const { status } = req.body; 
+
+    if (!["accepted", "rejected"].includes(status)) {
+      return res.status(400).json({ status: "fail", message: "الحالة المرسلة غير صالحة" });
+    }
+
+    const proposal = await Proposal.findById(proposalId);
+    if (!proposal) {
+      return res.status(404).json({ status: "fail", message: "هذا العرض غير موجود" });
+    }
+
+    const jobPost = await JobPost.findById(proposal.jobPostId);
+    if (!jobPost) {
+      return res.status(404).json({ status: "fail", message: "الطلب الأصلي المتعلق بهذا العرض غير موجود" });
+    }
+
+    if (jobPost.familyId.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+      return res.status(403).json({ status: "fail", message: "غير مسموح لك بالتحكم في هذا العرض" });
+    }
+
+    if (proposal.status !== "pending") {
+      return res.status(400).json({ status: "fail", message: "تمت معالجة هذا العرض مسبقاً بالفعل" });
+    }
+
+    
+    if (status === "rejected") {
+      proposal.status = "rejected";
+      await proposal.save();
+
+      return res.status(200).json({
+        status: "success",
+        message: "تم رفض العرض بنجاح",
+        data: { proposal }
+      });
+    }
+
+    
+    if (status === "accepted") {
+
+      if (jobPost.status !== "open") {
+        return res.status(400).json({ status: "fail", message: "هذا الطلب تم إغلاقه أو تعيين مرافق آخر له بالفعل" });
+      }
+
+      proposal.status = "accepted";
+      await proposal.save();
+
+      jobPost.status = "filled";
+      await jobPost.save();
+
+      await Proposal.updateMany(
+        { jobPostId: jobPost._id, _id: { $ne: proposal._id }, status: "pending" },
+        { status: "rejected" }
+      );
+
+      const newBooking = await Booking.create({
+        familyId: jobPost.familyId,
+        companionId: proposal.companionId,
+        jobPostId: jobPost._id,    
+        ratePerHour: proposal.proposedRate,
+        status: "confirmed",         
+      });
+
+      return res.status(200).json({
+        status: "success",
+        message: "تم قبول العرض، وإغلاق الطلب، وإنشاء الحجز الفعلي بنجاح!",
+        data: {
+          proposal,
+          booking: newBooking
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error("Error updating proposal status:", error);
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+module.exports = {
+  updateProposalStatus
+};
+
 module.exports = {
   sendProposal,
   getProposalsForJob,
+  updateProposalStatus
 };
