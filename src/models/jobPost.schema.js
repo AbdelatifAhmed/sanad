@@ -40,6 +40,43 @@ const jobPostSchema = new mongoose.Schema(
       required: [true, "سعر الساعة المقترح مطلوب"],
       min: [1, "السعر يجب أن يكون أكبر من 0"],
     },
+    schedule: {
+      workingDays: {
+        type: [String],
+        required: [true, "يرجى تحديد أيام العمل المطلوبة"],
+        enum: [
+          "Saturday",
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+        ],
+      },
+      startTime: {
+        type: String, // بصيغة HH:MM (مثال "08:30")
+        required: [true, "يرجى تحديد وقت بدء العمل"],
+        match: [
+          /^([01]\d|2[0-3]):([0-5]\d)$/,
+          "يرجى إدخال الوقت بصيغة 24 ساعة عادية HH:MM",
+        ],
+      },
+      endTime: {
+        type: String, // بصيغة HH:MM (مثال "16:00")
+        required: [true, "يرجى تحديد وقت انتهاء العمل"],
+        match: [
+          /^([01]\d|2[0-3]):([0-5]\d)$/,
+          "يرجى إدخال الوقت بصيغة 24 ساعة عادية HH:MM",
+        ],
+      },
+      durationInWeeks: {
+        type: Number,
+        required: [true, "يرجى تحديد مدة الخدمة بالأسابيع"],
+        min: [1, "الحد الأدنى للمدة هو أسبوع واحد"],
+      },
+    },
+
     location: {
       geo: {
         type: { type: String, default: "Point" },
@@ -47,6 +84,7 @@ const jobPostSchema = new mongoose.Schema(
       },
       readableAddress: { type: String, trim: true },
       city: { type: String, required: true, trim: true },
+      governorate: { type: String, required: true, trim: true },
     },
     status: {
       type: String,
@@ -58,13 +96,12 @@ const jobPostSchema = new mongoose.Schema(
 );
 
 jobPostSchema.index({ "location.geo": "2dsphere" });
-
 jobPostSchema.index({
   "location.governorate": 1,
   "location.city": 1,
   serviceType: 1,
 });
-
 jobPostSchema.index({ requiredSkills: 1 });
+jobPostSchema.index({ "schedule.workingDays": 1, "schedule.startTime": 1 });
 
 module.exports = mongoose.model("JobPost", jobPostSchema);
