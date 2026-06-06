@@ -58,6 +58,12 @@ const checkOut = async (bookingId, scheduleId, companionId) => {
     }
 
     schedule.checkOutTime = new Date();
+
+    const allCheckedOut = booking.schedule.every(item => item.checkOutTime);
+    if (allCheckedOut) {
+        booking.status = 'completed';
+    }
+
     await booking.save();
     return { booking, familyId: booking.familyId };
 };
