@@ -6,7 +6,7 @@ const { Server } = require("socket.io");
 const routes = require("./src/routes");
 const socketManager = require("./src/utils/socketManager");
 const socketAuth = require("./src/middleware/socketMiddleware");
-
+const router = require("./src/routes/index");
 dotenv.config();
 const app = express();
 
@@ -39,13 +39,9 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
-app.use("/api", routes);
+app.use("/api", router);
 connectDB();
 
-app.use('/api/family', require('./src/routes/family'));
-app.use('/api/companion', require('./src/routes/companion'));
-app.use('/api/bookings', require('./src/routes/booking'));
-app.use('/api/chat', require('./src/routes/chatRoutes'));
 
 const PORT = process.env.PORT || 5000;
 
