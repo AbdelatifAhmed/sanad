@@ -1,11 +1,7 @@
 const User = require("../../models/user.schema");
-
-// Toggle user ban status
 const toggleBan = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Prevent administrators from banning themselves
     if (req.user._id.toString() === id) {
       return res.status(400).json({
         status: "fail",
@@ -20,8 +16,6 @@ const toggleBan = async (req, res) => {
         message: "User not found."
       });
     }
-
-    // Toggle the ban status
     user.isBanned = !user.isBanned;
     await user.save();
 
