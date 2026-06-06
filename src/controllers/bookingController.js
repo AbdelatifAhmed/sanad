@@ -321,12 +321,13 @@ const respondToBooking = async (req, res) => {
 
 
     await sendNotification(
-    booking.familyId,          
-    req.user.id,               
-    'your booking request has been updated',         
-    `Your booking request for companion ${req.user.name} has been ${action === 'accept' ? 'approved' : 'declined'}.`, 
-    'booking'                  
-  );
+      booking.familyId,
+      req.user.id,
+      'your booking request has been updated',
+      `Your booking request for companion ${req.user.name} has been ${action === 'accept' ? 'approved' : 'declined'}.`,
+      'booking',
+      req.io,
+    );
 
     return res.status(200).json({
       status: 'success',

@@ -6,6 +6,7 @@ const sendNotification = async (
   title,
   message,
   type,
+  io,
 ) => {
   try {
     const newNotification = await Notification.create({
@@ -17,15 +18,14 @@ const sendNotification = async (
       isRead: false,
     });
 
-    if (global.io) {
-      global.io
-        .to(recipientId.toString())
-        .emit("new_notification", newNotification);
+    if (io) {
+      io.to(recipientId.toString()).emit("new_notification", newNotification);
     }
 
     return newNotification;
   } catch (error) {
     console.error("Failed to process and trigger notification:", error.message);
+    throw error;
   }
 };
 

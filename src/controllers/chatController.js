@@ -37,15 +37,7 @@ const sendMessage = async (req, res) => {
 
     const io = req.io;
     if (io) {
-     
       io.to(bookingId.toString()).emit('newMessage', savedMessage);
-      
-      const recipientSocketIds = getSocketIds(receiverId);
-      if (recipientSocketIds && recipientSocketIds.length > 0) {
-        recipientSocketIds.forEach(socketId => {
-          io.to(socketId).emit('newMessage', savedMessage);
-        });
-      }
     }
 
     return res.status(201).json(savedMessage);
