@@ -1,11 +1,45 @@
 const JobPost = require("../models/jobPost.schema");
 
+// شكل الداتا المرسلة من الفرونت اند
+// {
+//   "title": "مطلوب ممرض منزلي لحالة كبار سن",
+//   "description": "رعاية جد يعاني من ضغط دم مرتفع ويحتاج لمتابعة مواعيد الأدوية وحقن وريدية",
+//   "serviceType": "home_nursing",
+//   "requiredSkills": ["65f12a...", "65f12b..."],
+//   "budgetPerHour": 60,
+//   "schedule": {
+//     "workingDays": ["Saturday", "Monday", "Wednesday"],
+//     "startTime": "09:00",
+//     "endTime": "15:00",
+//     "durationInWeeks": 4
+//   },
+//   "location": {
+//     "coordinates": [31.2357, 30.0444],
+//     "readableAddress": "ش الطيران، مدينة نصر",
+//     "city": "مدينة نصر",
+//     "governorate": "القاهرة"
+//   }
+// }
+
 const createJobPost = async (req, res) => {
   try {
-    const { title, description, serviceType, requiredSkills, budgetPerHour, location } = req.body;
+    const { 
+      title, 
+      description, 
+      serviceType, 
+      requiredSkills, 
+      budgetPerHour, 
+      location,
+      schedule 
+    } = req.body;
 
-    if (!title || !description || !serviceType || !budgetPerHour || !location) {
-      return res.status(400).json({ status: "fail", message: "جميع الحقول الأساسية مطلوبة" });
+    if (!title || !description || !serviceType || !budgetPerHour || !location || !schedule) {
+      return res.status(400).json({ status: "fail", message: "جميع الحقول الأساسية بما فيها مواعيد العمل مطلوبة" });
+    }
+
+    const { workingDays, startTime, endTime, durationInWeeks } = schedule;
+    if (!workingDays || !Array.isArray(workingDays) || workingDays.length === 0 || !startTime || !endTime || !durationInWeeks) {
+      return res.status(400).json({ status: "fail", message: "بيانات جدول العمل (الأيام، وقت البدء، وقت الانتهاء، المدة) غير مكتملة" });
     }
 
     if (!location.coordinates || location.coordinates.length !== 2 || !location.city || !location.governorate) {
@@ -19,6 +53,12 @@ const createJobPost = async (req, res) => {
       serviceType,
       requiredSkills, 
       budgetPerHour,
+      schedule: {
+        workingDays,
+        startTime,
+        endTime,
+        durationInWeeks
+      },
       location: {
         geo: { type: "Point", coordinates: location.coordinates }, // [longitude, latitude]
         readableAddress: location.readableAddress,
@@ -29,7 +69,7 @@ const createJobPost = async (req, res) => {
 
     return res.status(201).json({
       status: "success",
-      message: "تم إنشاء طلب الوظيفة بنجاح",
+      message: "تم إنشاء طلب الوظيفة والمواعيد بنجاح",
       data: { jobPost: newJob }
     });
   } catch (error) {
@@ -74,8 +114,7 @@ const getJobPostsForCompanions = async (req, res) => {
     const jobs = await JobPost.find(filter)
       .populate("familyId", "name phone") 
       .populate("requiredSkills", "nameAr nameEn") 
-      .sort({ createdAt: -1 }); 
-
+      .sort({ createdAt: -1 });
     return res.status(200).json({
       status: "success",
       results: jobs.length,

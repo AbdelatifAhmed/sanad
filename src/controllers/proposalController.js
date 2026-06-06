@@ -83,6 +83,38 @@ const getProposalsForJob = async (req, res) => {
 
 
 
+
+
+const generateScheduleDates = (workingDays, startTime, endTime, durationInWeeks, tasksFromJob) => {
+  const schedule = [];
+  const start = new Date(); 
+  
+  const daysMap = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+  const targetDayNumbers = workingDays.map(day => daysMap[day]);
+
+  const totalDaysToScan = durationInWeeks * 7;
+  
+  لهف 
+  const formattedTasks = tasksFromJob && tasksFromJob.length > 0 
+    ? tasksFromJob.map(task => ({ taskDescription: task, isCompleted: false }))
+    : [{ taskDescription: "رعاية الحالة العامة ومتابعة المواعيد", isCompleted: false }];
+
+  for (let i = 0; i < totalDaysToScan; i++) {
+    const currentCheckDate = new Date(start);
+    currentCheckDate.setDate(start.getDate() + i);
+    
+    if (targetDayNumbers.includes(currentCheckDate.getDay())) {
+      schedule.push({
+        date: currentCheckDate,
+        startTime,
+        endTime,
+        tasksList: formattedTasks 
+      });
+    }
+  }
+  return schedule;
+};
+
 const updateProposalStatus = async (req, res) => {
   try {
     const { proposalId } = req.params;
@@ -99,7 +131,7 @@ const updateProposalStatus = async (req, res) => {
 
     const jobPost = await JobPost.findById(proposal.jobPostId);
     if (!jobPost) {
-      return res.status(404).json({ status: "fail", message: "الطلب الأصلي المتعلق بهذا العرض غير موجود" });
+      return res.status(404).json({ status: "fail", message: "الطلب الأصلي غير موجود" });
     }
 
     if (jobPost.familyId.toString() !== req.user._id.toString() && req.user.role !== "admin") {
@@ -107,27 +139,50 @@ const updateProposalStatus = async (req, res) => {
     }
 
     if (proposal.status !== "pending") {
-      return res.status(400).json({ status: "fail", message: "تمت معالجة هذا العرض مسبقاً بالفعل" });
+      return res.status(400).json({ status: "fail", message: "تمت معالجة هذا العرض مسبقاً" });
     }
 
-    
     if (status === "rejected") {
       proposal.status = "rejected";
       await proposal.save();
-
-      return res.status(200).json({
-        status: "success",
-        message: "تم رفض العرض بنجاح",
-        data: { proposal }
-      });
+      return res.status(200).json({ status: "success", message: "تم رفض العرض بنجاح" });
     }
 
-    
     if (status === "accepted") {
-
       if (jobPost.status !== "open") {
-        return res.status(400).json({ status: "fail", message: "هذا الطلب تم إغلاقه أو تعيين مرافق آخر له بالفعل" });
+        return res.status(400).json({ status: "fail", message: "هذا الطلب تم إغلاقه بالفعل" });
       }
+
+      const { workingDays, startTime, endTime, durationInWeeks } = jobPost.schedule;
+      
+      const tasksFromJob = jobPost.tasksList || req.body.tasksList; 
+
+      const generatedSchedule = generateScheduleDates(workingDays, startTime, endTime, durationInWeeks, tasksFromJob);
+
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      const hoursPerDay = (endHour + endMin/60) - (startHour + startMin/60);
+      const totalHours = hoursPerDay * generatedSchedule.length;
+
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(startDate.getDate() + (durationInWeeks * 7));
+
+      const newBooking = await Booking.create({
+        familyId: jobPost.familyId,
+        companionId: proposal.companionId,
+        jobPostId: jobPost._id,
+        beneficiaryId: jobPost.beneficiaryId || req.body.beneficiaryId || jobPost.familyId, 
+        status: "approved",
+        hourlyRateAtBooking: proposal.proposedRate,
+        totalHours: Math.round(totalHours),
+        totalPrice: 0, 
+        startDate,
+        endDate,
+        workingDays,
+        schedule: generatedSchedule,
+        notes: jobPost.description
+      });
 
       proposal.status = "accepted";
       await proposal.save();
@@ -140,21 +195,10 @@ const updateProposalStatus = async (req, res) => {
         { status: "rejected" }
       );
 
-      const newBooking = await Booking.create({
-        familyId: jobPost.familyId,
-        companionId: proposal.companionId,
-        jobPostId: jobPost._id,    
-        ratePerHour: proposal.proposedRate,
-        status: "confirmed",         
-      });
-
       return res.status(200).json({
         status: "success",
-        message: "تم قبول العرض، وإغلاق الطلب، وإنشاء الحجز الفعلي بنجاح!",
-        data: {
-          proposal,
-          booking: newBooking
-        }
+        message: "تم قبول العرض بنجاح وتحويله لحجز رسمي ديناميكي بالكامل!",
+        data: { proposal, booking: newBooking }
       });
     }
 
@@ -164,9 +208,6 @@ const updateProposalStatus = async (req, res) => {
   }
 };
 
-module.exports = {
-  updateProposalStatus
-};
 
 module.exports = {
   sendProposal,
