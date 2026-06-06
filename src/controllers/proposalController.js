@@ -1,8 +1,9 @@
 const Proposal = require("../models/proposal.schema");
 const JobPost = require("../models/jobPost.schema");
 const Booking = require("../models/booking.schema"); 
+const { hasBookingConflict } = require("../utils/checkConflict"); 
 const sendProposal = async (req, res) => {
-  try {
+ try {
     const { jobPostId, proposedRate, coverLetter } = req.body;
 
     if (!jobPostId || !proposedRate || !coverLetter) {
@@ -17,27 +18,45 @@ const sendProposal = async (req, res) => {
       return res.status(400).json({ status: "fail", message: "عذراً، هذا الطلب لم يعد يستقبل عروضاً" });
     }
 
+    const newStartDate = new Date();
+    const newEndDate = new Date();
+    newEndDate.setDate(newStartDate.getDate() + (jobPost.schedule.durationInWeeks * 7));
+    
+    const { workingDays, startTime, endTime } = jobPost.schedule;
+
+    const isBusy = await hasBookingConflict(
+      req.user._id, 
+      newStartDate,
+      newEndDate,
+      workingDays,
+      startTime,
+      endTime
+    );
+
+    if (isBusy) {
+      return res.status(400).json({
+        status: "fail",
+        message: "عذراً، لا يمكنك التقديم على هذا الطلب لوجود تعارض مع مواعيد حجوزاتك المؤكدة الحالية."
+      });
+    }
+
     const newProposal = await Proposal.create({
       jobPostId,
-      companionId: req.user._id, 
+      companionId: req.user._id,
       proposedRate,
       coverLetter,
     });
 
     return res.status(201).json({
       status: "success",
+      message: "تم تقديم عرضك بنجاح لعدم وجود أي تعارض في مواعيدك!",
       data: { proposal: newProposal },
     });
   } catch (error) {
     console.error("Error submitting proposal:", error);
-    
     if (error.code === 11000) {
-      return res.status(409).json({ 
-        status: "fail", 
-        message: "لقد قمت بتقديم عرض على هذا الطلب بالفعل سابقاً" 
-      });
+      return res.status(409).json({ status: "fail", message: "لقد قمت بتقديم عرض على هذا الطلب بالفعل سابقاً" });
     }
-    
     return res.status(500).json({ status: "error", message: error.message });
   }
 };
@@ -58,21 +77,42 @@ const getProposalsForJob = async (req, res) => {
     const proposals = await Proposal.find({ jobPostId: jobId })
       .populate({
         path: "companionId", 
-        select: "name phone email location",
+        select: "name phone email location avatar averageRating", 
       })
-      // ملحوظة: لو عندك جدول لبروفايل المرافق المهني (CompanionProfile)، يمكنك عمل populate متداخل له هنا لجلب المهارات الثابتة والـ Bio
-      /*
-      .populate({
-         path: "companionProfile", 
-         populate: { path: "skills", select: "nameAr nameEn" }
+      .sort({ createdAt: -1 })
+      .lean(); 
+
+    
+    const updatedProposals = await Promise.all(
+      proposals.map(async (proposal) => {
+        if (proposal.status === "pending") {
+          const newStartDate = new Date();
+          const newEndDate = new Date();
+          newEndDate.setDate(newStartDate.getDate() + (jobPost.schedule.durationInWeeks * 7));
+          
+          const { workingDays, startTime, endTime } = jobPost.schedule;
+
+          const isBusyNow = await hasBookingConflict(
+            proposal.companionId._id,
+            newStartDate,
+            newEndDate,
+            workingDays,
+            startTime,
+            endTime
+          );
+
+          proposal.isConflicting = isBusyNow;
+        } else {
+          proposal.isConflicting = false;
+        }
+        return proposal;
       })
-      */
-      .sort({ createdAt: -1 }); 
+    );
 
     return res.status(200).json({
       status: "success",
-      results: proposals.length,
-      data: { proposals },
+      results: updatedProposals.length,
+      data: { proposals: updatedProposals },
     });
   } catch (error) {
     console.error("Error fetching proposals:", error);
