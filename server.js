@@ -26,7 +26,13 @@ io.use(socketAuth);
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.userId}`);
+  
   socketManager.addUser(socket.userId, socket.id);
+
+  if (socket.userId) {
+    socket.join(socket.userId.toString());
+    console.log(`User ${socket.userId} automatically joined their personal room.`);
+  }
 
   socket.on("joinBookingRoom", async (bookingId) => {
     try {
@@ -38,9 +44,12 @@ io.on("connection", (socket) => {
       }
 
       const userId = socket.userId;
+      
       if (booking.familyId.toString() === userId.toString() || booking.companionId.toString() === userId.toString()) {
-        socket.join(bookingId);
-        console.log(`User ${userId} joined room: ${bookingId}`);
+        
+        socket.join(bookingId); 
+        console.log(`User ${userId} joined booking room: ${bookingId}`);
+        
         socket.emit("joinedRoom", { bookingId });
       } else {
         socket.emit("error", { message: "Unauthorized to join this booking room" });
@@ -53,7 +62,7 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.userId}`);
-    socketManager.removeUser(socket.userId, socket.id); 
+    socketManager.removeUser(socket.userId);
   });
 });
 

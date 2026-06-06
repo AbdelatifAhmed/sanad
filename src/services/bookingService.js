@@ -1,5 +1,4 @@
 const Booking = require("../models/booking.schema");
-const Notification = require("../models/notification.schema");
 
 const checkIn = async (bookingId, scheduleId, companionId) => {
     const booking = await Booking.findById(bookingId);
@@ -12,19 +11,23 @@ const checkIn = async (bookingId, scheduleId, companionId) => {
         throw new Error("Not authorized to check-in for this booking");
     }
 
-    const schedule = booking.schedule.id(scheduleId);
-
-    if (!schedule) {
-        throw new Error("Schedule not found");
+    if (['cancelled', 'completed'].includes(booking.status)) {
+        throw new Error(`Cannot check-in. Booking is already ${booking.status}`);
     }
 
-    if (schedule.checkInTime) {
-        throw new Error("Already checked in");
+    const scheduleItem = booking.schedule.id(scheduleId);
+
+    if (!scheduleItem) {
+        throw new Error("Schedule day not found");
     }
 
-    schedule.checkInTime = new Date();
+    if (scheduleItem.checkInTime) {
+        throw new Error("Already checked in for this schedule day");
+    }
 
-    if (booking.status === 'approved') {
+    scheduleItem.checkInTime = new Date();
+
+    if (booking.status === 'approved' || booking.status === 'pending') {
         booking.status = 'active';
     }
 
@@ -40,24 +43,33 @@ const checkOut = async (bookingId, scheduleId, companionId) => {
     }
 
     if (booking.companionId.toString() !== companionId.toString()) {
-        throw new Error("Not authorized");
+        throw new Error("Not authorized to check-out for this booking");
     }
 
-    const schedule = booking.schedule.id(scheduleId);
+    const scheduleItem = booking.schedule.id(scheduleId);
 
-    if (!schedule) {
-        throw new Error("Schedule not found");
+    if (!scheduleItem) {
+        throw new Error("Schedule day not found");
     }
 
-    if (!schedule.checkInTime) {
-        throw new Error("Must check in first");
+    if (!scheduleItem.checkInTime) {
+        throw new Error("Must check in first before checking out");
     }
 
-    if (schedule.checkOutTime) {
-        throw new Error("Already checked out");
+    if (scheduleItem.checkOutTime) {
+        throw new Error("Already checked out for this schedule day");
     }
 
-    schedule.checkOutTime = new Date();
+    scheduleItem.checkOutTime = new Date();
+
+    
+    if (scheduleItem.tasksList && scheduleItem.tasksList.length > 0) {
+        scheduleItem.tasksList.forEach(task => {
+            if (task.isCompleted === undefined) {
+                task.isCompleted = false;
+            }
+        });
+    }
 
     const allCheckedOut = booking.schedule.every(item => item.checkOutTime);
     if (allCheckedOut) {
@@ -68,19 +80,7 @@ const checkOut = async (bookingId, scheduleId, companionId) => {
     return { booking, familyId: booking.familyId };
 };
 
-const createNotification = async (familyId, message, type = 'tracking') => {
-    const notification = await Notification.create({
-        recipientId: familyId,
-        title: "Companion Update",
-        message: message,
-        type: type,
-        isRead: false
-    });
-    return notification;
-};
-
 module.exports = {
     checkIn,
-    checkOut,
-    createNotification
+    checkOut
 };
