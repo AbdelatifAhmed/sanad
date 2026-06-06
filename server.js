@@ -6,7 +6,6 @@ const { Server } = require("socket.io");
 const routes = require("./src/routes");
 const socketManager = require("./src/utils/socketManager");
 const socketAuth = require("./src/middleware/socketMiddleware");
-const router = require("./src/routes/index");
 dotenv.config();
 const app = express();
 
@@ -38,8 +37,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
-app.use("/api", router);
+app.use("/api", routes);
 connectDB();
 
 
