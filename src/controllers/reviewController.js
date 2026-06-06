@@ -115,7 +115,7 @@ const getCompanionReviews = async (req, res) => {
     const { limit, page, skip } = parsePagination(req.query);
 
     const [reviews, total, ratingStats] = await Promise.all([
-      Review.find({ companionId: companionProfileId, isVisible: true })
+      Review.find({ companionId: id, isVisible: true })
         .populate("familyId", "name")
         .populate("bookingId", "_id")
         .sort({ createdAt: -1 })
@@ -123,10 +123,10 @@ const getCompanionReviews = async (req, res) => {
         .skip(skip)
         .lean(),
       Review.countDocuments({
-        companionId: companionProfileId,
+        companionId: id,
         isVisible: true,
       }),
-      Review.getAverageRating(companionProfileId),
+      Review.getAverageRating(id),
     ]);
 
     return res.status(200).json({
