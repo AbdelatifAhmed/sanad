@@ -77,14 +77,17 @@ const getProposalsForJob = async (req, res) => {
     const proposals = await Proposal.find({ jobPostId: jobId })
       .populate({
         path: "companionId", 
-        select: "name phone email location avatar averageRating", 
+        select: "name phone email location avatar",
       })
       .sort({ createdAt: -1 })
       .lean(); 
 
-    
     const updatedProposals = await Promise.all(
       proposals.map(async (proposal) => {
+        
+        const companionProfile = await Companion.findOne({ userId: proposal.companionId._id }).select("averageRating");
+        proposal.companionId.averageRating = companionProfile ? companionProfile.averageRating : 4.5; // 4.5 كقيمة افتراضية للمبتدئين
+
         if (proposal.status === "pending") {
           const newStartDate = new Date();
           const newEndDate = new Date();
@@ -119,7 +122,6 @@ const getProposalsForJob = async (req, res) => {
     return res.status(500).json({ status: "error", message: error.message });
   }
 };
-
 
 
 

@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema.Types;
+const Companion = require("./companion.schema");
 
 const reviewSchema = new mongoose.Schema(
   {
@@ -35,22 +36,17 @@ const reviewSchema = new mongoose.Schema(
       default: true,
     },
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true }
 );
 
 reviewSchema.index({ bookingId: 1, familyId: 1 }, { unique: true });
-
 reviewSchema.index({ companionId: 1, isVisible: 1, createdAt: -1 });
 
-reviewSchema.index({ familyId: 1, createdAt: -1 });
-
-reviewSchema.statics.getAverageRating = async function (companionId) {
-  const result = await this.aggregate([
+reviewSchema.statics.updateCompanionRating = async function (companionProfileId) {
+  const stats = await this.aggregate([
     {
       $match: {
-        companionId: new mongoose.Types.ObjectId(companionId),
+        companionId: new mongoose.Types.ObjectId(companionProfileId),
         isVisible: true,
       },
     },
@@ -63,12 +59,27 @@ reviewSchema.statics.getAverageRating = async function (companionId) {
     },
   ]);
 
-  if (result.length === 0) return { averageRating: null, totalReviews: 0 };
-
-  return {
-    averageRating: Number(result[0].averageRating.toFixed(1)),
-    totalReviews: result[0].totalReviews,
-  };
+  if (stats.length > 0) {
+    await Companion.findByIdAndUpdate(companionProfileId, {
+      averageRating: Number(stats[0].averageRating.toFixed(1)),
+      reviewCount: stats[0].totalReviews,
+    });
+  } else {
+    await Companion.findByIdAndUpdate(companionProfileId, {
+      averageRating: 5.0,
+      reviewCount: 0,
+    });
+  }
 };
+
+reviewSchema.post("save", async function () {
+  await this.constructor.updateCompanionRating(this.companionId);
+});
+
+reviewSchema.post(/^findOneAndDelete/, async function (doc) {
+  if (doc) {
+    await doc.constructor.updateCompanionRating(doc.companionId);
+  }
+});
 
 module.exports = mongoose.model("Review", reviewSchema);

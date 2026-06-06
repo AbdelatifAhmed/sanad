@@ -68,8 +68,13 @@ const companionSchema = new mongoose.Schema(
     rating: {
       type: Number,
       default: 5,
-      min: 1,
-      max: 5,
+      min: [1, "التقييم لا يقل عن 1"],
+      max: [5, "التقييم لا يزيد عن 5"],
+      set: (val) => Math.round(val * 10) / 10,
+    },
+    reviewCount: {
+      type: Number,
+      default: 0,
     },
     totalWorkHours: {
       type: Number,
