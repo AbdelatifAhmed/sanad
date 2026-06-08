@@ -136,7 +136,6 @@ const generateScheduleDates = (workingDays, startTime, endTime, durationInWeeks,
 
   const totalDaysToScan = durationInWeeks * 7;
   
-  لهف 
   const formattedTasks = tasksFromJob && tasksFromJob.length > 0 
     ? tasksFromJob.map(task => ({ taskDescription: task, isCompleted: false }))
     : [{ taskDescription: "رعاية الحالة العامة ومتابعة المواعيد", isCompleted: false }];

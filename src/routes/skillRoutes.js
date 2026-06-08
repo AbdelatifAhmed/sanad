@@ -5,9 +5,10 @@ const {
   createSkill,
 } = require("../controllers/skillController.js");
 const { authenticate } = require("../middleware/authMiddleware");
+const { isAdmin } = require("../middleware/roleMiddleware.js");
 
 router.get("/", getAllSkills);
 
-router.post("/", authenticate, createSkill);
+router.post("/", authenticate, isAdmin, createSkill);
 
 module.exports = router;
