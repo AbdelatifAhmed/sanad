@@ -42,6 +42,49 @@ const toggleBan = async (req, res) => {
   }
 };
 
+const parsePagination = (query) => {
+  const limit = Math.min(Math.max(parseInt(query.limit) || 20, 1), 200);
+  const page = Math.max(parseInt(query.page) || 1, 1);
+  const skip = (page - 1) * limit;
+  return { limit, page, skip };
+};
+
+const getAllUsers = async (req, res) => {
+  try {
+    const { limit, page, skip } = parsePagination(req.query);
+
+    const [users, total] = await Promise.all([
+      User.find()
+        .select("-password -__v")
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .lean(),
+      User.countDocuments(),
+    ]);
+
+    return res.status(200).json({
+      status: "success",
+      users,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasMore: page * limit < total,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getAllUsers controller:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "An error occurred while fetching users.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
-  toggleBan
+  toggleBan,
+  getAllUsers,
 };

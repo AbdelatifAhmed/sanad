@@ -1,4 +1,4 @@
-const Review = require("../models/review.schema");
+const Review = require("../models/reviews.schema.js");
 const Booking = require("../models/booking.schema");
 const Companion = require("../models/companion.schema");
 const mongoose = require("mongoose");
@@ -18,7 +18,9 @@ const createReview = async (req, res) => {
     const familyId = req.user._id;
 
     if (!bookingId || rating === undefined) {
-      return res.status(400).json({ error: "bookingId and rating are required" });
+      return res
+        .status(400)
+        .json({ error: "bookingId and rating are required" });
     }
 
     if (!isValidObjectId(bookingId)) {
@@ -27,7 +29,9 @@ const createReview = async (req, res) => {
 
     const ratingNum = Number(rating);
     if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-      return res.status(400).json({ error: "Rating must be an integer between 1 and 5" });
+      return res
+        .status(400)
+        .json({ error: "Rating must be an integer between 1 and 5" });
     }
 
     const booking = await Booking.findById(bookingId).lean();
@@ -36,16 +40,24 @@ const createReview = async (req, res) => {
     }
 
     if (booking.familyId.toString() !== familyId.toString()) {
-      return res.status(403).json({ error: "Access denied. You can only review your own bookings" });
+      return res.status(403).json({
+        error: "Access denied. You can only review your own bookings",
+      });
     }
 
     if (booking.status !== "completed") {
-      return res.status(400).json({ error: "You can only review completed bookings" });
+      return res
+        .status(400)
+        .json({ error: "You can only review completed bookings" });
     }
 
-    const companionProfile = await Companion.findOne({ userId: booking.companionId }).lean();
+    const companionProfile = await Companion.findOne({
+      userId: booking.companionId,
+    }).lean();
     if (!companionProfile) {
-      return res.status(404).json({ error: "Companion profile not found for this booking" });
+      return res
+        .status(404)
+        .json({ error: "Companion profile not found for this booking" });
     }
 
     const newReview = await Review.create({
@@ -58,7 +70,7 @@ const createReview = async (req, res) => {
 
     const populatedReview = await Review.findById(newReview._id)
       .populate("familyId", "name email avatar")
-      .populate("companionId", "bio hourlyRate") 
+      .populate("companionId", "bio hourlyRate")
       .lean();
 
     return res.status(201).json({
@@ -68,7 +80,9 @@ const createReview = async (req, res) => {
   } catch (error) {
     console.error("Error creating review:", error);
     if (error.code === 11000) {
-      return res.status(409).json({ error: "A review already exists for this booking" });
+      return res
+        .status(409)
+        .json({ error: "A review already exists for this booking" });
     }
     return res.status(500).json({ error: "Internal Server Error" });
   }
@@ -76,7 +90,7 @@ const createReview = async (req, res) => {
 
 const getCompanionReviews = async (req, res) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({ error: "Invalid companion ID" });
@@ -103,8 +117,8 @@ const getCompanionReviews = async (req, res) => {
     return res.status(200).json({
       companionId: id,
       companionProfileId: companion._id,
-      averageRating: companion.averageRating, 
-      totalReviews: companion.reviewCount,     
+      averageRating: companion.averageRating,
+      totalReviews: companion.reviewCount,
       reviews,
       pagination: {
         total,
@@ -130,7 +144,7 @@ const getMyReviews = async (req, res) => {
         .populate({
           path: "companionId",
           select: "bio",
-          populate: { path: "userId", select: "name avatar" }
+          populate: { path: "userId", select: "name avatar" },
         })
         .populate("bookingId", "_id status")
         .sort({ createdAt: -1 })
@@ -168,7 +182,9 @@ const deleteReview = async (req, res) => {
     const review = await Review.findOneAndDelete({ _id: id, familyId });
 
     if (!review) {
-      return res.status(404).json({ error: "Review not found or access denied" });
+      return res
+        .status(404)
+        .json({ error: "Review not found or access denied" });
     }
 
     return res.status(200).json({ message: "Review deleted successfully" });
