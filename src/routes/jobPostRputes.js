@@ -14,6 +14,7 @@ router.post(
   createJobPost,
 );
 
-router
-  .get("/", authenticate, authorizeRoles("companion", "admin"), getJobPostsForCompanions)
+router.get("/", authenticate, authorizeRoles("companion", "admin"), getJobPostsForCompanions)
   .post("/", authenticate, authorizeRoles("companion", "admin"), getJobPostsForCompanions);
+
+module.exports = router;
