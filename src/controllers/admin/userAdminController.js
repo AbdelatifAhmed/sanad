@@ -55,7 +55,7 @@ const getAllUsers = async (req, res) => {
 
     const [users, total] = await Promise.all([
       User.find()
-        .select("-password -__v")
+        .select("-passwordHash -__v")
         .sort({ createdAt: -1 })
         .limit(limit)
         .skip(skip)
