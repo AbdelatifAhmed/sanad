@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.schema");
 
-const{
+const {
   generateAccessToken,
   generateRefreshToken,
 } = require("../utils/token");
@@ -66,7 +66,7 @@ exports.register = async (req, res) => {
       role,
     });
 
-const accessToken = generateAccessToken(user);
+    const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
     res.cookie("refreshToken", refreshToken, {
@@ -122,7 +122,7 @@ exports.login = async (req, res) => {
       });
     }
 
-const accessToken = generateAccessToken(user);
+    const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
     res.cookie("refreshToken", refreshToken, {

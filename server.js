@@ -13,8 +13,8 @@ const cookieParser = require("cookie-parser");
 
 app.use(cookieParser());
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:4200', ],
-   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  origin: ['http://localhost:3000', 'http://localhost:4200',],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
@@ -35,7 +35,7 @@ io.use(socketAuth);
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.userId}`);
-  
+
   socketManager.addUser(socket.userId, socket.id);
 
   if (socket.userId) {
@@ -53,12 +53,12 @@ io.on("connection", (socket) => {
       }
 
       const userId = socket.userId;
-      
+
       if (booking.familyId.toString() === userId.toString() || booking.companionId.toString() === userId.toString()) {
-        
-        socket.join(bookingId); 
+
+        socket.join(bookingId);
         console.log(`User ${userId} joined booking room: ${bookingId}`);
-        
+
         socket.emit("joinedRoom", { bookingId });
       } else {
         socket.emit("error", { message: "Unauthorized to join this booking room" });
