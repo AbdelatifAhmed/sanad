@@ -6,9 +6,14 @@ const { Server } = require("socket.io");
 const routes = require("./src/routes");
 const socketManager = require("./src/utils/socketManager");
 const socketAuth = require("./src/middleware/socketMiddleware");
+const cors = require("cors");
 dotenv.config();
 const app = express();
 
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:4200', ],
+  credentials: true
+}));
 app.use(express.json());
 
 const server = http.createServer(app);
