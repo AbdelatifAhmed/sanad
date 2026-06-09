@@ -1,5 +1,6 @@
 const connectDB = require("./src/config/db.js");
 const express = require("express");
+const cors = require("cors");
 const dotenv = require("dotenv");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -9,6 +10,12 @@ const socketAuth = require("./src/middleware/socketMiddleware");
 dotenv.config();
 const app = express();
 
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:4200",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
 app.use(express.json());
 
 const server = http.createServer(app);
