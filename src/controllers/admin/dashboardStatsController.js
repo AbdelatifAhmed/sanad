@@ -10,7 +10,7 @@ const getAdminDashboardStats = async (req, res) => {
       companionsStats,
       bookingsStats
     ] = await Promise.all([
-      User.countDocuments(),
+      User.countDocuments({ role: { $ne: 'admin' } }),
 
       User.countDocuments({ role: 'family' }),
 
