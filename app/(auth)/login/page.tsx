@@ -4,9 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  User,
   Mail,
-  Phone,
   Lock,
   Eye,
   EyeOff,
@@ -14,16 +12,13 @@ import {
   CheckCircle
 } from "lucide-react";
 
-export default function RegisterPage() {
+export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState<"family" | "companion">("family");
   const [showPassword, setShowPassword] = useState(false);
-  const [agree, setAgree] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: "",
     email: "",
-    phone: "",
     password: "",
   });
 
@@ -43,15 +38,14 @@ export default function RegisterPage() {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.name.trim()) newErrors.name = "Full name is required";
     if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "Valid email is required";
     }
-    if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
-    if (formData.password.length < 8) {
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 8) {
       newErrors.password = "Password must be at least 8 characters";
     }
-    if (!agree) newErrors.agree = "You must agree to the Terms and Privacy Policy";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -65,24 +59,21 @@ export default function RegisterPage() {
     setServerError("");
 
     try {
-      const response = await fetch("/api/auth/register", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: formData.name,
           email: formData.email,
-          phone: formData.phone,
           password: formData.password,
-          role: role,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Something went wrong during registration.");
+        throw new Error(data.message || "Invalid credentials.");
       }
 
       setSuccess(true);
@@ -92,6 +83,7 @@ export default function RegisterPage() {
       }
 
       setTimeout(() => {
+        const role = data.user.role;
         router.push(role === "companion" ? "/companion" : "/family");
       }, 2000);
     } catch (err: any) {
@@ -103,7 +95,7 @@ export default function RegisterPage() {
 
   return (
     <div className="relative min-h-screen flex flex-col md:flex-row font-body bg-[#fcf9f6]" dir="ltr">
-
+      {/* Left Side: Branding / Hero */}
       <section className="relative w-full md:w-[43%] min-h-screen flex flex-col justify-between p-8 md:p-10 overflow-hidden">
         {/* Background Image & Overlay */}
         <div className="absolute inset-0 z-0">
@@ -133,34 +125,31 @@ export default function RegisterPage() {
             closer to home.
           </h1>
           <p className="text-gray-700 text-sm md:text-base font-medium leading-relaxed">
-            Join our community to connect with trusted caregivers or offer your professional support to families in need.
+            Connecting families with compassionate, reliable caregivers for the elderly. Experience peace of mind with Sanad.
           </p>
         </div>
       </section>
 
-
+      {/* Right Side: Login Form */}
       <section className="w-full md:w-[65%] flex items-center justify-center py-16 px-6 md:px-16 overflow-y-auto">
         <div className="w-full max-w-xl">
-
           {success ? (
             <div className="bg-white p-8 rounded-3xl border border-sand-high text-center space-y-6 custom-shadow animate-fade-in">
               <div className="w-20 h-20 bg-primary-container/20 rounded-full flex items-center justify-center mx-auto">
                 <CheckCircle className="w-12 h-12 text-primary" />
               </div>
               <h3 className="font-display text-2xl font-bold text-primary">
-                Registration Successful!
+                Welcome Back!
               </h3>
               <p className="text-gray-500">
-                Redirecting to your dashboard...
+                Signing you in, please wait...
               </p>
             </div>
           ) : (
             <div className="bg-white rounded-3xl border border-sand-high p-8 md:p-10 custom-shadow space-y-8">
-
-
               <div className="flex flex-col items-center text-center">
-                <h2 className="font-display text-2.5xl font-bold text-primary mb-1">Create an account</h2>
-                <p className="text-gray-500 text-sm font-medium">Welcome! Please enter your details.</p>
+                <h2 className="font-display text-2.5xl font-bold text-primary mb-1">Welcome back</h2>
+                <p className="text-gray-500 text-sm font-medium">Please enter your details to sign in.</p>
               </div>
 
               {serverError && (
@@ -170,70 +159,8 @@ export default function RegisterPage() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
-
-
-                <div className="space-y-2.5">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">
-                    I am registering as a:
-                  </label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setRole("family")}
-                      className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all cursor-pointer text-center ${role === "family"
-                          ? "border-button bg-button/5 text-button"
-                          : "border-outline-variant bg-white text-gray-500 hover:border-gray-400"
-                        }`}
-                    >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${role === "family" ? "bg-button/10 text-button" : "bg-gray-100 text-gray-400"}`}>
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                      </div>
-                      <span className="text-sm font-bold block">Family User</span>
-                      <span className="text-[11px] text-gray-400 font-semibold">Looking for care</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setRole("companion")}
-                      className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all cursor-pointer text-center ${role === "companion"
-                          ? "border-button bg-button/5 text-button"
-                          : "border-outline-variant bg-white text-gray-500 hover:border-gray-400"
-                        }`}
-                    >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${role === "companion" ? "bg-button/10 text-button" : "bg-gray-100 text-gray-400"}`}>
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2h14" />
-                        </svg>
-                      </div>
-                      <span className="text-sm font-bold block">Caregiver</span>
-                      <span className="text-[11px] text-gray-400 font-semibold">Providing care</span>
-                    </button>
-                  </div>
-                </div>
-
                 <div className="border-t border-sand-high pt-6 space-y-5">
-
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-gray-700">
-                      Full Name
-                    </label>
-                    <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        className="w-full pl-12 pr-4 py-3.5 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all placeholder:text-gray-400 text-sm"
-                        placeholder="e.g. Fatima Al-Zahra"
-                      />
-                    </div>
-                    {errors.name && <p className="text-red-500 text-xs font-semibold">{errors.name}</p>}
-                  </div>
-
-
+                  {/* Email Input */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-700">
                       Email Address
@@ -252,30 +179,16 @@ export default function RegisterPage() {
                     {errors.email && <p className="text-red-500 text-xs font-semibold">{errors.email}</p>}
                   </div>
 
-
+                  {/* Password Input */}
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-gray-700">
-                      Phone Number
-                    </label>
-                    <div className="relative">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="w-full pl-12 pr-4 py-3.5 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all placeholder:text-gray-400 text-sm"
-                        placeholder="+966 5X XXX XXXX"
-                      />
+                    <div className="flex items-center justify-between">
+                      <label className="block text-sm font-bold text-gray-700">
+                        Password
+                      </label>
+                      <Link href="#" className="text-xs font-bold text-primary hover:underline">
+                        Forgot Password?
+                      </Link>
                     </div>
-                    {errors.phone && <p className="text-red-500 text-xs font-semibold">{errors.phone}</p>}
-                  </div>
-
-
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-gray-700">
-                      Password
-                    </label>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                       <input
@@ -294,49 +207,70 @@ export default function RegisterPage() {
                         {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                       </button>
                     </div>
-                    <p className="text-[11px] text-gray-400 font-medium">Must be at least 8 characters.</p>
                     {errors.password && <p className="text-red-500 text-xs font-semibold">{errors.password}</p>}
                   </div>
                 </div>
 
-
-                <div className="space-y-1.5">
-                  <div className="flex items-start gap-3">
-                    <input
-                      id="agree"
-                      type="checkbox"
-                      checked={agree}
-                      onChange={(e) => {
-                        setAgree(e.target.checked);
-                        if (errors.agree) setErrors(prev => ({ ...prev, agree: "" }));
-                      }}
-                      className="mt-1 w-4 h-4 rounded text-primary border-outline-variant focus:ring-primary focus:ring-offset-0 cursor-pointer"
-                    />
-                    <label htmlFor="agree" className="text-xs text-gray-600 leading-normal select-none">
-                      I agree to the{" "}
-                      <Link href="#" className="text-primary hover:underline font-bold">Terms of Service</Link>{" "}
-                      and{" "}
-                      <Link href="#" className="text-primary hover:underline font-bold">Privacy Policy</Link>.
-                    </label>
-                  </div>
-                  {errors.agree && <p className="text-red-500 text-xs font-semibold">{errors.agree}</p>}
+                {/* Remember Me */}
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded text-primary border-outline-variant focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-600 cursor-pointer select-none">
+                    Remember me
+                  </label>
                 </div>
 
-
+                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={loading}
                   className="w-full bg-button text-white py-3.5 px-8 rounded-xl font-bold text-base hover:bg-button-hover transition-all active:scale-[0.99] shadow-md shadow-button/20 flex items-center justify-center gap-2 mt-8 disabled:opacity-50 cursor-pointer"
                 >
-                  <span>{loading ? "Creating Account..." : "Create Account"}</span>
+                  <span>{loading ? "Signing In..." : "Sign In"}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
+                {/* Divider */}
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-outline-variant"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-gray-400 font-bold">Or continue with</span>
+                  </div>
+                </div>
+
+                {/* Social Logins */}
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    className="flex justify-center items-center h-12 border border-outline-variant rounded-xl bg-white hover:bg-sand-low transition-colors duration-200 text-gray-700 font-bold text-sm cursor-pointer"
+                  >
+                    <svg className="w-5 h-5 mr-2 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"></path>
+                    </svg>
+                    Google
+                  </button>
+                  <button
+                    type="button"
+                    className="flex justify-center items-center h-12 border border-outline-variant rounded-xl bg-white hover:bg-sand-low transition-colors duration-200 text-gray-700 font-bold text-sm cursor-pointer"
+                  >
+                    <svg className="w-5 h-5 mr-2 text-black" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17.05,20.28c-0.98,1.44-2.02,2.88-3.6,2.91c-1.55,0.03-2.06-0.92-3.82-0.92c-1.76,0-2.31,0.89-3.8,0.95c-1.53,0.06-2.7-1.53-3.69-2.97c-2.03-2.93-3.58-8.27-1.5-11.89c1.03-1.79,2.87-2.92,4.86-2.95c1.49-0.03,2.9,1.01,3.82,1.01c0.91,0,2.61-1.25,4.42-1.06c0.75,0.03,2.88,0.3,4.24,2.3c-0.11,0.07-2.54,1.48-2.52,4.4C15.48,15.43,18.17,16.46,17.05,20.28z M11.96,5.17c0.82-1,1.38-2.39,1.23-3.77c-1.18,0.05-2.61,0.79-3.45,1.78c-0.75,0.88-1.4,2.31-1.23,3.67C9.84,6.95,11.14,6.17,11.96,5.17z"></path>
+                    </svg>
+                    Apple
+                  </button>
+                </div>
 
                 <p className="text-center text-sm text-gray-500 pt-2 font-medium">
-                  <span className="mr-1">Already have an account?</span>
-                  <Link href="/login" className="text-button font-bold hover:underline decoration-2 underline-offset-4">
-                    Log in
+                  <span className="mr-1">Don't have an account?</span>
+                  <Link href="/register" className="text-button font-bold hover:underline decoration-2 underline-offset-4">
+                    Sign up
                   </Link>
                 </p>
               </form>
