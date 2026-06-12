@@ -5,7 +5,7 @@ const toggleBan = async (req, res) => {
     if (req.user._id.toString() === id) {
       return res.status(400).json({
         status: "fail",
-        message: "You cannot ban or toggle your own account status."
+        message: "You cannot ban or toggle your own account status.",
       });
     }
 
@@ -13,7 +13,7 @@ const toggleBan = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         status: "fail",
-        message: "User not found."
+        message: "User not found.",
       });
     }
     user.isBanned = !user.isBanned;
@@ -28,16 +28,16 @@ const toggleBan = async (req, res) => {
           name: user.name,
           email: user.email,
           role: user.role,
-          isBanned: user.isBanned
-        }
-      }
+          isBanned: user.isBanned,
+        },
+      },
     });
   } catch (error) {
     console.error("Error in toggle-ban controller:", error);
     return res.status(500).json({
       status: "error",
       message: "An error occurred while toggling the user ban status.",
-      error: error.message
+      error: error.message,
     });
   }
 };
