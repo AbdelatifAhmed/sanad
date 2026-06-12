@@ -7,87 +7,123 @@ const {
   generateRefreshToken,
 } = require("../utils/token");
 
-// 🌟 تحسين الاستجابة لترجع البيانات المهمة للـ Zustand Store والـ UI
-const userResponse = (user) => ({
-  id: user._id,
-  name: user.name,
-  email: user.email,
-  phone: user.phone,
-  role: user.role,
-  avatar: user.avatar || null, // مهم جداً لعرض صورة اليوزر في الـ Navbar فوراً
-});
-
+const userResponse = (user, profileRecord = null) => {
+  return {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    role: user.role,
+    avatar: user.avatar || null,
+    location: user.location || null, 
+    
+    ...(user.role === 'companion' && {
+      companionId: profileRecord ? profileRecord._id : null,
+      verificationStatus: profileRecord ? profileRecord.verificationStatus : "pending"
+    }),
+    
+    ...(user.role === 'family' && {
+      familyId: profileRecord ? profileRecord._id : null
+    })
+  };
+};
 exports.register = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    // 🌟 استلام الـ role من الفرونت إند لأن عندنا نوعين من المستخدمين
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone, role, location, companionData, familyData } = req.body;
 
     if (!name || !email || !password || !phone || !role) {
-      return res.status(400).json({
-        message: "All fields are required, including role.",
-      });
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: "All account fields are required." });
     }
 
-    const nameTrimmed = name.trim();
+    if (!location || !location.geo || !location.geo.coordinates) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: "Geospatial location coordinates are required." });
+    }
+
     const emailNormalized = email.trim().toLowerCase();
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(emailNormalized)) {
-      return res.status(400).json({
-        message: "Invalid email format.",
-      });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({
-        message: "Password must be at least 8 characters.",
-      });
-    }
-
-
-    if (!['family', 'companion'].includes(role)) {
-      return res.status(400).json({
-        message: "Invalid account type. Role must be either 'family' or 'companion'.",
-      });
-    }
-
-    const existingUser = await User.findOne({
-      email: emailNormalized,
-    });
-
+    const existingUser = await User.findOne({ email: emailNormalized }).session(session);
     if (existingUser) {
-      return res.status(409).json({
-        message: "Email is already registered.",
-      });
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(409).json({ message: "Email is already registered." });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const user = await User.create({
-      name: nameTrimmed,
-      email: emailNormalized,
-      passwordHash,
-      phone: phone.trim(),
-      role,
-    });
+    const [newUser] = await User.create(
+      [{
+        name: name.trim(),
+        email: emailNormalized,
+        passwordHash,
+        phone: phone.trim(),
+        role,
+        location 
+      }],
+      { session }
+    );
 
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    let profileRecord = null;
+
+    if (role === 'companion') {
+      [profileRecord] = await Companion.create(
+        [{
+          userId: newUser._id,
+          companionType: companionData.companionType,
+          specialization: companionData.specialization || "none",
+          bio: companionData.bio,
+          hourlyRate: companionData.hourlyRate,
+          skills: companionData.skills || [],
+          hobbies: companionData.hobbies || [],
+          availability: companionData.availability || [],
+          documents: companionData.documents
+        }],
+        { session }
+      );
+    } else if (role === 'family') {
+      [profileRecord] = await Family.create(
+        [{
+          familyId: newUser._id,
+          address: familyData.address,
+          beneficiaries: familyData.beneficiaries
+        }],
+        { session }
+      );
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    const accessToken = generateAccessToken(newUser);
+    const refreshToken = generateRefreshToken(newUser);
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production" ? true : false, 
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     return res.status(201).json({
       accessToken,
-      user: userResponse(user),
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        role: newUser.role,
+        location: newUser.location 
+      },
     });
+
   } catch (err) {
-    console.error("Register Error:", err);
-    return res.status(500).json({ message: "Server error" });
+    await session.abortTransaction();
+    session.endSession();
+    console.error("Global Register with Location Error:", err);
+    return res.status(500).json({ message: "Server error during registration." });
   }
 };
 
