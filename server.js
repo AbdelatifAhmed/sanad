@@ -7,7 +7,6 @@ const { Server } = require("socket.io");
 const routes = require("./src/routes");
 const socketManager = require("./src/utils/socketManager");
 const socketAuth = require("./src/middleware/socketMiddleware");
-const cors = require("cors");
 dotenv.config();
 const app = express();
 const cookieParser = require("cookie-parser");

@@ -7,22 +7,24 @@ const {
   generateRefreshToken,
 } = require("../utils/token");
 
+// 🌟 تحسين الاستجابة لترجع البيانات المهمة للـ Zustand Store والـ UI
 const userResponse = (user) => ({
   id: user._id,
   name: user.name,
   email: user.email,
   phone: user.phone,
   role: user.role,
+  avatar: user.avatar || null, // مهم جداً لعرض صورة اليوزر في الـ Navbar فوراً
 });
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
-    const defaultRole = "family";
+    // 🌟 استلام الـ role من الفرونت إند لأن عندنا نوعين من المستخدمين
+    const { name, email, password, phone, role } = req.body;
 
-    if (!name || !email || !password || !phone) {
+    if (!name || !email || !password || !phone || !role) {
       return res.status(400).json({
-        message: "All fields are required.",
+        message: "All fields are required, including role.",
       });
     }
 
@@ -30,7 +32,6 @@ exports.register = async (req, res) => {
     const emailNormalized = email.trim().toLowerCase();
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
     if (!emailRegex.test(emailNormalized)) {
       return res.status(400).json({
         message: "Invalid email format.",
@@ -43,8 +44,12 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Ignore any client-provided role to prevent privilege escalation.
-    const role = defaultRole;
+
+    if (!['family', 'companion'].includes(role)) {
+      return res.status(400).json({
+        message: "Invalid account type. Role must be either 'family' or 'companion'.",
+      });
+    }
 
     const existingUser = await User.findOne({
       email: emailNormalized,
@@ -71,7 +76,7 @@ exports.register = async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false, // true in production
+      secure: process.env.NODE_ENV === "production" ? true : false, 
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -81,7 +86,7 @@ exports.register = async (req, res) => {
       user: userResponse(user),
     });
   } catch (err) {
-    console.error(err);
+    console.error("Register Error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -127,7 +132,7 @@ exports.login = async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -137,7 +142,7 @@ exports.login = async (req, res) => {
       user: userResponse(user),
     });
   } catch (err) {
-    console.error(err);
+    console.error("Login Error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -171,7 +176,7 @@ exports.refreshToken = async (req, res) => {
 exports.logout = (req, res) => {
   res.clearCookie("refreshToken", {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
   });
 
