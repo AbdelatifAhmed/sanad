@@ -2,6 +2,7 @@ const Review = require("../models/reviews.schema.js");
 const Booking = require("../models/booking.schema");
 const Companion = require("../models/companion.schema");
 const mongoose = require("mongoose");
+const messages = require("../utils/messages");
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
@@ -117,7 +118,7 @@ const getCompanionReviews = async (req, res) => {
     return res.status(200).json({
       companionId: id,
       companionProfileId: companion._id,
-      averageRating: companion.averageRating,
+      averageRating: companion.rating,
       totalReviews: companion.reviewCount,
       reviews,
       pagination: {

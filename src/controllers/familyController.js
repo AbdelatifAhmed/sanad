@@ -1,12 +1,13 @@
 const Family = require('../models/family.schema');
 const mongoose = require('mongoose');
+const messages = require("../utils/messages");
 
 exports.updateFamilyProfile = async (req, res) => {
   try {
-   
+    const lang = req.lang || "en";
     if (!req.user || req.user.role !== 'family') {
       return res.status(403).json({
-        error: 'Access denied. Only authenticated family accounts can perform this action.'
+        error: messages.booking.accessDeniedFamilyOnly[lang]
       });
     }
 
@@ -14,17 +15,17 @@ exports.updateFamilyProfile = async (req, res) => {
     const { address, beneficiaries } = req.body;
     if (address === undefined && beneficiaries === undefined) {
       return res.status(400).json({
-        error: 'At least one of address or beneficiaries must be provided for update.'
+        error: messages.family.atLeastOneField[lang]
       });
     }
 
     if (address !== undefined) {
       if (typeof address !== 'object' || address === null || Array.isArray(address)) {
         return res.status(400).json({
-          error: 'Address must be a valid object.'
+          error: messages.family.invalidAddress[lang]
         });
       }
-
+      
       const { city, area, fullAddress } = address;
       if (city !== undefined && (typeof city !== 'string' || city.trim() === '')) {
         return res.status(400).json({ error: 'City must be a non-empty string.' });
@@ -40,7 +41,7 @@ exports.updateFamilyProfile = async (req, res) => {
     if (beneficiaries !== undefined) {
       if (!Array.isArray(beneficiaries)) {
         return res.status(400).json({
-          error: 'Beneficiaries must be an array.'
+          error: messages.family.invalidBeneficiaries[lang]
         });
       }
 
@@ -178,7 +179,10 @@ exports.updateFamilyProfile = async (req, res) => {
 
  
     const savedProfile = await familyProfile.save();
-    return res.status(200).json(savedProfile);
+    return res.status(200).json({
+      message: messages.family.profileSuccess[req.lang || "en"],
+      profile: savedProfile
+    });
 
   } catch (error) {
     console.error('Error updating family profile:', error);
@@ -188,6 +192,6 @@ exports.updateFamilyProfile = async (req, res) => {
     if (error.name === 'CastError') {
       return res.status(400).json({ error: `Invalid field: ${error.path}` });
     }
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"] });
   }
 };

@@ -3,68 +3,65 @@ const Companion = require('../models/companion.schema');
 const Booking = require('../models/booking.schema.js'); 
 const { generateEmbedding } = require('../services/ai/ragService');
 const User = require('../models/user.schema');
+const messages = require("../utils/messages");
 
 
 
 
 const updateCompanionProfile = async (req, res) => {
   try {
-   
+    const lang = req.lang || "en";
     if (!req.user || req.user.role !== 'companion') {
-      return res.status(403).json({ error: 'Access denied. Only authenticated companion accounts can perform this action.' });
+      return res.status(403).json({ error: messages.common.forbidden[lang] });
     }
 
     const userId = req.user._id;
     const { bio, hourlyRate, skills, hobbies, availability } = req.body;
 
-  
     const existingCompanion = await Companion.findOne({ userId });
 
-   
     if (!existingCompanion) {
-
       if (bio === undefined || typeof bio !== 'string' || bio.trim() === '') {
-        return res.status(400).json({ error: 'Bio is required to initialize a companion profile.' });
+        return res.status(400).json({ error: messages.companion.bioRequired[lang] });
       }
       if (hourlyRate === undefined || typeof hourlyRate !== 'number' || hourlyRate < 0) {
-        return res.status(400).json({ error: 'Hourly rate is required to initialize a companion profile and must be a positive number.' });
+        return res.status(400).json({ error: messages.companion.hourlyRateRequired[lang] });
       }
     } else {
- 
       if (bio !== undefined && (typeof bio !== 'string' || bio.trim() === '')) {
-        return res.status(400).json({ error: 'Bio must be a non-empty string.' });
+        return res.status(400).json({ error: messages.companion.bioRequired[lang] });
       }
       if (hourlyRate !== undefined && (typeof hourlyRate !== 'number' || hourlyRate < 0)) {
-        return res.status(400).json({ error: 'Hourly rate must be a positive number.' });
+        return res.status(400).json({ error: messages.companion.hourlyRateRequired[lang] });
       }
     }
 
     if (skills !== undefined) {
       if (!Array.isArray(skills) || skills.some(s => typeof s !== 'string')) {
-        return res.status(400).json({ error: 'Skills must be an array of strings.' });
+        return res.status(400).json({ error: messages.companion.skillsArray[lang] });
       }
     }
 
     if (hobbies !== undefined) {
       if (!Array.isArray(hobbies) || hobbies.some(h => typeof h !== 'string')) {
-        return res.status(400).json({ error: 'Hobbies must be an array of strings.' });
+        return res.status(400).json({ error: messages.companion.hobbiesArray[lang] });
       }
     }
 
     if (availability !== undefined) {
       if (!Array.isArray(availability)) {
-        return res.status(400).json({ error: 'Availability must be an array.' });
+        return res.status(400).json({ error: messages.companion.invalidAvailability[lang] });
       }
       const validDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
       for (const slotObj of availability) {
         if (typeof slotObj !== 'object' || slotObj === null || Array.isArray(slotObj)) {
-          return res.status(400).json({ error: 'Each availability entry must be a valid object.' });
+          return res.status(400).json({ error: messages.companion.invalidAvailability[lang] });
         }
         if (!slotObj.day || !validDays.includes(slotObj.day)) {
-          return res.status(400).json({ error: `Availability day must be one of: ${validDays.join(', ')}.` });
+          return res.status(400).json({ error: messages.companion.invalidAvailability[lang] });
         }
         if (!slotObj.slots || !Array.isArray(slotObj.slots) || slotObj.slots.some(s => typeof s !== 'string')) {
-          return res.status(400).json({ error: 'Availability slots must be an array of strings.' });
+          return res.status(400).json({ error: messages.companion.invalidAvailability[lang] });
         }
       }
     }
@@ -125,20 +122,20 @@ const updateCompanionProfile = async (req, res) => {
 
 const getCompanionSchedule = async (req, res) => {
   try {
-    const lang = req.headers['accept-language'] || 'ar';
+    const lang = req.lang || "en";
 
     const companionProfile = await Companion.findOne({ userId: req.user.id });
     
     if (!companionProfile) {
       return res.status(404).json({
         status: 'fail',
-        message: lang === 'en' ? 'Companion profile not found.' : 'لم يتم العثور على ملف تعريف المرافق الخاص بك.'
+        message: messages.companion.profileNotFound[lang]
       });
     }
 
     const confirmedBookings = await Booking.find({
       companionId: companionProfile._id,
-      status: { $in: ['accepted', 'confirmed'] } 
+      status: { $in: ['approved', 'active'] } 
     })
     .populate({
       path: 'familyId',
@@ -165,13 +162,13 @@ const getCompanionSchedule = async (req, res) => {
 
 const updateCompanionAvailability = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { availability } = req.body;
-    const lang = req.headers['accept-language'] || 'ar';
 
     if (!availability) {
       return res.status(400).json({
         status: 'fail',
-        message: lang === 'en' ? 'Availability data is required.' : 'بيانات التواجد والمواعيد مطلوبة.'
+        message: messages.companion.invalidAvailability[lang]
       });
     }
 
@@ -184,13 +181,13 @@ const updateCompanionAvailability = async (req, res) => {
     if (!updatedCompanion) {
       return res.status(404).json({
         status: 'fail',
-        message: lang === 'en' ? 'Companion profile not found.' : 'لم يتم العثور على ملف تعريف المرافق الخاص بك.'
+        message: messages.companion.profileNotFound[lang]
       });
     }
 
     return res.status(200).json({
       status: 'success',
-      message: lang === 'en' ? 'Availability schedule updated successfully.' : 'تم تحديث جدول مواعيد تواجدك بنجاح.',
+      message: messages.companion.availabilitySuccess[lang],
       data: {
         availability: updatedCompanion.availability
       }
@@ -243,13 +240,13 @@ const getVerifiedCompanions = async (req, res) => {
 
 const getCompanionById = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { id } = req.params;
-    const lang = req.headers['accept-language'] || 'ar';
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         status: 'fail',
-        message: lang === 'en' ? 'Invalid companion ID format.' : 'صيغة معرّف المرافق غير صالحة.'
+        message: messages.common.invalidId[lang]
       });
     }
 
@@ -258,7 +255,7 @@ const getCompanionById = async (req, res) => {
     if (!companion) {
       return res.status(404).json({
         status: 'fail',
-        message: lang === 'en' ? 'Companion profile not found.' : 'لم يتم العثور على ملف تعريف المرافق.'
+        message: messages.companion.profileNotFound[lang]
       });
     }
 
@@ -279,12 +276,12 @@ const getCompanionById = async (req, res) => {
 
 const getMyCompanionProfile = async (req, res) => {
   try {
-    const lang = req.headers['accept-language'] || 'ar';
+    const lang = req.lang || "en";
 
     if (req.user.role !== 'companion') {
       return res.status(403).json({
         status: 'fail',
-        message: lang === 'en' ? 'Access denied. Only companions can view this profile.' : 'عذراً، هذا الحساب لا يملك صلاحيات أو ملف تعريف مرافق.'
+        message: messages.common.forbidden[lang]
       });
     }
 
@@ -293,7 +290,7 @@ const getMyCompanionProfile = async (req, res) => {
     if (!companion) {
       return res.status(404).json({
         status: 'fail',
-        message: lang === 'en' ? 'Companion profile not found.' : 'لم يتم العثور على ملف تعريف المرافق الخاص بك.'
+        message: messages.companion.profileNotFound[lang]
       });
     }
 
@@ -312,13 +309,13 @@ const getMyCompanionProfile = async (req, res) => {
   }
 };
 
-
 const updateMyLocation = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { coordinates, readableAddress, city, governorate } = req.body;
 
     if (!coordinates || coordinates.length !== 2) {
-      return res.status(400).json({ error: "Coordinates must be an array of [longitude, latitude]" });
+      return res.status(400).json({ error: messages.jobPost.coordinatesRequired[lang] });
     }
 
     const updatedUser = await User.findByIdAndUpdate(

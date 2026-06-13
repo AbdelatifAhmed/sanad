@@ -17,7 +17,7 @@ const getAdminDashboardStats = async (req, res) => {
       Companion.aggregate([
         {
           $group: {
-            _id: '$status', 
+            _id: '$verificationStatus', 
             count: { $sum: 1 }
           }
         }
@@ -36,7 +36,7 @@ const getAdminDashboardStats = async (req, res) => {
     const companions = { total: 0, verified: 0, pending: 0, rejected: 0 };
     companionsStats.forEach(item => {
       const status = item._id || 'pending';
-      if (status === 'approved' || status === 'verified') companions.verified = item.count;
+      if (status === 'verified') companions.verified = item.count;
       else if (status === 'pending') companions.pending = item.count;
       else if (status === 'rejected') companions.rejected = item.count;
       companions.total += item.count;
@@ -45,7 +45,7 @@ const getAdminDashboardStats = async (req, res) => {
     const bookings = { total: 0, active: 0, completed: 0, pending: 0 };
     bookingsStats.forEach(item => {
       const status = item._id;
-      if (status === 'accepted' || status === 'confirmed') bookings.active = item.count; 
+      if (status === 'approved' || status === 'active') bookings.active += item.count; 
       else if (status === 'completed') bookings.completed = item.count;
       else if (status === 'pending') bookings.pending = item.count;
       bookings.total += item.count;

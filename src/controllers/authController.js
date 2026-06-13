@@ -1,6 +1,10 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const User = require("../models/user.schema");
+const Companion = require("../models/companion.schema");
+const Family = require("../models/family.schema");
+const messages = require("../utils/messages");
 
 const {
   generateAccessToken,
@@ -32,18 +36,19 @@ exports.register = async (req, res) => {
   session.startTransaction();
 
   try {
+    const lang = req.lang || "en";
     const { name, email, password, phone, role, location, companionData, familyData } = req.body;
 
     if (!name || !email || !password || !phone || !role) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ message: "All account fields are required." });
+      return res.status(400).json({ message: messages.auth.requiredFields[lang] });
     }
 
     if (!location || !location.geo || !location.geo.coordinates) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ message: "Geospatial location coordinates are required." });
+      return res.status(400).json({ message: messages.auth.locationRequired[lang] });
     }
 
     const emailNormalized = email.trim().toLowerCase();
@@ -51,7 +56,7 @@ exports.register = async (req, res) => {
     if (existingUser) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(409).json({ message: "Email is already registered." });
+      return res.status(409).json({ message: messages.auth.emailRegistered[lang] });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
@@ -123,17 +128,18 @@ exports.register = async (req, res) => {
     await session.abortTransaction();
     session.endSession();
     console.error("Global Register with Location Error:", err);
-    return res.status(500).json({ message: "Server error during registration." });
+    return res.status(500).json({ message: messages.common.serverError[req.lang || "en"] });
   }
 };
 
 exports.login = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
-        message: "Email and password are required.",
+        message: messages.auth.requiredFields[lang],
       });
     }
 
@@ -145,7 +151,7 @@ exports.login = async (req, res) => {
 
     if (!user) {
       return res.status(401).json({
-        message: "Invalid credentials.",
+        message: messages.auth.invalidCredentials[lang],
       });
     }
 
@@ -153,13 +159,13 @@ exports.login = async (req, res) => {
 
     if (!passwordMatch) {
       return res.status(401).json({
-        message: "Invalid credentials.",
+        message: messages.auth.invalidCredentials[lang],
       });
     }
 
     if (user.isBanned) {
       return res.status(403).json({
-        message: "Your account has been banned. Access denied.",
+        message: messages.auth.banned[lang],
       });
     }
 
@@ -179,16 +185,17 @@ exports.login = async (req, res) => {
     });
   } catch (err) {
     console.error("Login Error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: messages.common.serverError[req.lang || "en"] });
   }
 };
 
 exports.refreshToken = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const token = req.cookies.refreshToken;
 
     if (!token) {
-      return res.status(401).json({ message: "No refresh token" });
+      return res.status(401).json({ message: messages.auth.invalidToken[lang] });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
@@ -196,7 +203,7 @@ exports.refreshToken = async (req, res) => {
     const user = await User.findById(decoded.id);
 
     if (!user || user.isBanned) {
-      return res.status(401).json({ message: "Invalid refresh token" });
+      return res.status(401).json({ message: messages.auth.invalidToken[lang] });
     }
 
     const accessToken = generateAccessToken(user);
@@ -205,16 +212,17 @@ exports.refreshToken = async (req, res) => {
       accessToken,
     });
   } catch (err) {
-    return res.status(401).json({ message: "Invalid refresh token" });
+    return res.status(401).json({ message: messages.auth.invalidToken[req.lang || "en"] });
   }
 };
 
 exports.logout = (req, res) => {
+  const lang = req.lang || "en";
   res.clearCookie("refreshToken", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
   });
 
-  return res.status(200).json({ message: "Logged out" });
+  return res.status(200).json({ message: messages.auth.logoutSuccess[lang] });
 };

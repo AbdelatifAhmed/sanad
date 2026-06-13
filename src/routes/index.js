@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const langMiddleware = require("../middleware/langMiddleware");
 const aiRoutes = require("./aiRoutes");
 const companionAdminRoutes = require("./admin/campanionAdmin");
 const userAdminRoutes = require("./admin/userAdmin");
@@ -16,6 +17,11 @@ const notificationRoutes = require("./notification");
 const skillRoutes = require("./skillRoutes");
 const jobPostRoutes = require("./jobPostRputes");
 const proposalRoutes = require("./proposalRoutes");
+const paymentRoutes = require("./paymentRoutes");
+
+// Apply localization middleware globally to all API routes
+router.use(langMiddleware);
+
 router.use("/admin/companions", companionAdminRoutes);
 router.use("/admin/users", userAdminRoutes);
 router.use("/admin/bookings", bookingAdminRoutes);
@@ -32,4 +38,6 @@ router.use("/chat", chatRoutes);
 router.use("/skills", skillRoutes);
 router.use("/job-posts", jobPostRoutes);
 router.use("/proposals", proposalRoutes);
+router.use("/payments", paymentRoutes);
+
 module.exports = router;

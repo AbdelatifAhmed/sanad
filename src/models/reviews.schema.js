@@ -61,12 +61,12 @@ reviewSchema.statics.updateCompanionRating = async function (companionProfileId)
 
   if (stats.length > 0) {
     await Companion.findByIdAndUpdate(companionProfileId, {
-      averageRating: Number(stats[0].averageRating.toFixed(1)),
+      rating: Number(stats[0].averageRating.toFixed(1)),
       reviewCount: stats[0].totalReviews,
     });
   } else {
     await Companion.findByIdAndUpdate(companionProfileId, {
-      averageRating: 5.0,
+      rating: 5.0,
       reviewCount: 0,
     });
   }

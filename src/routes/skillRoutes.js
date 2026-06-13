@@ -5,7 +5,7 @@ const {
   createSkill,
 } = require("../controllers/skillController.js");
 const { authenticate } = require("../middleware/authMiddleware");
-const { isAdmin } = require("../middleware/roleMiddleware.js");
+const { isAdmin } = require("../middleware/RoleMiddleware");
 
 router.get("/", getAllSkills);
 

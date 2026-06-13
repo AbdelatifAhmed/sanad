@@ -1,21 +1,24 @@
 const Proposal = require("../models/proposal.schema");
 const JobPost = require("../models/jobPost.schema");
 const Booking = require("../models/booking.schema"); 
+const Companion = require("../models/companion.schema");
 const { hasBookingConflict } = require("../utils/checkConflict"); 
+const messages = require("../utils/messages"); 
 const sendProposal = async (req, res) => {
  try {
+    const lang = req.lang || "en";
     const { jobPostId, proposedRate, coverLetter } = req.body;
 
     if (!jobPostId || !proposedRate || !coverLetter) {
-      return res.status(400).json({ status: "fail", message: "جميع حقول العرض مطلوبة" });
+      return res.status(400).json({ status: "fail", message: messages.proposal.missingFields[lang] });
     }
 
     const jobPost = await JobPost.findById(jobPostId);
     if (!jobPost) {
-      return res.status(404).json({ status: "fail", message: "هذا الطلب غير موجود" });
+      return res.status(404).json({ status: "fail", message: messages.proposal.jobNotFound[lang] });
     }
     if (jobPost.status !== "open") {
-      return res.status(400).json({ status: "fail", message: "عذراً، هذا الطلب لم يعد يستقبل عروضاً" });
+      return res.status(400).json({ status: "fail", message: messages.proposal.jobNotOpen[lang] });
     }
 
     const newStartDate = new Date();
@@ -36,7 +39,7 @@ const sendProposal = async (req, res) => {
     if (isBusy) {
       return res.status(400).json({
         status: "fail",
-        message: "عذراً، لا يمكنك التقديم على هذا الطلب لوجود تعارض مع مواعيد حجوزاتك المؤكدة الحالية."
+        message: messages.proposal.proposalConflict[lang]
       });
     }
 
@@ -49,13 +52,13 @@ const sendProposal = async (req, res) => {
 
     return res.status(201).json({
       status: "success",
-      message: "تم تقديم عرضك بنجاح لعدم وجود أي تعارض في مواعيدك!",
+      message: messages.proposal.successSubmitted[lang],
       data: { proposal: newProposal },
     });
   } catch (error) {
     console.error("Error submitting proposal:", error);
     if (error.code === 11000) {
-      return res.status(409).json({ status: "fail", message: "لقد قمت بتقديم عرض على هذا الطلب بالفعل سابقاً" });
+      return res.status(409).json({ status: "fail", message: messages.proposal.duplicateProposal[lang] });
     }
     return res.status(500).json({ status: "error", message: error.message });
   }
@@ -63,15 +66,16 @@ const sendProposal = async (req, res) => {
 
 const getProposalsForJob = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { jobId } = req.params;
 
     const jobPost = await JobPost.findById(jobId);
     if (!jobPost) {
-      return res.status(404).json({ status: "fail", message: "هذا الطلب غير موجود" });
+      return res.status(404).json({ status: "fail", message: messages.proposal.jobNotFound[lang] });
     }
 
     if (jobPost.familyId.toString() !== req.user._id.toString() && req.user.role !== "admin") {
-      return res.status(403).json({ status: "fail", message: "غير مسموح لك بالاطلاع على عروض هذا الطلب" });
+      return res.status(403).json({ status: "fail", message: messages.proposal.unauthorizedProposalView[lang] });
     }
 
     const proposals = await Proposal.find({ jobPostId: jobId })
@@ -85,8 +89,8 @@ const getProposalsForJob = async (req, res) => {
     const updatedProposals = await Promise.all(
       proposals.map(async (proposal) => {
         
-        const companionProfile = await Companion.findOne({ userId: proposal.companionId._id }).select("averageRating");
-        proposal.companionId.averageRating = companionProfile ? companionProfile.averageRating : 4.5; // 4.5 كقيمة افتراضية للمبتدئين
+        const companionProfile = await Companion.findOne({ userId: proposal.companionId._id }).select("rating");
+        proposal.companionId.averageRating = companionProfile ? companionProfile.rating : 4.5; // 4.5 كقيمة افتراضية للمبتدئين
 
         if (proposal.status === "pending") {
           const newStartDate = new Date();
@@ -158,40 +162,41 @@ const generateScheduleDates = (workingDays, startTime, endTime, durationInWeeks,
 
 const updateProposalStatus = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { proposalId } = req.params;
     const { status } = req.body; 
 
     if (!["accepted", "rejected"].includes(status)) {
-      return res.status(400).json({ status: "fail", message: "الحالة المرسلة غير صالحة" });
+      return res.status(400).json({ status: "fail", message: messages.proposal.invalidAction[lang] });
     }
 
     const proposal = await Proposal.findById(proposalId);
     if (!proposal) {
-      return res.status(404).json({ status: "fail", message: "هذا العرض غير موجود" });
+      return res.status(404).json({ status: "fail", message: messages.common.notFound[lang] });
     }
 
     const jobPost = await JobPost.findById(proposal.jobPostId);
     if (!jobPost) {
-      return res.status(404).json({ status: "fail", message: "الطلب الأصلي غير موجود" });
+      return res.status(404).json({ status: "fail", message: messages.proposal.jobNotFound[lang] });
     }
 
     if (jobPost.familyId.toString() !== req.user._id.toString() && req.user.role !== "admin") {
-      return res.status(403).json({ status: "fail", message: "غير مسموح لك بالتحكم في هذا العرض" });
+      return res.status(403).json({ status: "fail", message: messages.proposal.unauthorizedProposalView[lang] });
     }
 
     if (proposal.status !== "pending") {
-      return res.status(400).json({ status: "fail", message: "تمت معالجة هذا العرض مسبقاً" });
+      return res.status(400).json({ status: "fail", message: messages.proposal.proposalProcessed[lang] });
     }
 
     if (status === "rejected") {
       proposal.status = "rejected";
       await proposal.save();
-      return res.status(200).json({ status: "success", message: "تم رفض العرض بنجاح" });
+      return res.status(200).json({ status: "success", message: messages.proposal.proposalRejected[lang] });
     }
 
     if (status === "accepted") {
       if (jobPost.status !== "open") {
-        return res.status(400).json({ status: "fail", message: "هذا الطلب تم إغلاقه بالفعل" });
+        return res.status(400).json({ status: "fail", message: messages.proposal.jobNotOpen[lang] });
       }
 
       const { workingDays, startTime, endTime, durationInWeeks } = jobPost.schedule;
@@ -213,7 +218,7 @@ const updateProposalStatus = async (req, res) => {
         familyId: jobPost.familyId,
         companionId: proposal.companionId,
         jobPostId: jobPost._id,
-        beneficiaryId: jobPost.beneficiaryId || req.body.beneficiaryId || jobPost.familyId, 
+        beneficiaryId: jobPost.beneficiaryId, 
         status: "approved",
         hourlyRateAtBooking: proposal.proposedRate,
         totalHours: Math.round(totalHours),
@@ -238,7 +243,7 @@ const updateProposalStatus = async (req, res) => {
 
       return res.status(200).json({
         status: "success",
-        message: "تم قبول العرض بنجاح وتحويله لحجز رسمي ديناميكي بالكامل!",
+        message: messages.proposal.proposalAccepted[lang],
         data: { proposal, booking: newBooking }
       });
     }

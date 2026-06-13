@@ -8,6 +8,10 @@ const jobPostSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    beneficiaryId: {
+      type: ObjectId,
+      required: true,
+    },
     title: {
       type: String,
       required: [true, "عنوان الطلب مطلوب"],

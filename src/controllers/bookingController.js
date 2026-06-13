@@ -7,10 +7,12 @@ const { getSocketIds } = require("../utils/socketManager");
 const Family = require('../models/family.schema');
 const User = require('../models/user.schema');
 const { hasBookingConflict } = require("../utils/checkConflict");
+const messages = require("../utils/messages");
 const createBooking = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     if (!req.user || req.user.role !== 'family') {
-      return res.status(403).json({ error: 'Access denied. Only family accounts can create bookings.' });
+      return res.status(403).json({ error: messages.booking.accessDeniedFamilyOnly[lang] });
     }
 
     const familyId = req.user._id;
@@ -24,19 +26,19 @@ const createBooking = async (req, res) => {
     } = req.body;
 
     if (!companionId || !beneficiaryId || totalHours === undefined || !schedule) {
-      return res.status(400).json({ error: 'Missing required booking fields.' });
+      return res.status(400).json({ error: messages.booking.missingFields[lang] });
     }
 
     if (!mongoose.Types.ObjectId.isValid(companionId) || !mongoose.Types.ObjectId.isValid(beneficiaryId)) {
-      return res.status(400).json({ error: 'Invalid companion ID or beneficiary ID.' });
+      return res.status(400).json({ error: messages.common.invalidId[lang] });
     }
 
     if (typeof totalHours !== 'number' || totalHours <= 0) {
-      return res.status(400).json({ error: 'Total hours must be a number greater than 0.' });
+      return res.status(400).json({ error: messages.booking.invalidHours[lang] });
     }
 
     if (!Array.isArray(schedule) || schedule.length === 0) {
-      return res.status(400).json({ error: 'Schedule must be a non-empty array.' });
+      return res.status(400).json({ error: messages.booking.invalidSchedule[lang] });
     }
 
     const daysMap = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -46,7 +48,7 @@ const createBooking = async (req, res) => {
 
     for (const item of schedule) {
       if (!item.date || !item.startTime || !item.endTime) {
-        return res.status(400).json({ error: 'Every schedule item must contain date, startTime, and endTime.' });
+        return res.status(400).json({ error: messages.booking.invalidSchedule[lang] });
       }
       
       const itemDate = new Date(item.date);
@@ -58,33 +60,33 @@ const createBooking = async (req, res) => {
 
     const familyProfile = await Family.findOne({ familyId });
     if (!familyProfile) {
-      return res.status(404).json({ error: 'Family profile not found.' });
+      return res.status(404).json({ error: messages.booking.profileNotFound[lang] });
     }
 
     const beneficiaryExists = familyProfile.beneficiaries.some(
       (b) => b._id.toString() === beneficiaryId.toString()
     );
     if (!beneficiaryExists) {
-      return res.status(404).json({ error: 'Beneficiary not found inside your family profile.' });
+      return res.status(404).json({ error: messages.booking.beneficiaryNotFound[lang] });
     }
 
     const companionUser = await User.findById(companionId);
     if (!companionUser || companionUser.role !== 'companion') {
-      return res.status(404).json({ error: 'Companion user not found.' });
+      return res.status(404).json({ error: messages.booking.companionNotFound[lang] });
     }
 
     const companionProfile = await Companion.findOne({ userId: companionId });
     if (!companionProfile) {
-      return res.status(404).json({ error: 'Companion profile not found.' });
+      return res.status(404).json({ error: messages.booking.companionNotFound[lang] });
     }
 
     if (companionProfile.verificationStatus !== 'verified') {
-      return res.status(400).json({ error: 'Companion is not verified.' });
+      return res.status(400).json({ error: messages.booking.companionNotVerified[lang] });
     }
 
     const rate = companionProfile.hourlyRate;
     if (rate === undefined || rate === null) {
-      return res.status(400).json({ error: 'Hourly rate could not be resolved from companion profile.' });
+      return res.status(400).json({ error: messages.booking.companionNotFound[lang] });
     }
 
     const testStartTime = schedule[0].startTime;
@@ -102,7 +104,7 @@ const createBooking = async (req, res) => {
 
     if (isBusy) {
       return res.status(400).json({ 
-        error: 'عذراً، هذا المرافق لديه حجز مؤكد آخر يتداخل مع التواريخ أو الساعات المطلوبة.' 
+        error: messages.booking.conflict[lang] 
       });
     }
 
@@ -147,7 +149,7 @@ const createBooking = async (req, res) => {
 
     const savedBooking = await newBooking.save();
     return res.status(201).json({
-      message: "تم إرسال طلب الحجز المباشر للمرافق بنجاح وفي انتظار موافقته.",
+      message: messages.booking.successCreated[lang],
       booking: savedBooking
     });
 
@@ -155,48 +157,49 @@ const createBooking = async (req, res) => {
     console.error('Error creating booking:', error);
     if (error.name === 'ValidationError') return res.status(400).json({ error: error.message });
     if (error.name === 'CastError') return res.status(400).json({ error: `Invalid field: ${error.path}` });
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"] });
   }
 };
 
 const updateBookingStatus = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { status } = req.body;
     const bookingId = req.params.id;
 
     if (!status) {
-      return res.status(400).json({ error: 'status is required' });
+      return res.status(400).json({ error: messages.booking.statusRequired[lang] });
     }
 
     const validStatuses = ['pending', 'approved', 'active', 'completed', 'cancelled'];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Invalid booking status.' });
+      return res.status(400).json({ error: messages.booking.invalidStatus[lang] });
     }
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
+      return res.status(404).json({ error: messages.review.bookingNotFound[lang] });
     }
 
     if (req.user.role !== 'admin' && req.user.role !== 'family' && req.user.role !== 'companion') {
-      return res.status(403).json({ error: 'Access denied. Invalid role.' });
+      return res.status(403).json({ error: messages.booking.updateStatusRoleLimit[lang] });
     }
 
     if (req.user.role === 'family') {
       if (booking.familyId.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ error: 'Access denied. You can only update status for your own bookings.' });
+        return res.status(403).json({ error: messages.booking.updateStatusDenied[lang] });
       }
       if (status !== 'cancelled' && status !== 'completed') {
-        return res.status(400).json({ error: 'Family accounts can only cancel or complete bookings.' });
+        return res.status(400).json({ error: messages.booking.updateStatusRoleLimit[lang] });
       }
     }
 
     if (req.user.role === 'companion') {
       if (booking.companionId.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ error: 'Access denied. You can only update status for bookings assigned to you.' });
+        return res.status(403).json({ error: messages.booking.updateStatusDenied[lang] });
       }
       if (!['approved', 'active', 'cancelled'].includes(status)) {
-        return res.status(400).json({ error: 'Companions can only approve, activate, or cancel bookings.' });
+        return res.status(400).json({ error: messages.booking.updateStatusRoleLimit[lang] });
       }
     }
 
@@ -211,7 +214,7 @@ const updateBookingStatus = async (req, res) => {
       
       const allowedNext = validTransitions[booking.status] || [];
       if (!allowedNext.includes(status) && booking.status !== status) {
-        return res.status(400).json({ error: `Cannot transition booking status from ${booking.status} to ${status}.` });
+        return res.status(400).json({ error: messages.booking.invalidTransition[lang] });
       }
     }
 
@@ -227,7 +230,7 @@ const updateBookingStatus = async (req, res) => {
 
       if (isBusyNow) {
         return res.status(400).json({ 
-          error: 'عذراً، لا يمكنك قبول هذا الحجز حالياً لوجود تعارض طارئ في جدول مواعيدك المؤكدة الأخرى.' 
+          error: messages.booking.conflict[lang]
         });
       }
     }
@@ -236,7 +239,7 @@ const updateBookingStatus = async (req, res) => {
     const updatedBooking = await booking.save();
     
     return res.status(200).json({
-      message: `Booking status updated successfully to ${status}.`,
+      message: messages.booking.statusUpdated[lang],
       booking: updatedBooking
     });
 
@@ -244,14 +247,13 @@ const updateBookingStatus = async (req, res) => {
     console.error('Error updating booking status:', error);
     if (error.name === 'ValidationError') return res.status(400).json({ error: error.message });
     if (error.name === 'CastError') return res.status(400).json({ error: `Invalid field: ${error.path}` });
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"] });
   }
 };
 
-
-
 const checkIn = async (req, res) => {
     try {
+        const lang = req.lang || "en";
         const { id } = req.params; // Booking ID
         const { scheduleId } = req.body;
         const companionId = req.user._id;
@@ -261,25 +263,34 @@ const checkIn = async (req, res) => {
         await sendNotification(
             result.familyId,
             companionId,                            
-            "حضور المرافق",                        
-            "وصل المرافق الآن إلى موقع الرعاية وبدأ الزيارة الحالية.", 
+            lang === "en" ? "Companion Arrival" : "حضور المرافق",                        
+            lang === "en" ? "The companion has arrived at the care site and started the visit." : "وصل المرافق الآن إلى موقع الرعاية وبدأ الزيارة الحالية.", 
             "booking",                             
             req.io                                 
         );
 
         return res.status(200).json({
             status: "success",
-            message: "Check-in successful",
+            message: messages.booking.checkInSuccess[lang],
             data: { booking: result.booking },
         });
     } catch (error) {
         console.error("Error in checkIn controller:", error);
-        return res.status(400).json({ status: "fail", message: error.message });
+        const lang = req.lang || "en";
+        let errMsg = error.message;
+        if (errMsg === "Booking not found") errMsg = messages.review.bookingNotFound[lang];
+        else if (errMsg === "Not authorized to check-in for this booking") errMsg = messages.booking.notAuthorizedCheckInOut[lang];
+        else if (errMsg.startsWith("Cannot check-in")) errMsg = messages.booking.bookingCompletedOrCancelled[lang];
+        else if (errMsg === "Schedule day not found") errMsg = messages.booking.scheduleNotFound[lang];
+        else if (errMsg === "Already checked in for this schedule day") errMsg = messages.booking.checkInConflict[lang];
+
+        return res.status(400).json({ status: "fail", message: errMsg });
     }
 };
 
 const checkOut = async (req, res) => {
     try {
+        const lang = req.lang || "en";
         const { id } = req.params;
         const { scheduleId } = req.body;
         const companionId = req.user._id;
@@ -289,27 +300,36 @@ const checkOut = async (req, res) => {
         await sendNotification(
             result.familyId,
             companionId,
-            "انصراف المرافق",
-            "غادر المرافق موقع الرعاية وانتهت جلسة العمل بنجاح.",
+            lang === "en" ? "Companion Departure" : "انصراف المرافق",
+            lang === "en" ? "The companion has left the care site. The session ended successfully." : "غادر المرافق موقع الرعاية وانتهت جلسة العمل بنجاح.",
             "booking",
             req.io
         );
 
         return res.status(200).json({
             status: "success",
-            message: "Check-out successful",
+            message: messages.booking.checkOutSuccess[lang],
             data: { booking: result.booking },
         });
     } catch (error) {
         console.error("Error in checkOut controller:", error);
-        return res.status(400).json({ status: "fail", message: error.message });
+        const lang = req.lang || "en";
+        let errMsg = error.message;
+        if (errMsg === "Booking not found") errMsg = messages.review.bookingNotFound[lang];
+        else if (errMsg === "Not authorized to check-out for this booking") errMsg = messages.booking.notAuthorizedCheckInOut[lang];
+        else if (errMsg === "Schedule day not found") errMsg = messages.booking.scheduleNotFound[lang];
+        else if (errMsg === "Must check in first before checking out") errMsg = messages.booking.checkOutBeforeIn[lang];
+        else if (errMsg === "Already checked out for this schedule day") errMsg = messages.booking.checkOutConflict[lang];
+
+        return res.status(400).json({ status: "fail", message: errMsg });
     }
 };
 
 const getCompanionRequests = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     if (req.user.role !== 'companion') {
-      return res.status(403).json({ error: 'Access denied. Only companions can fetch their pending requests.' });
+      return res.status(403).json({ error: messages.booking.updateStatusRoleLimit[lang] });
     }
 
     const pendingBookings = await Booking.find({
@@ -318,7 +338,6 @@ const getCompanionRequests = async (req, res) => {
     })
     .populate('familyId', 'name email phone avatar') 
     .sort({ createdAt: -1 }); 
-
 
     return res.status(200).json({
       status: 'success',
@@ -329,34 +348,35 @@ const getCompanionRequests = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching companion pending requests:', error);
-    return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"], message: error.message });
   }
 };
 
 const respondToBooking = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { id } = req.params;
     const { action } = req.body;
 
     if (req.user.role !== 'companion') {
-      return res.status(403).json({ error: 'Access denied. Only companions can respond to bookings.' });
+      return res.status(403).json({ error: messages.booking.updateStatusRoleLimit[lang] });
     }
 
     if (!action || !['accept', 'decline'].includes(action)) {
-      return res.status(400).json({ error: "Invalid action. Must be either 'accept' or 'decline'." });
+      return res.status(400).json({ error: messages.proposal.invalidAction[lang] });
     }
 
     const booking = await Booking.findById(id);
     if (!booking) {
-      return res.status(404).json({ error: 'Booking not found.' });
+      return res.status(404).json({ error: messages.review.bookingNotFound[lang] });
     }
 
     if (booking.companionId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ error: 'Access denied. You are not authorized to respond to this booking.' });
+      return res.status(403).json({ error: messages.booking.updateStatusDenied[lang] });
     }
 
     if (booking.status !== 'pending') {
-      return res.status(400).json({ error: `Cannot respond to a booking with status '${booking.status}'.` });
+      return res.status(400).json({ error: messages.proposal.proposalProcessed[lang] });
     }
 
     if (action === 'accept') {
@@ -371,21 +391,20 @@ const respondToBooking = async (req, res) => {
 
       if (isBusyNow) {
         return res.status(400).json({ 
-          error: 'عذراً، لا يمكنك قبول هذا الحجز لوجود تعارض في مواعيد حجوزاتك المؤكدة الحالية.' 
+          error: messages.booking.conflict[lang]
         });
       }
     }
 
     booking.status = action === 'accept' ? 'approved' : 'cancelled';
     const updatedBooking = await booking.save();
-
    
     if (typeof sendNotification === 'function') {
       await sendNotification(
         booking.familyId,
         req.user._id,
-        'your booking request has been updated',
-        `Your booking request for companion ${req.user.name} has been ${action === 'accept' ? 'approved' : 'declined'}.`,
+        messages.booking.bookingUpdatedNotification[lang],
+        messages.booking.bookingNotificationText[lang] + ` (${action === 'accept' ? 'Approved' : 'Declined'})`,
         'booking',
         req.io,
       );
@@ -400,7 +419,7 @@ const respondToBooking = async (req, res) => {
     });
   } catch (error) {
     console.error('Error responding to booking:', error);
-    return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"], message: error.message });
   }
 };
 

@@ -1,4 +1,6 @@
 const JobPost = require("../models/jobPost.schema");
+const Family = require("../models/family.schema");
+const messages = require("../utils/messages");
 
 // شكل الداتا المرسلة من الفرونت اند
 // {
@@ -23,6 +25,7 @@ const JobPost = require("../models/jobPost.schema");
 
 const createJobPost = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { 
       title, 
       description, 
@@ -30,24 +33,54 @@ const createJobPost = async (req, res) => {
       requiredSkills, 
       budgetPerHour, 
       location,
-      schedule 
+      schedule,
+      beneficiaryId
     } = req.body;
 
-    if (!title || !description || !serviceType || !budgetPerHour || !location || !schedule) {
-      return res.status(400).json({ status: "fail", message: "جميع الحقول الأساسية بما فيها مواعيد العمل مطلوبة" });
+    if (!title || !description || !serviceType || !budgetPerHour || !location || !schedule || !beneficiaryId) {
+      return res.status(400).json({ 
+        status: "fail", 
+        message: messages.jobPost.missingFields[lang] 
+      });
     }
 
     const { workingDays, startTime, endTime, durationInWeeks } = schedule;
     if (!workingDays || !Array.isArray(workingDays) || workingDays.length === 0 || !startTime || !endTime || !durationInWeeks) {
-      return res.status(400).json({ status: "fail", message: "بيانات جدول العمل (الأيام، وقت البدء، وقت الانتهاء، المدة) غير مكتملة" });
+      return res.status(400).json({ 
+        status: "fail", 
+        message: messages.jobPost.invalidSchedule[lang] 
+      });
     }
 
     if (!location.coordinates || location.coordinates.length !== 2 || !location.city || !location.governorate) {
-      return res.status(400).json({ status: "fail", message: "بيانات الموقع الجغرافي [الإحداثيات، المدينة، المحافظة] غير كاملة" });
+      return res.status(400).json({ 
+        status: "fail", 
+        message: messages.jobPost.invalidLocation[lang] 
+      });
+    }
+
+    // Validate that beneficiary exists in the family profile
+    const familyProfile = await Family.findOne({ familyId: req.user._id });
+    if (!familyProfile) {
+      return res.status(404).json({ 
+        status: "fail", 
+        message: messages.booking.profileNotFound[lang] 
+      });
+    }
+
+    const beneficiaryExists = familyProfile.beneficiaries.some(
+      (b) => b._id.toString() === beneficiaryId.toString()
+    );
+    if (!beneficiaryExists) {
+      return res.status(404).json({ 
+        status: "fail", 
+        message: messages.booking.beneficiaryNotFound[lang] 
+      });
     }
 
     const newJob = await JobPost.create({
       familyId: req.user._id, 
+      beneficiaryId,
       title,
       description,
       serviceType,
@@ -69,7 +102,7 @@ const createJobPost = async (req, res) => {
 
     return res.status(201).json({
       status: "success",
-      message: "تم إنشاء طلب الوظيفة والمواعيد بنجاح",
+      message: messages.jobPost.successCreated[lang],
       data: { jobPost: newJob }
     });
   } catch (error) {
@@ -80,6 +113,7 @@ const createJobPost = async (req, res) => {
 
 const getJobPostsForCompanions = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { serviceType, skills, governorate, city, nearMe, coordinates, maxDistanceInKm } = queryOrBody(req);
     
     let filter = { status: "open" }; 
@@ -98,7 +132,10 @@ const getJobPostsForCompanions = async (req, res) => {
 
     if (nearMe === "true" || nearMe === true) {
       if (!coordinates || coordinates.length !== 2) {
-        return res.status(400).json({ status: "fail", message: "إحداثيات المرافق الحالية مطلوبة لحساب الأقرب" });
+        return res.status(400).json({ 
+          status: "fail", 
+          message: messages.jobPost.coordinatesRequired[lang] 
+        });
       }
       
       const distanceInMeters = (parseInt(maxDistanceInKm) || 20) * 1000; 

@@ -24,7 +24,25 @@ const bookingSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["pending", "approved", "active", "completed", "cancelled"],
-      default: "approved", 
+      default: "pending", 
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["unpaid", "paid", "refunded"],
+      default: "unpaid",
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["cash", "card", "wallet"],
+      default: "card",
+    },
+    adminFee: {
+      type: Number,
+      default: 0,
+    },
+    companionEarnings: {
+      type: Number,
+      default: 0,
     },
     hourlyRateAtBooking: {
       type: Number,
@@ -70,7 +88,10 @@ const bookingSchema = new mongoose.Schema(
 );
 
 bookingSchema.pre("save", function (next) {
-  this.totalPrice = this.totalHours * this.hourlyRateAtBooking;
+  const basePrice = this.totalHours * this.hourlyRateAtBooking;
+  this.adminFee = basePrice * 0.10;
+  this.totalPrice = basePrice + this.adminFee;
+  this.companionEarnings = basePrice;
   if (typeof next === "function") next();
 });
 
