@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
 
 export interface SidebarItem {
   label: string;
@@ -21,60 +23,193 @@ export default function Sidebar({
   navItems,
 }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+  
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeMenu = () => setMenuOpen(false);
+    window.addEventListener("click", closeMenu);
+    return () => window.removeEventListener("click", closeMenu);
+  }, [menuOpen]);
+
+  const handleLogout = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    clearAuth();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    router.push("/login");
+  };
+
+  const toggleMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(!menuOpen);
+  };
+
+  const isCompanion = pathname.startsWith("/companion");
+  const rolePrefix = isCompanion ? "/companion" : "/family";
+
+  const mobileNavItems = [
+    { label: "Dashboard", href: `${rolePrefix}/dashboard`, icon: "home" },
+    { label: "Requests", href: `${rolePrefix}/requests`, icon: "pending_actions" },
+    { label: "Messages", href: `${rolePrefix}/messages`, icon: "chat_bubble" },
+    { label: "Wallet", href: `${rolePrefix}/wallet`, icon: "wallet" },
+  ];
 
   return (
-    <aside className="w-72 bg-white flex flex-col border-r border-stitch-outline/20 h-screen sticky top-0 font-stitch-body select-none">
-      <div className="p-8 pb-6">
-        <h1 className="text-2xl font-stitch-display font-bold text-primary tracking-tight">
-          {title}
-        </h1>
-        <p className="text-xs font-medium text-stitch-on-surface-variant/60 mt-1 uppercase tracking-wider">
-          {subtitle}
-        </p>
-      </div>
+    <>
+      <aside className="hidden md:flex w-72 bg-white flex-col border-r border-stitch-outline/20 h-screen sticky top-0 font-stitch-body select-none shrink-0">
+        <div className="p-8 pb-6">
+          <h1 className="text-2xl font-stitch-display font-bold text-primary tracking-tight">
+            {title}
+          </h1>
+          <p className="text-xs font-medium text-stitch-on-surface-variant/60 mt-1 uppercase tracking-wider">
+            {subtitle}
+          </p>
+        </div>
 
-      <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = 
-            pathname === item.href || 
-            (item.href !== "/" && pathname.startsWith(item.href + "/"));
+        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
+          {navItems.map((item) => {
+            const isActive = 
+              pathname === item.href || 
+              (item.href !== "/" && pathname.startsWith(item.href + "/"));
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 font-medium group ${
-                isActive
-                  ? "bg-stitch-secondary-container text-stitch-on-secondary-container font-semibold"
-                  : "text-stitch-on-surface/80 hover:bg-stitch-secondary-container/10 hover:text-stitch-on-secondary-container"
-              }`}
-            >
-              <span 
-                className={`material-symbols-outlined text-2xl transition-colors ${
-                  isActive 
-                    ? "text-stitch-on-secondary-container [font-variation-settings:'FILL'_1]" 
-                    : "text-stitch-on-surface/60 group-hover:text-stitch-on-secondary-container"
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 font-medium group ${
+                  isActive
+                    ? "bg-stitch-secondary-container text-stitch-on-secondary-container font-semibold"
+                    : "text-stitch-on-surface/80 hover:bg-stitch-secondary-container/10 hover:text-stitch-on-secondary-container"
                 }`}
               >
-                {item.icon}
-              </span>
-              <span className="text-sm tracking-wide">{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+                <span 
+                  className={`material-symbols-outlined text-2xl transition-colors ${
+                    isActive 
+                      ? "text-stitch-on-secondary-container [font-variation-settings:'FILL'_1]" 
+                      : "text-stitch-on-surface/60 group-hover:text-stitch-on-secondary-container"
+                  }`}
+                >
+                  {item.icon}
+                </span>
+                <span className="text-sm tracking-wide">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
 
-      <div className="p-6 border-t border-stitch-outline/10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-stitch-primary/10 flex items-center justify-center text-stitch-primary">
-            <span className="material-symbols-outlined">person</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-stitch-on-surface truncate">User Account</p>
-            <p className="text-xs text-stitch-on-surface-variant/60 truncate">user@sanad.com</p>
+        <div className="p-6 border-t border-stitch-outline/10 relative">
+          {menuOpen && (
+            <div 
+              className="absolute bottom-24 left-4 right-4 bg-white border border-stitch-outline/20 rounded-2xl p-2 shadow-premium z-50 animate-fade-in flex flex-col gap-0.5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Link 
+                href={`${rolePrefix}/profile`} 
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stitch-secondary-container/15 text-stitch-on-surface hover:text-stitch-on-secondary-container text-sm font-medium transition-colors"
+              >
+                <span className="material-symbols-outlined text-xl">settings</span>
+                <span>Settings</span>
+              </Link>
+              <div className="h-px bg-stitch-outline/10 my-1" />
+              <button 
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 text-sm font-semibold transition-colors text-left cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-xl text-red-500">logout</span>
+                <span>Logout</span>
+              </button>
+            </div>
+          )}
+
+          <div 
+            onClick={toggleMenu}
+            className="flex items-center gap-3 cursor-pointer hover:bg-stitch-secondary-container/10 p-2 -m-2 rounded-2xl transition-colors"
+          >
+            <div className="w-10 h-10 rounded-full bg-stitch-primary/10 flex items-center justify-center text-stitch-primary shrink-0">
+              <span className="material-symbols-outlined">person</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-stitch-on-surface truncate">User Account</p>
+              <p className="text-xs text-stitch-on-surface-variant/60 truncate">user@sanad.com</p>
+            </div>
+            <span className="material-symbols-outlined text-stitch-on-surface-variant/50 text-lg transition-transform duration-200" style={{ transform: menuOpen ? 'rotate(180deg)' : 'none' }}>
+              expand_less
+            </span>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-stitch-outline/20 flex items-center z-40 px-2 font-stitch-body select-none">
+        <div className="flex-1 flex overflow-x-auto scrollbar-none gap-4 h-full items-center py-1.5 pr-2">
+          {navItems.map((item) => {
+            const isActive = 
+              pathname === item.href || 
+              (item.href !== "/" && pathname.startsWith(item.href + "/"));
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center justify-center min-w-[64px] h-full gap-0.5 transition-colors shrink-0 ${
+                  isActive 
+                    ? "text-stitch-primary" 
+                    : "text-stitch-on-surface/60 hover:text-stitch-primary"
+                }`}
+              >
+                <span className={`material-symbols-outlined text-2xl ${isActive ? "[font-variation-settings:'FILL'_1]" : ""}`}>
+                  {item.icon}
+                </span>
+                <span className="text-[10px] font-semibold tracking-tight">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="w-px h-8 bg-stitch-outline/20 shrink-0 mx-1" />
+
+        <div className="relative flex items-center justify-center shrink-0 w-16 h-full">
+          {menuOpen && (
+            <div 
+              className="absolute bottom-20 right-2 bg-white border border-stitch-outline/20 rounded-2xl p-2 shadow-premium z-50 animate-fade-in flex flex-col gap-0.5 w-44"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Link 
+                href={`${rolePrefix}/profile`} 
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stitch-secondary-container/15 text-stitch-on-surface hover:text-stitch-on-secondary-container text-sm font-medium transition-colors"
+              >
+                <span className="material-symbols-outlined text-lg">settings</span>
+                <span>Settings</span>
+              </Link>
+              <div className="h-px bg-stitch-outline/10 my-1" />
+              <button 
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 text-sm font-semibold transition-colors text-left cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg text-red-500">logout</span>
+                <span>Logout</span>
+              </button>
+            </div>
+          )}
+
+          <button 
+            onClick={toggleMenu}
+            className={`flex flex-col items-center justify-center w-full h-full gap-0.5 transition-colors focus:outline-none cursor-pointer ${
+              menuOpen 
+                ? "text-stitch-primary" 
+                : "text-stitch-on-surface/60 hover:text-stitch-primary"
+            }`}
+          >
+            <div className="w-8 h-8 rounded-full bg-stitch-primary/10 flex items-center justify-center text-stitch-primary shrink-0">
+              <span className="material-symbols-outlined text-xl">person</span>
+            </div>
+            <span className="text-[10px] font-semibold tracking-tight">Account</span>
+          </button>
+        </div>
+      </nav>
+    </>
   );
 }
