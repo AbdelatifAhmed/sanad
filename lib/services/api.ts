@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "../../store/authStore";
 
@@ -91,7 +92,7 @@ api.interceptors.response.use(
           window.location.href = "/login?session=expired";
         }
         return Promise.reject(refreshError);
-      } finally 
+      } finally {
         isRefreshing = false;
       }
     }
