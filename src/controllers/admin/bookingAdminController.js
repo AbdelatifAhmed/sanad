@@ -1,4 +1,5 @@
 const Booking = require("../../models/booking.schema");
+const messages = require("../../utils/messages");
 
 const getAllBookings = async (req, res) => {
   try {
@@ -31,7 +32,7 @@ const getAllBookings = async (req, res) => {
     console.error("Error in getAllBookings admin controller:", error);
     return res.status(500).json({
       status: "error",
-      message: "An error occurred while fetching bookings.",
+      message: messages.common.serverError[req.lang || "en"],
       error: error.message
     });
   }

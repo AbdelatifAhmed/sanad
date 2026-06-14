@@ -1,11 +1,14 @@
 const User = require("../../models/user.schema");
+const messages = require("../../utils/messages");
+
 const toggleBan = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { id } = req.params;
     if (req.user._id.toString() === id) {
       return res.status(400).json({
         status: "fail",
-        message: "You cannot ban or toggle your own account status.",
+        message: messages.admin.banSelf[lang],
       });
     }
 
@@ -13,7 +16,7 @@ const toggleBan = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         status: "fail",
-        message: "User not found.",
+        message: messages.common.notFound[lang],
       });
     }
     user.isBanned = !user.isBanned;
@@ -21,7 +24,7 @@ const toggleBan = async (req, res) => {
 
     return res.status(200).json({
       status: "success",
-      message: `User account has been successfully ${user.isBanned ? "banned" : "unbanned"}.`,
+      message: messages.admin.banSuccess[lang],
       data: {
         user: {
           id: user._id,
@@ -36,7 +39,7 @@ const toggleBan = async (req, res) => {
     console.error("Error in toggle-ban controller:", error);
     return res.status(500).json({
       status: "error",
-      message: "An error occurred while toggling the user ban status.",
+      message: messages.common.serverError[req.lang || "en"],
       error: error.message,
     });
   }
@@ -78,7 +81,7 @@ const getAllUsers = async (req, res) => {
     console.error("Error in getAllUsers controller:", error);
     return res.status(500).json({
       status: "error",
-      message: "An error occurred while fetching users.",
+      message: messages.common.serverError[req.lang || "en"],
       error: error.message,
     });
   }

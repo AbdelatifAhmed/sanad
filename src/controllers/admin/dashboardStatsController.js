@@ -1,6 +1,7 @@
 const User = require('../../models/user.schema.js');
 const Companion = require('../../models/companion.schema.js');
 const Booking = require('../../models/booking.schema.js');
+const messages = require('../../utils/messages');
 
 const getAdminDashboardStats = async (req, res) => {
   try {
@@ -79,7 +80,7 @@ const getAdminDashboardStats = async (req, res) => {
     console.error('Error fetching admin dashboard stats:', error);
     return res.status(500).json({ 
       status: 'error', 
-      message: error.message 
+      message: messages.common.serverError[req.lang || "en"]
     });
   }
 };

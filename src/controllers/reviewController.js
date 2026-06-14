@@ -15,41 +15,42 @@ const parsePagination = (query) => {
 
 const createReview = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { bookingId, rating, comment } = req.body;
     const familyId = req.user._id;
 
     if (!bookingId || rating === undefined) {
       return res
         .status(400)
-        .json({ error: "bookingId and rating are required" });
+        .json({ error: messages.review.requiredFields[lang] });
     }
 
     if (!isValidObjectId(bookingId)) {
-      return res.status(400).json({ error: "Invalid bookingId" });
+      return res.status(400).json({ error: messages.common.invalidId[lang] });
     }
 
     const ratingNum = Number(rating);
     if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
       return res
         .status(400)
-        .json({ error: "Rating must be an integer between 1 and 5" });
+        .json({ error: messages.review.invalidRating[lang] });
     }
 
     const booking = await Booking.findById(bookingId).lean();
     if (!booking) {
-      return res.status(404).json({ error: "Booking not found" });
+      return res.status(404).json({ error: messages.review.bookingNotFound[lang] });
     }
 
     if (booking.familyId.toString() !== familyId.toString()) {
       return res.status(403).json({
-        error: "Access denied. You can only review your own bookings",
+        error: messages.review.unauthorizedReview[lang],
       });
     }
 
     if (booking.status !== "completed") {
       return res
         .status(400)
-        .json({ error: "You can only review completed bookings" });
+        .json({ error: messages.review.bookingNotCompleted[lang] });
     }
 
     const companionProfile = await Companion.findOne({
@@ -58,7 +59,7 @@ const createReview = async (req, res) => {
     if (!companionProfile) {
       return res
         .status(404)
-        .json({ error: "Companion profile not found for this booking" });
+        .json({ error: messages.review.companionNotFound[lang] });
     }
 
     const newReview = await Review.create({
@@ -75,7 +76,7 @@ const createReview = async (req, res) => {
       .lean();
 
     return res.status(201).json({
-      message: "Review created successfully",
+      message: messages.review.successCreated[lang],
       review: populatedReview,
     });
   } catch (error) {
@@ -83,23 +84,24 @@ const createReview = async (req, res) => {
     if (error.code === 11000) {
       return res
         .status(409)
-        .json({ error: "A review already exists for this booking" });
+        .json({ error: messages.review.duplicateReview[req.lang || "en"] });
     }
-    return res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"] });
   }
 };
 
 const getCompanionReviews = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { id } = req.params;
 
     if (!isValidObjectId(id)) {
-      return res.status(400).json({ error: "Invalid companion ID" });
+      return res.status(400).json({ error: messages.common.invalidId[lang] });
     }
 
     const companion = await Companion.findOne({ userId: id }).lean();
     if (!companion) {
-      return res.status(404).json({ error: "Companion not found" });
+      return res.status(404).json({ error: messages.companion.profileNotFound[lang] });
     }
 
     const { limit, page, skip } = parsePagination(req.query);
@@ -131,7 +133,7 @@ const getCompanionReviews = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching companion reviews:", error);
-    return res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"] });
   }
 };
 
@@ -167,17 +169,18 @@ const getMyReviews = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching family reviews:", error);
-    return res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"] });
   }
 };
 
 const deleteReview = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { id } = req.params;
     const familyId = req.user._id;
 
     if (!isValidObjectId(id)) {
-      return res.status(400).json({ error: "Invalid review ID" });
+      return res.status(400).json({ error: messages.common.invalidId[lang] });
     }
 
     const review = await Review.findOneAndDelete({ _id: id, familyId });
@@ -185,13 +188,13 @@ const deleteReview = async (req, res) => {
     if (!review) {
       return res
         .status(404)
-        .json({ error: "Review not found or access denied" });
+        .json({ error: messages.common.notFound[lang] });
     }
 
-    return res.status(200).json({ message: "Review deleted successfully" });
+    return res.status(200).json({ message: messages.review.successDeleted[lang] });
   } catch (error) {
     console.error("Error deleting review:", error);
-    return res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"] });
   }
 };
 

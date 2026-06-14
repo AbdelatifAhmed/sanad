@@ -1,5 +1,5 @@
 const Companion = require("../../models/companion.schema");
-
+const messages = require("../../utils/messages");
 
 const getPendingCompanions = async (req, res) => {
   try {
@@ -16,22 +16,22 @@ const getPendingCompanions = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       status: 'error',
-      message: 'Error happened while fetching pending companions',
+      message: messages.common.serverError[req.lang || "en"],
       error: error.message
     });
   }
 };
 
-
 const verifyCompanion = async (req, res) => {
   try {
+    const lang = req.lang || "en";
     const { id } = req.params;
     const { status } = req.body; 
 
     if (!['verified', 'rejected'].includes(status)) {
       return res.status(400).json({
         status: 'fail',
-        message: 'Invalid status. Please provide either "verified" or "rejected".'
+        message: messages.admin.invalidVerifyStatus[lang]
       });
     }
 
@@ -44,13 +44,13 @@ const verifyCompanion = async (req, res) => {
     if (!updatedCompanion) {
       return res.status(404).json({
         status: 'fail',
-        message: 'Companion profile not found'
+        message: messages.companion.profileNotFound[lang]
       });
     }
 
     return res.status(200).json({
       status: 'success',
-      message: `Companion profile updated to ${status === 'verified' ? 'verified' : 'rejected'}`,
+      message: messages.admin.verifyCompanionSuccess[lang],
       data: {
         companion: updatedCompanion
       }
@@ -58,7 +58,7 @@ const verifyCompanion = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       status: 'error',
-      message: 'Error happened while processing the verification request',
+      message: messages.common.serverError[req.lang || "en"],
       error: error.message
     });
   }

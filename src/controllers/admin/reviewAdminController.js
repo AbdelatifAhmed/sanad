@@ -1,5 +1,6 @@
 const Review = require("../../models/reviews.schema");
 const mongoose = require("mongoose");
+const messages = require("../../utils/messages");
 
 const parsePagination = (query) => {
   const limit = Math.min(Math.max(parseInt(query.limit) || 20, 1), 200);
@@ -43,7 +44,7 @@ const getAllReviews = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in admin getAllReviews:", error);
-    return res.status(500).json({ status: "error", message: "Internal Server Error", error: error.message });
+    return res.status(500).json({ status: "error", message: messages.common.serverError[req.lang || "en"], error: error.message });
   }
 };
 
