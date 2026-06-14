@@ -9,7 +9,7 @@ export default function HowItWorks() {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
           {/* Step 1 */}
-          <div className="flex flex-col items-center text-center group">
+          <div className="flex flex-col items-center text-center group bg-stitch-background p-6 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300">
             <div className="w-20 h-20 bg-stitch-primary/10 text-stitch-primary rounded-2xl flex items-center justify-center mb-6 group-hover:bg-stitch-primary group-hover:text-stitch-on-primary transition-all duration-300">
               <span className="material-symbols-outlined text-[40px]">person_search</span>
             </div>
@@ -18,7 +18,7 @@ export default function HowItWorks() {
           </div>
           
           {/* Step 2 */}
-          <div className="flex flex-col items-center text-center group">
+          <div className="flex flex-col items-center text-center group bg-stitch-background p-6 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300">
             <div className="w-20 h-20 bg-stitch-primary/10 text-stitch-primary rounded-2xl flex items-center justify-center mb-6 group-hover:bg-stitch-primary group-hover:text-stitch-on-primary transition-all duration-300">
               <span className="material-symbols-outlined text-[40px]">calendar_month</span>
             </div>
@@ -27,7 +27,7 @@ export default function HowItWorks() {
           </div>
           
           {/* Step 3 */}
-          <div className="flex flex-col items-center text-center group">
+          <div className="flex flex-col items-center text-center group bg-stitch-background p-6 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300">
             <div className="w-20 h-20 bg-stitch-primary/10 text-stitch-primary rounded-2xl flex items-center justify-center mb-6 group-hover:bg-stitch-primary group-hover:text-stitch-on-primary transition-all duration-300">
               <span className="material-symbols-outlined text-[40px]">volunteer_activism</span>
             </div>

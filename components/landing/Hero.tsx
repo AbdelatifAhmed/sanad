@@ -1,5 +1,4 @@
-"use client";
-
+import Image from "next/image";
 import Link from "next/link";
 
 export default function Hero() {
@@ -37,20 +36,26 @@ export default function Hero() {
           
           <div className="flex items-center gap-4 pt-4">
             <div className="flex -space-x-3">
-              <img 
+              <Image 
                 alt="User Avatar 1" 
-                className="w-10 h-10 rounded-full border-2 border-white object-cover" 
+                className="size-10 rounded-full border-2 border-white object-cover" 
                 src="/avatar_1.jpg"
+                width={40}
+                height={40}
               />
-              <img 
+              <Image 
                 alt="User Avatar 2" 
-                className="w-10 h-10 rounded-full border-2 border-white object-cover" 
+                className="size-10 rounded-full border-2 border-white object-cover" 
                 src="/avatar_2.jpg"
+                width={40}
+                height={40}
               />
-              <img 
+              <Image 
                 alt="User Avatar 3" 
-                className="w-10 h-10 rounded-full border-2 border-white object-cover" 
+                className="size-10 rounded-full border-2 border-white object-cover" 
                 src="/avatar_3.jpg"
+                width={40}
+                height={40}
               />
             </div>
             <div className="text-sm text-stitch-on-surface-variant">
@@ -68,15 +73,17 @@ export default function Hero() {
         </div>
         
         <div className="relative">
-          <div className="absolute -inset-4 bg-stitch-primary/10 rounded-[32px] transform rotate-2"></div>
-          <img 
+          <div className="absolute -inset-4 bg-stitch-primary/10 rounded-4xl transform rotate-2"></div>
+          <Image 
             alt="Compassionate Care for Elderly" 
-            className="relative w-full aspect-[4/5] object-cover rounded-[32px] shadow-premium" 
+            className="relative w-full aspect-4/5 object-cover rounded-4xl shadow-premium" 
             src="/hero-caregiver.png"
+            width={500}
+            height={625}
           />
           <div className="absolute -bottom-8 -right-8 bg-white p-6 rounded-2xl shadow-premium border border-stitch-outline/20 max-w-xs animate-bounce-slow">
-            <p className="text-stitch-primary font-bold text-lg mb-1 italic font-stitch-display">"The support we needed."</p>
-            <p className="text-sm text-stitch-on-surface-variant">"Sanad helped us find Sarah, who has been a blessing for my mother."</p>
+            <p className="text-stitch-primary font-bold text-lg mb-1 italic font-stitch-display">&ldquo;The support we needed.&rdquo;</p>
+            <p className="text-sm text-stitch-on-surface-variant">&ldquo;Sanad helped us find Sarah, who has been a blessing for my mother.&rdquo;</p>
             <p className="text-xs font-bold text-stitch-on-surface mt-2">— The Miller Family</p>
           </div>
         </div>

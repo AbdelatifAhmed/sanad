@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -10,10 +11,12 @@ export default function Header() {
     <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-stitch-outline/20 font-stitch-body">
       <div className="flex justify-between items-center h-20 px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto">
         <Link className="flex items-center" href="/">
-          <img
+          <Image
             alt="Sanad Logo"
-            className="h-12 w-auto object-contain"
+            className="size-12 w-auto object-contain"
             src="/logo_sanad.png"
+            width={48}
+            height={48}
           />
         </Link>
         
