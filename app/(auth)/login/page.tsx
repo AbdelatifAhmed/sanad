@@ -11,6 +11,8 @@ import {
   ArrowRight,
   CheckCircle
 } from "lucide-react";
+import { api } from "@/lib/services/api";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -59,22 +61,11 @@ export default function LoginPage() {
     setServerError("");
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
+     const response = await api.post("/auth/login", {
+        email: formData.email,
+        password: formData.password,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Invalid credentials.");
-      }
+      const data = await response.data;
 
       setSuccess(true);
       if (data.token) {
@@ -99,9 +90,11 @@ export default function LoginPage() {
       <section className="relative w-full md:w-[43%] min-h-screen flex flex-col justify-between p-8 md:p-10 overflow-hidden">
         {/* Background Image & Overlay */}
         <div className="absolute inset-0 z-0">
-          <img
+          <Image
             src="https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&q=80&w=1200"
             alt="Warm scene of senior companion care hands connection"
+            height={800}
+            width={1200}
             className="w-full h-full object-cover"
           />
           {/* Gradient overlay to make bottom text readable while showing the photo */}
