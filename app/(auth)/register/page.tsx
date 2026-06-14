@@ -11,7 +11,8 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  CheckCircle
+  CheckCircle,
+  Headphones
 } from "lucide-react";
 
 export default function RegisterPage() {
@@ -92,7 +93,7 @@ export default function RegisterPage() {
       }
 
       setTimeout(() => {
-        router.push(role === "companion" ? "/companion" : "/family");
+        router.push(role === "companion" ? "/onboarding/qualifications" : "/family");
       }, 2000);
     } catch (err: any) {
       setServerError(err.message);
@@ -108,8 +109,12 @@ export default function RegisterPage() {
         {/* Background Image & Overlay */}
         <div className="absolute inset-0 z-0">
           <img
-            src="https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&q=80&w=1200"
-            alt="Warm scene of senior companion care hands connection"
+            src={
+              role === "companion"
+                ? "https://lh3.googleusercontent.com/aida-public/AB6AXuAzB4_rFFJeK8h9f_8NUuKXueKNtdATlwVyYwBASknOsd4IJDtf2xM9-EGoPe4wMZapaqaRzk5rTp64q-O2CFpAY2zXSmMQYopxStJX_l6EMuAgLdpALJwARBJ35YUI4mgR3BmnzUjqoZFOIMlGcH4h6rHwk8qurI2o0q4BNi3QN9RQI6tmKcVGYQq3iCKb_CYZGd5Sl3BlmkmkSTBUMj0GLRuHF4ZLMvsl7IFq2fQcGVi_np4i-wR4nSwih_tZOc-cForUVli4hsKQ"
+                : "https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&q=80&w=1200"
+            }
+            alt={role === "companion" ? "Supportive healthcare professional" : "Warm scene of senior companion care hands connection"}
             className="w-full h-full object-cover"
           />
           {/* Gradient overlay to make bottom text readable while showing the photo */}
@@ -127,14 +132,52 @@ export default function RegisterPage() {
         </div>
 
         {/* Text at the bottom of the left side */}
-        <div className="z-10 relative max-w-xl space-y-4 mt-auto">
+        <div className="z-10 relative max-w-xl space-y-4 mt-auto flex flex-col">
+          {role === "companion" && (
+            <span className="inline-block px-3 py-1 bg-[#aeedd5] text-[#316d5b] rounded-full text-xs font-semibold mb-3 self-start">
+              Join Our Mission
+            </span>
+          )}
           <h1 className="font-display text-3xl md:text-4xl lg:text-4.5xl font-bold text-primary leading-[1.2] tracking-tight">
-            Dignified care,<br/>
-            closer to home.
+            {role === "companion" ? (
+              "Join our network of professional caregivers."
+            ) : (
+              <>
+                Dignified care,<br />
+                closer to home.
+              </>
+            )}
           </h1>
           <p className="text-gray-700 text-sm md:text-base font-medium leading-relaxed">
-            Join our community to connect with trusted caregivers or offer your professional support to families in need.
+            {role === "companion"
+              ? "Make a meaningful difference in the lives of elderly individuals and their families. At Sanad, we value your expertise and compassion."
+              : "Join our community to connect with trusted caregivers or offer your professional support to families in need."}
           </p>
+          
+          {role === "companion" && (
+            <div className="mt-6 pt-6 border-t border-gray-300/20 flex items-center gap-3">
+              <div className="flex -space-x-3">
+                <img
+                  className="w-8 h-8 rounded-full border-2 border-white object-cover"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDaY8JLJMIsy7zwGbOf5YK6jrSNTj69YzQk2lCHal02aUO0-tGN1bJCDyVmkoNgDQ7OCemw2C1lZzf-WJnrwsdLsK3F76ffobnqlE0pJBbUaoIzUFocXOsQJXZbSX6XDa6AgIGH1_5CmBpSA4Dwg3lSaOoHWpt_J0RmBlr__fsh57-RoFexkq_ps4lxc47_7thdhbsY-DNP3mu1SttzL3qbGPkyo-kEqpdGOo2F-oNlaMEV-di39HdiUDjxBSzTw2AO5FmS7pyxcqiS"
+                  alt="Caregiver 1"
+                />
+                <img
+                  className="w-8 h-8 rounded-full border-2 border-white object-cover"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuDCQEtQRRzWWDUIXMRorAdIfDTn3dXNOO4713IbWwbzNm5PoK60_lpJJsi23TMuAA-H2OEBV7WzO0c64uLrnOKqb7RkDgyI_01oFzOYJzp0tHvWJdj4jwZDLj2X_AkTEQCVm9vRRzC_LnysD8TeRf-BPuztGXzEjsjdE0tTgfBWkDSRMk9QrWpa3DfiLOftMqxzmnEy-AbYeIUMqQEjJUraNODRjTVN0_25m2w6PCcqWUXzkkpVKa9E8KESjU9WZf0Wed5XvSjAcq"
+                  alt="Caregiver 2"
+                />
+                <img
+                  className="w-8 h-8 rounded-full border-2 border-white object-cover"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9RuMCY3fGqU8ZXzE2ZKrcw49MkDBaJiIBzrwJapCfBZVkeCmrJwX0mIRliYE_XMjtG1n3zU3gdyjR3WgAb3EAgyqLrOOtDSh1rN3DeND60fgVaioQM-jjgbTR10_ftlGfxaW8IAG-vvhZcLiQC01uuQOSPaT6k6qnaxhka6yXZwYrrA8APAH34ebqZ6LD6FVqjIwSIkUURheuW4B7y9mQnSRgvMR7iJedez9eNkm0IIIGr2X19F4DFTnIyH25EsgPf8etNBIQG28_"
+                  alt="Caregiver 3"
+                />
+              </div>
+              <p className="text-xs font-semibold text-gray-700">
+                Joined by 500+ professionals this month
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -151,7 +194,9 @@ export default function RegisterPage() {
                 Registration Successful!
               </h3>
               <p className="text-gray-500">
-                Redirecting to your dashboard...
+                {role === "companion"
+                  ? "Welcome to the Sanad family. Redirecting you to the caregiver onboarding portal..."
+                  : "Redirecting to your dashboard..."}
               </p>
             </div>
           ) : (
@@ -160,7 +205,11 @@ export default function RegisterPage() {
 
               <div className="flex flex-col items-center text-center">
                 <h2 className="font-display text-2.5xl font-bold text-primary mb-1">Create an account</h2>
-                <p className="text-gray-500 text-sm font-medium">Welcome! Please enter your details.</p>
+                <p className="text-gray-500 text-sm font-medium">
+                  {role === "companion"
+                    ? "Start your journey towards a rewarding career in care."
+                    : "Welcome! Please enter your details."}
+                </p>
               </div>
 
               {serverError && (
@@ -328,7 +377,13 @@ export default function RegisterPage() {
                   disabled={loading}
                   className="w-full bg-button text-white py-3.5 px-8 rounded-xl font-bold text-base hover:bg-button-hover transition-all active:scale-[0.99] shadow-md shadow-button/20 flex items-center justify-center gap-2 mt-8 disabled:opacity-50 cursor-pointer"
                 >
-                  <span>{loading ? "Creating Account..." : "Create Account"}</span>
+                  <span>
+                    {role === "companion" ? (
+                      loading ? "Continuing..." : "Continue to Onboarding"
+                    ) : (
+                      loading ? "Creating Account..." : "Create Account"
+                    )}
+                  </span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
@@ -339,6 +394,18 @@ export default function RegisterPage() {
                     Log in
                   </Link>
                 </p>
+
+                {role === "companion" && (
+                  <div className="mt-6 p-4 rounded-2xl bg-gray-50 border border-gray-200/50 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-[#aeedd5] flex items-center justify-center text-[#2c6956] shrink-0">
+                      <Headphones className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-bold text-gray-800">Need help?</p>
+                      <p className="text-[11px] text-gray-500 font-medium">Contact our recruitment team at support@sanad.care</p>
+                    </div>
+                  </div>
+                )}
               </form>
             </div>
           )}
