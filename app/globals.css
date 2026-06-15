@@ -20,6 +20,37 @@
   --font-body: var(--font-be-vietnam-pro), var(--font-noto-arabic), sans-serif;
   
   --radius-2xl: 1.5rem;
+
+  /* Stitch Custom Tokens */
+  --color-stitch-primary: #1f8a8a;
+  --color-stitch-primary-container: #0d8282;
+  --color-stitch-on-primary: #ffffff;
+  --color-stitch-background: #f3e9dc;
+  --color-stitch-surface: #ffffff;
+  --color-stitch-on-surface: #2b2b2b;
+  --color-stitch-on-surface-variant: #4c463d;
+  --color-stitch-outline: #bdc9c8;
+  --color-stitch-secondary-container: #aeedd5;
+  --color-stitch-on-secondary-container: #316d5b;
+
+  --spacing-margin-desktop: 64px;
+  --spacing-margin-mobile: 20px;
+
+  --font-stitch-display: var(--font-plus-jakarta-sans), sans-serif;
+  --font-stitch-body: var(--font-inter), sans-serif;
+
+  --animate-bounce-slow: bounce-slow 3s infinite;
+
+  @keyframes bounce-slow {
+    0%, 100% {
+      transform: translateY(-5%);
+      animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+    }
+    50% {
+      transform: none;
+      animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    }
+  }
 }
 
 body {
@@ -31,4 +62,23 @@ body {
 .custom-shadow {
   box-shadow: 0px 4px 20px rgba(27, 67, 50, 0.04);
 }
+
+.shadow-soft {
+  box-shadow: 0 4px 20px rgba(31, 138, 138, 0.08);
+}
+
+.shadow-premium {
+  box-shadow: 0 10px 40px rgba(31, 138, 138, 0.12);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-none {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 
