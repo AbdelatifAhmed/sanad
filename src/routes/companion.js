@@ -6,7 +6,8 @@ const {
   updateCompanionAvailability,
   getVerifiedCompanions,
   getCompanionById,
-  getMyCompanionProfile
+  getMyCompanionProfile,
+  getCompanionDashboardStats
 } = require('../controllers/companionController');
 const { getCompanionBookings } = require("../controllers/BookingDashboradController");
 const { authenticate } = require('../middleware/authMiddleware');
@@ -24,5 +25,6 @@ router.get('/me/schedule', getCompanionSchedule);
 router.patch('/me/availability', updateCompanionAvailability);
 router.get('/me', getMyCompanionProfile);
 router.get('/me/bookings', getCompanionBookings);
+router.get('/me/dashboard-stats', getCompanionDashboardStats);
 
 module.exports = router;
