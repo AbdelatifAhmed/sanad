@@ -9,7 +9,8 @@ import {
   CheckCircle,
   Sliders,
   Sparkles,
-  Heart
+  Heart,
+  MapPin
 } from "lucide-react";
 
 const LANGUAGES = [
@@ -32,18 +33,42 @@ export default function PreferencesPage() {
   const router = useRouter();
 
   // State
+  const [role, setRole] = useState<"companion" | "family" | "">("");
   const [hourlyRate, setHourlyRate] = useState("30");
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["arabic", "english"]);
   const [selectedServices, setSelectedServices] = useState<string[]>(["Companion Care"]);
   const [bio, setBio] = useState("");
+  
+  // Family specific address state
+  const [city, setCity] = useState("");
+  const [area, setArea] = useState("");
+  const [fullAddress, setFullAddress] = useState("");
+  
   const [errorMsg, setErrorMsg] = useState("");
 
   // Load drafts from localStorage on mount
   useEffect(() => {
+    // Determine role
+    const savedRegisterInfo = localStorage.getItem("onboarding_register_info");
+    if (savedRegisterInfo) {
+      try {
+        const info = JSON.parse(savedRegisterInfo);
+        if (info.role) setRole(info.role);
+      } catch (e) {
+        console.error("Error parsing saved register info", e);
+      }
+    } else {
+      setRole("companion");
+    }
+
     const savedRate = localStorage.getItem("onboarding_rate");
     const savedLanguages = localStorage.getItem("onboarding_languages");
     const savedServices = localStorage.getItem("onboarding_services");
     const savedBio = localStorage.getItem("onboarding_bio");
+    
+    const savedCity = localStorage.getItem("onboarding_address_city");
+    const savedArea = localStorage.getItem("onboarding_address_area");
+    const savedFull = localStorage.getItem("onboarding_address_full");
 
     if (savedRate) setHourlyRate(savedRate);
     if (savedLanguages) {
@@ -57,6 +82,10 @@ export default function PreferencesPage() {
       } catch (e) {}
     }
     if (savedBio) setBio(savedBio);
+    
+    if (savedCity) setCity(savedCity);
+    if (savedArea) setArea(savedArea);
+    if (savedFull) setFullAddress(savedFull);
   }, []);
 
   const handleLanguageToggle = (langId: string) => {
@@ -76,35 +105,66 @@ export default function PreferencesPage() {
   };
 
   const handleSaveAndExit = () => {
-    localStorage.setItem("onboarding_rate", hourlyRate);
-    localStorage.setItem("onboarding_languages", JSON.stringify(selectedLanguages));
-    localStorage.setItem("onboarding_services", JSON.stringify(selectedServices));
-    localStorage.setItem("onboarding_bio", bio);
+    if (role === "family") {
+      localStorage.setItem("onboarding_address_city", city);
+      localStorage.setItem("onboarding_address_area", area);
+      localStorage.setItem("onboarding_address_full", fullAddress);
+    } else {
+      localStorage.setItem("onboarding_rate", hourlyRate);
+      localStorage.setItem("onboarding_languages", JSON.stringify(selectedLanguages));
+      localStorage.setItem("onboarding_services", JSON.stringify(selectedServices));
+      localStorage.setItem("onboarding_bio", bio);
+    }
     router.push("/login");
   };
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hourlyRate || parseInt(hourlyRate) <= 0) {
-      setErrorMsg("Please enter a valid hourly rate.");
-      return;
-    }
-    if (selectedServices.length === 0) {
-      setErrorMsg("Please select at least one care service.");
-      return;
-    }
-    if (!bio.trim() || bio.trim().length < 20) {
-      setErrorMsg("Please write a short bio (minimum 20 characters) about yourself.");
-      return;
-    }
+    setErrorMsg("");
 
-    localStorage.setItem("onboarding_rate", hourlyRate);
-    localStorage.setItem("onboarding_languages", JSON.stringify(selectedLanguages));
-    localStorage.setItem("onboarding_services", JSON.stringify(selectedServices));
-    localStorage.setItem("onboarding_bio", bio);
+    if (role === "family") {
+      if (!city.trim()) {
+        setErrorMsg("Please enter your city.");
+        return;
+      }
+      if (!area.trim()) {
+        setErrorMsg("Please enter your area/district.");
+        return;
+      }
+      if (!fullAddress.trim()) {
+        setErrorMsg("Please enter your full street address.");
+        return;
+      }
+
+      localStorage.setItem("onboarding_address_city", city);
+      localStorage.setItem("onboarding_address_area", area);
+      localStorage.setItem("onboarding_address_full", fullAddress);
+    } else {
+      if (!hourlyRate || parseInt(hourlyRate) <= 0) {
+        setErrorMsg("Please enter a valid hourly rate.");
+        return;
+      }
+      if (selectedServices.length === 0) {
+        setErrorMsg("Please select at least one care service.");
+        return;
+      }
+      if (!bio.trim() || bio.trim().length < 20) {
+        setErrorMsg("Please write a short bio (minimum 20 characters) about yourself.");
+        return;
+      }
+
+      localStorage.setItem("onboarding_rate", hourlyRate);
+      localStorage.setItem("onboarding_languages", JSON.stringify(selectedLanguages));
+      localStorage.setItem("onboarding_services", JSON.stringify(selectedServices));
+      localStorage.setItem("onboarding_bio", bio);
+    }
 
     router.push("/onboarding/review");
   };
+
+  if (!role) {
+    return <div className="min-h-screen bg-[#fcf9f6] flex items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fcf9f6] text-[#1c1c1a] font-body relative">
@@ -133,45 +193,83 @@ export default function PreferencesPage() {
               <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -z-10 -translate-y-1/2" />
               <div className="absolute top-1/2 left-0 w-3/4 h-0.5 bg-primary -z-10 -translate-y-1/2 transition-all duration-500" />
               
-              {/* Step 1 */}
-              <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
-                <div className="w-9 h-9 rounded-full bg-[#aeedd5] text-[#316d5b] flex items-center justify-center font-bold">
-                  <CheckCircle className="w-4 h-4" />
-                </div>
-                <span className="text-[10px] md:text-xs font-semibold text-gray-500">Basic Info</span>
-              </div>
-              
-              {/* Step 2 */}
-              <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
-                <div className="w-9 h-9 rounded-full bg-[#aeedd5] text-[#316d5b] flex items-center justify-center font-bold">
-                  <CheckCircle className="w-4 h-4" />
-                </div>
-                <span className="text-[10px] md:text-xs font-semibold text-gray-500">Qualifications</span>
-              </div>
-              
-              {/* Step 3 */}
-              <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
-                <div className="w-9 h-9 rounded-full bg-[#aeedd5] text-[#316d5b] flex items-center justify-center font-bold">
-                  <CheckCircle className="w-4 h-4" />
-                </div>
-                <span className="text-[10px] md:text-xs font-semibold text-gray-500">Availability</span>
-              </div>
+              {role === "family" ? (
+                <>
+                  {/* Step 1 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-[#aeedd5] text-[#316d5b] flex items-center justify-center font-bold">
+                      <CheckCircle className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-500">Basic Info</span>
+                  </div>
+                  
+                  {/* Step 2 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-[#aeedd5] text-[#316d5b] flex items-center justify-center font-bold">
+                      <CheckCircle className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-500">Beneficiary</span>
+                  </div>
+                  
+                  {/* Step 3 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold ring-4 ring-primary-container/10">
+                      3
+                    </div>
+                    <span className="text-[10px] md:text-xs font-bold text-primary">Address Details</span>
+                  </div>
 
-              {/* Step 4 */}
-              <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
-                <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold ring-4 ring-primary-container/10">
-                  4
-                </div>
-                <span className="text-[10px] md:text-xs font-bold text-primary">Preferences</span>
-              </div>
+                  {/* Step 4 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">
+                      4
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-400">Review</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Step 1 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-[#aeedd5] text-[#316d5b] flex items-center justify-center font-bold">
+                      <CheckCircle className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-500">Basic Info</span>
+                  </div>
+                  
+                  {/* Step 2 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-[#aeedd5] text-[#316d5b] flex items-center justify-center font-bold">
+                      <CheckCircle className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-500">Qualifications</span>
+                  </div>
+                  
+                  {/* Step 3 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-[#aeedd5] text-[#316d5b] flex items-center justify-center font-bold">
+                      <CheckCircle className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-500">Availability</span>
+                  </div>
 
-              {/* Step 5 */}
-              <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
-                <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">
-                  5
-                </div>
-                <span className="text-[10px] md:text-xs font-semibold text-gray-400">Review</span>
-              </div>
+                  {/* Step 4 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold ring-4 ring-primary-container/10">
+                      4
+                    </div>
+                    <span className="text-[10px] md:text-xs font-bold text-primary">Preferences</span>
+                  </div>
+
+                  {/* Step 5 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">
+                      5
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-400">Review</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -179,10 +277,12 @@ export default function PreferencesPage() {
           <div className="bg-white rounded-3xl border border-sand-high p-8 md:p-10 custom-shadow space-y-8">
             <div>
               <h1 className="font-display text-2xl md:text-3xl font-bold text-primary mb-2">
-                Match Preferences
+                {role === "family" ? "Address & Details" : "Match Preferences"}
               </h1>
               <p className="text-gray-500 text-sm md:text-base font-medium">
-                Set up your rates and specify the type of companionship care services you specialize in.
+                {role === "family"
+                  ? "Enter your residence details."
+                  : "Set up your rates and specify the type of companionship care services you specialize in."}
               </p>
             </div>
 
@@ -193,107 +293,171 @@ export default function PreferencesPage() {
             )}
 
             <form onSubmit={handleNext} className="space-y-8 text-left">
-              {/* Rate & Language */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Hourly Rate */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 block">Desired Hourly Rate</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="1"
-                      value={hourlyRate}
+              {role !== "family" && (
+                <>
+                  {/* Rate & Language */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Hourly Rate */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-700 block">
+                        Desired Hourly Rate
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="1"
+                          value={hourlyRate}
+                          onChange={(e) => {
+                            setHourlyRate(e.target.value);
+                            setErrorMsg("");
+                          }}
+                          className="w-full h-14 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-sm font-semibold"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">
+                          $ / Hour
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Preferred Languages */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-700 block">
+                        Languages You Speak
+                      </label>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {LANGUAGES.map(lang => {
+                          const isSelected = selectedLanguages.includes(lang.id);
+                          return (
+                            <button
+                              key={lang.id}
+                              type="button"
+                              onClick={() => handleLanguageToggle(lang.id)}
+                              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                                isSelected
+                                  ? "bg-primary/5 border-primary text-primary"
+                                  : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+                              }`}
+                            >
+                              {lang.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Care Services & Skills */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-bold text-gray-700 block">
+                      Services You Can Offer
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {SERVICES.map(service => {
+                        const isSelected = selectedServices.includes(service.id);
+                        return (
+                          <button
+                            key={service.id}
+                            type="button"
+                            onClick={() => handleServiceToggle(service.id)}
+                            className={`p-4 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-primary/5 border-primary text-primary font-bold"
+                                : "bg-gray-50 border-gray-100 text-gray-500 hover:bg-white"
+                            }`}
+                          >
+                            <span className="text-xs font-bold">{service.label}</span>
+                            <div
+                              className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                                isSelected ? "bg-primary border-primary text-white" : "border-gray-300"
+                              }`}
+                            >
+                              {isSelected && <Heart className="w-2.5 h-2.5 fill-current" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Address vs Bio details */}
+              {role === "family" ? (
+                <div className="space-y-6">
+                  <h3 className="text-sm font-bold text-primary flex items-center gap-2 border-b border-sand-high pb-2">
+                    <MapPin className="w-4 h-4" />
+                    Residence Address
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-600 block">City</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Cairo"
+                        value={city}
+                        onChange={(e) => {
+                          setCity(e.target.value);
+                          setErrorMsg("");
+                        }}
+                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-xs font-semibold"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-600 block">Area / District</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Maadi"
+                        value={area}
+                        onChange={(e) => {
+                          setArea(e.target.value);
+                          setErrorMsg("");
+                        }}
+                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-xs font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-600 block">Street / Building Address</label>
+                    <textarea
+                      rows={3}
+                      placeholder="e.g. 15 El Nasr Rd, Apt 4"
+                      value={fullAddress}
                       onChange={(e) => {
-                        setHourlyRate(e.target.value);
+                        setFullAddress(e.target.value);
                         setErrorMsg("");
                       }}
-                      className="w-full h-14 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-sm font-semibold"
+                      className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-xs font-medium leading-relaxed resize-none"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">
-                      $ / Hour
-                    </span>
                   </div>
                 </div>
-
-                {/* Preferred Languages */}
+              ) : (
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 block">Languages You Speak</label>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {LANGUAGES.map(lang => {
-                      const isSelected = selectedLanguages.includes(lang.id);
-                      return (
-                        <button
-                          key={lang.id}
-                          type="button"
-                          onClick={() => handleLanguageToggle(lang.id)}
-                          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                            isSelected
-                              ? "bg-primary/5 border-primary text-primary"
-                              : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
-                          }`}
-                        >
-                          {lang.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <label className="text-sm font-bold text-[#1c1c1a] block">About Me / Personal Bio</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Introduce yourself to families! Discuss your style of care, hobbies, and why you love being a companion."
+                    value={bio}
+                    onChange={(e) => {
+                      setBio(e.target.value);
+                      setErrorMsg("");
+                    }}
+                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-sm font-medium leading-relaxed resize-none"
+                  />
+                  <span className="text-[10px] text-gray-400 font-semibold block text-right">
+                    Minimum 20 characters
+                  </span>
                 </div>
-              </div>
-
-              {/* Care Services & Skills */}
-              <div className="space-y-3">
-                <label className="text-sm font-bold text-gray-700 block">Services You Can Offer</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {SERVICES.map(service => {
-                    const isSelected = selectedServices.includes(service.id);
-                    return (
-                      <button
-                        key={service.id}
-                        type="button"
-                        onClick={() => handleServiceToggle(service.id)}
-                        className={`p-4 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
-                          isSelected
-                            ? "bg-primary/5 border-primary text-primary font-bold"
-                            : "bg-gray-50 border-gray-100 text-gray-500 hover:bg-white"
-                        }`}
-                      >
-                        <span className="text-xs font-bold">{service.label}</span>
-                        <div
-                          className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                            isSelected ? "bg-primary border-primary text-white" : "border-gray-300"
-                          }`}
-                        >
-                          {isSelected && <Heart className="w-2.5 h-2.5 fill-current" />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Bio details */}
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-[#1c1c1a] block">About Me / Personal Bio</label>
-                <textarea
-                  rows={4}
-                  placeholder="Introduce yourself to families! Discuss your style of care, hobbies, and why you love being a companion."
-                  value={bio}
-                  onChange={(e) => {
-                    setBio(e.target.value);
-                    setErrorMsg("");
-                  }}
-                  className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-sm font-medium leading-relaxed resize-none"
-                />
-                <span className="text-[10px] text-gray-400 font-semibold block text-right">
-                  Minimum 20 characters
-                </span>
-              </div>
+              )}
 
               {/* Tips for match */}
               <div className="p-4 bg-teal-50/20 rounded-xl flex items-start gap-3 border border-teal-50">
                 <Sparkles className="w-5 h-5 text-[#2c6956] shrink-0 mt-0.5" />
-                <p className="text-xs text-gray-500 font-medium leading-relaxed">
-                  Caregivers with detailed bios and hourly rates that match their local market standards get booked 3x faster.
+                <p className="text-xs text-gray-500 font-medium leading-relaxed text-left">
+                  {role === "family"
+                    ? "Providing clear, detailed address details helps match you with local companions, reducing transit delays."
+                    : "Caregivers with detailed bios and hourly rates that match their local market standards get booked 3x faster."}
                 </p>
               </div>
 
@@ -301,7 +465,7 @@ export default function PreferencesPage() {
               <div className="pt-6 flex justify-between items-center border-t border-sand-high">
                 <button
                   type="button"
-                  onClick={() => router.push("/onboarding/availability")}
+                  onClick={() => router.push(role === "family" ? "/onboarding/qualifications" : "/onboarding/availability")}
                   className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-sm font-bold text-gray-500 hover:text-primary hover:bg-gray-50 transition-all cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />

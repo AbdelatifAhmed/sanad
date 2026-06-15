@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -33,6 +33,28 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState(false);
   const [serverError, setServerError] = useState("");
 
+  useEffect(() => {
+    localStorage.removeItem("token");
+    const savedRegisterInfo = localStorage.getItem("onboarding_register_info");
+    if (savedRegisterInfo) {
+      try {
+        const info = JSON.parse(savedRegisterInfo);
+        setFormData({
+          name: info.name || "",
+          email: info.email || "",
+          phone: info.phone || "",
+          password: info.password || "",
+        });
+        if (info.role) {
+          setRole(info.role);
+        }
+        setAgree(true);
+      } catch (e) {
+        console.error("Error parsing saved register info", e);
+      }
+    }
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -62,44 +84,21 @@ export default function RegisterPage() {
     e.preventDefault();
     if (!validate()) return;
 
-    setLoading(true);
-    setServerError("");
-
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password,
-          role: role,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Something went wrong during registration.");
-      }
-
-      setSuccess(true);
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-      }
-
-      setTimeout(() => {
-        router.push(role === "companion" ? "/onboarding/qualifications" : "/family");
-      }, 2000);
-    } catch (err: any) {
-      setServerError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    // For both companion and family, we do not call register API now.
+    // We store registration details in localStorage and proceed to onboarding steps.
+    localStorage.setItem("onboarding_register_info", JSON.stringify({
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      password: formData.password,
+      role: role,
+    }));
+    localStorage.setItem("user", JSON.stringify({
+      name: formData.name,
+      email: formData.email,
+      role: role,
+    }));
+    router.push("/onboarding/qualifications");
   };
 
   return (
@@ -378,11 +377,7 @@ export default function RegisterPage() {
                   className="w-full bg-button text-white py-3.5 px-8 rounded-xl font-bold text-base hover:bg-button-hover transition-all active:scale-[0.99] shadow-md shadow-button/20 flex items-center justify-center gap-2 mt-8 disabled:opacity-50 cursor-pointer"
                 >
                   <span>
-                    {role === "companion" ? (
-                      loading ? "Continuing..." : "Continue to Onboarding"
-                    ) : (
-                      loading ? "Creating Account..." : "Create Account"
-                    )}
+                    {loading ? "Continuing..." : "Continue to Onboarding"}
                   </span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
@@ -390,7 +385,7 @@ export default function RegisterPage() {
 
                 <p className="text-center text-sm text-gray-500 pt-2 font-medium">
                   <span className="mr-1">Already have an account?</span>
-                  <Link href="/login" className="text-button font-bold hover:underline decoration-2 underline-offset-4">
+                  <Link href="/Login" className="text-button font-bold hover:underline decoration-2 underline-offset-4">
                     Log in
                   </Link>
                 </p>
