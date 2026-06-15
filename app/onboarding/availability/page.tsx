@@ -33,6 +33,7 @@ const SLOTS = [
 
 export default function AvailabilityPage() {
   const router = useRouter();
+  const [role, setRole] = useState<"companion" | "family" | "">("");
 
   // State for availability selection: { [day]: { [slot]: boolean } }
   const [availability, setAvailability] = useState<{ [key: string]: { [key: string]: boolean } }>({
@@ -50,6 +51,25 @@ export default function AvailabilityPage() {
 
   // Load from localStorage on mount
   useEffect(() => {
+    // Determine role
+    const savedRegisterInfo = localStorage.getItem("onboarding_register_info");
+    if (savedRegisterInfo) {
+      try {
+        const info = JSON.parse(savedRegisterInfo);
+        if (info.role) {
+          setRole(info.role);
+          if (info.role === "family") {
+            router.replace("/onboarding/preferences");
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Error parsing saved register info", e);
+      }
+    } else {
+      setRole("companion");
+    }
+
     const savedAvailability = localStorage.getItem("onboarding_availability");
     const savedEmergency = localStorage.getItem("onboarding_emergency");
 
@@ -128,6 +148,10 @@ export default function AvailabilityPage() {
     router.push("/onboarding/preferences");
   };
 
+  if (!role) {
+    return <div className="min-h-screen bg-[#fcf9f6] flex items-center justify-center">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-[#fcf9f6] text-[#1c1c1a] font-body relative">
       {/* Top Header */}
@@ -169,7 +193,9 @@ export default function AvailabilityPage() {
                 <div className="w-9 h-9 rounded-full bg-[#aeedd5] text-[#316d5b] flex items-center justify-center font-bold">
                   <CheckCircle className="w-4 h-4" />
                 </div>
-                <span className="text-[10px] md:text-xs font-semibold text-gray-500">Qualifications</span>
+                <span className="text-[10px] md:text-xs font-semibold text-gray-500">
+                  {role === "family" ? "Beneficiary" : "Qualifications"}
+                </span>
               </div>
               
               {/* Step 3 */}
@@ -177,7 +203,9 @@ export default function AvailabilityPage() {
                 <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold ring-4 ring-primary-container/10">
                   3
                 </div>
-                <span className="text-[10px] md:text-xs font-bold text-primary">Availability</span>
+                <span className="text-[10px] md:text-xs font-bold text-primary">
+                  {role === "family" ? "Care Schedule" : "Availability"}
+                </span>
               </div>
 
               {/* Step 4 */}
@@ -185,7 +213,9 @@ export default function AvailabilityPage() {
                 <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">
                   4
                 </div>
-                <span className="text-[10px] md:text-xs font-semibold text-gray-400">Preferences</span>
+                <span className="text-[10px] md:text-xs font-semibold text-gray-400">
+                  {role === "family" ? "Address & Details" : "Preferences"}
+                </span>
               </div>
 
               {/* Step 5 */}
@@ -201,11 +231,13 @@ export default function AvailabilityPage() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4">
             <div>
               <h1 className="font-display text-2xl md:text-3xl font-bold text-primary mt-1">
-                Set Your Availability
+                {role === "family" ? "Select Care Schedule Needed" : "Set Your Availability"}
               </h1>
             </div>
             <p className="text-gray-500 text-sm font-medium mt-1 md:mt-0">
-              Step 3 of 5: Helping us match you with families
+              {role === "family"
+                ? "Step 3 of 5: Helping us match you with caregivers"
+                : "Step 3 of 5: Helping us match you with families"}
             </p>
           </div>
         </div>
@@ -217,8 +249,10 @@ export default function AvailabilityPage() {
             <div className="bg-white p-6 rounded-3xl border border-sand-high custom-shadow space-y-6">
               <div>
                 <h2 className="font-display text-lg font-bold text-primary mb-2">Scheduling Details</h2>
-                <p className="text-gray-500 text-xs md:text-sm font-medium leading-relaxed">
-                  Select the time blocks you are generally available each week. You can adjust specific dates later in your dashboard.
+                <p className="text-gray-500 text-xs md:text-sm font-medium leading-relaxed text-left">
+                  {role === "family"
+                    ? "Select the time blocks you require companion care services each week. You can adjust specific booking dates later."
+                    : "Select the time blocks you are generally available each week. You can adjust specific dates later in your dashboard."}
                 </p>
               </div>
 
@@ -251,8 +285,10 @@ export default function AvailabilityPage() {
               <div className="space-y-3 pt-2">
                 <div className="flex items-start gap-2.5">
                   <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <p className="text-xs text-gray-500 font-medium leading-relaxed">
-                    Families prefer caregivers with consistent morning and afternoon blocks.
+                  <p className="text-xs text-gray-500 font-medium leading-relaxed text-left">
+                    {role === "family"
+                      ? "Caregivers are more likely to match with you if you request standard, consistent time blocks."
+                      : "Families prefer caregivers with consistent morning and afternoon blocks."}
                   </p>
                 </div>
                 <div className="flex items-start gap-2.5">

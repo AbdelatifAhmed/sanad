@@ -17,8 +17,16 @@ import {
 
 export default function QualificationsPage() {
   const router = useRouter();
+  const [role, setRole] = useState<"companion" | "family" | "">("");
 
-  // Form states
+  // Family form states
+  const [beneficiaryName, setBeneficiaryName] = useState("");
+  const [beneficiaryAge, setBeneficiaryAge] = useState("");
+  const [beneficiaryGender, setBeneficiaryGender] = useState<"male" | "female">("male");
+  const [beneficiaryCategory, setBeneficiaryCategory] = useState<"elderly" | "special_needs">("elderly");
+  const [beneficiaryCondition, setBeneficiaryCondition] = useState("");
+
+  // Companion form states
   const [specialization, setSpecialization] = useState("");
   const [experience, setExperience] = useState("");
   
@@ -33,23 +41,62 @@ export default function QualificationsPage() {
 
   // Load from localStorage on mount
   useEffect(() => {
-    const savedSpecialization = localStorage.getItem("onboarding_specialization");
-    const savedExperience = localStorage.getItem("onboarding_experience");
-    const savedCertFile = localStorage.getItem("onboarding_cert_file");
-    const savedIdFile = localStorage.getItem("onboarding_id_file");
+    // Determine role
+    const savedRegisterInfo = localStorage.getItem("onboarding_register_info");
+    let currentRole: "companion" | "family" = "companion";
+    if (savedRegisterInfo) {
+      try {
+        const info = JSON.parse(savedRegisterInfo);
+        if (info.role) {
+          setRole(info.role);
+          currentRole = info.role;
+        }
+      } catch (e) {
+        console.error("Error parsing saved register info", e);
+      }
+    } else {
+      setRole("companion");
+    }
 
-    if (savedSpecialization) setSpecialization(savedSpecialization);
-    if (savedExperience) setExperience(savedExperience);
-    if (savedCertFile) setCertFile(JSON.parse(savedCertFile));
-    if (savedIdFile) setIdFile(JSON.parse(savedIdFile));
+    if (currentRole === "family") {
+      const savedBName = localStorage.getItem("onboarding_beneficiary_name");
+      const savedBAge = localStorage.getItem("onboarding_beneficiary_age");
+      const savedBGender = localStorage.getItem("onboarding_beneficiary_gender");
+      const savedBCategory = localStorage.getItem("onboarding_beneficiary_category");
+      const savedBCondition = localStorage.getItem("onboarding_beneficiary_condition");
+
+      if (savedBName) setBeneficiaryName(savedBName);
+      if (savedBAge) setBeneficiaryAge(savedBAge);
+      if (savedBGender) setBeneficiaryGender(savedBGender as "male" | "female");
+      if (savedBCategory) setBeneficiaryCategory(savedBCategory as "elderly" | "special_needs");
+      if (savedBCondition) setBeneficiaryCondition(savedBCondition);
+    } else {
+      const savedSpecialization = localStorage.getItem("onboarding_specialization");
+      const savedExperience = localStorage.getItem("onboarding_experience");
+      const savedCertFile = localStorage.getItem("onboarding_cert_file");
+      const savedIdFile = localStorage.getItem("onboarding_id_file");
+
+      if (savedSpecialization) setSpecialization(savedSpecialization);
+      if (savedExperience) setExperience(savedExperience);
+      if (savedCertFile) setCertFile(JSON.parse(savedCertFile));
+      if (savedIdFile) setIdFile(JSON.parse(savedIdFile));
+    }
   }, []);
 
   const handleSaveAndExit = () => {
     // Save state
-    localStorage.setItem("onboarding_specialization", specialization);
-    localStorage.setItem("onboarding_experience", experience);
-    if (certFile) localStorage.setItem("onboarding_cert_file", JSON.stringify(certFile));
-    if (idFile) localStorage.setItem("onboarding_id_file", JSON.stringify(idFile));
+    if (role === "family") {
+      localStorage.setItem("onboarding_beneficiary_name", beneficiaryName);
+      localStorage.setItem("onboarding_beneficiary_age", beneficiaryAge);
+      localStorage.setItem("onboarding_beneficiary_gender", beneficiaryGender);
+      localStorage.setItem("onboarding_beneficiary_category", beneficiaryCategory);
+      localStorage.setItem("onboarding_beneficiary_condition", beneficiaryCondition);
+    } else {
+      localStorage.setItem("onboarding_specialization", specialization);
+      localStorage.setItem("onboarding_experience", experience);
+      if (certFile) localStorage.setItem("onboarding_cert_file", JSON.stringify(certFile));
+      if (idFile) localStorage.setItem("onboarding_id_file", JSON.stringify(idFile));
+    }
     
     // Redirect to login or home
     router.push("/login");
@@ -95,12 +142,23 @@ export default function QualificationsPage() {
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
-    if (!specialization) newErrors.specialization = "Please select your specialization.";
-    if (!experience.trim() || parseInt(experience) < 0) {
-      newErrors.experience = "Please enter valid years of experience.";
+
+    if (role === "family") {
+      if (!beneficiaryName.trim()) newErrors.beneficiaryName = "Beneficiary name is required.";
+      if (!beneficiaryAge.trim() || parseInt(beneficiaryAge) <= 0) {
+        newErrors.beneficiaryAge = "Please enter a valid age.";
+      }
+      if (!beneficiaryCondition.trim()) {
+        newErrors.beneficiaryCondition = "Please enter details of the beneficiary's condition.";
+      }
+    } else {
+      if (!specialization) newErrors.specialization = "Please select your specialization.";
+      if (!experience.trim() || parseInt(experience) < 0) {
+        newErrors.experience = "Please enter valid years of experience.";
+      }
+      if (!certFile) newErrors.cert = "Please upload at least one certification or education document.";
+      if (!idFile) newErrors.id = "Please upload your identity verification document.";
     }
-    if (!certFile) newErrors.cert = "Please upload at least one certification or education document.";
-    if (!idFile) newErrors.id = "Please upload your identity verification document.";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -111,13 +169,28 @@ export default function QualificationsPage() {
     if (!validate()) return;
 
     // Save state
-    localStorage.setItem("onboarding_specialization", specialization);
-    localStorage.setItem("onboarding_experience", experience);
-    localStorage.setItem("onboarding_cert_file", JSON.stringify(certFile));
-    localStorage.setItem("onboarding_id_file", JSON.stringify(idFile));
-
-    router.push("/onboarding/availability");
+    if (role === "family") {
+      localStorage.setItem("onboarding_beneficiary_name", beneficiaryName);
+      localStorage.setItem("onboarding_beneficiary_age", beneficiaryAge);
+      localStorage.setItem("onboarding_beneficiary_gender", beneficiaryGender);
+      localStorage.setItem("onboarding_beneficiary_category", beneficiaryCategory);
+      localStorage.setItem("onboarding_beneficiary_condition", beneficiaryCondition);
+    } else {
+      localStorage.setItem("onboarding_specialization", specialization);
+      localStorage.setItem("onboarding_experience", experience);
+      localStorage.setItem("onboarding_cert_file", JSON.stringify(certFile));
+      localStorage.setItem("onboarding_id_file", JSON.stringify(idFile));
+    }
+    if (role === "family") {
+      router.push("/onboarding/preferences");
+    } else {
+      router.push("/onboarding/availability");
+    }
   };
+
+  if (!role) {
+    return <div className="min-h-screen bg-[#fcf9f6] flex items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fcf9f6] text-[#1c1c1a] font-body">
@@ -146,45 +219,83 @@ export default function QualificationsPage() {
               <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -z-10 -translate-y-1/2" />
               <div className="absolute top-1/2 left-0 w-1/4 h-0.5 bg-primary -z-10 -translate-y-1/2 transition-all duration-500" />
               
-              {/* Step 1 */}
-              <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
-                <div className="w-9 h-9 rounded-full bg-[#aeedd5] text-[#316d5b] flex items-center justify-center font-bold">
-                  <CheckCircle className="w-4 h-4" />
-                </div>
-                <span className="text-[10px] md:text-xs font-semibold text-gray-500">Basic Info</span>
-              </div>
-              
-              {/* Step 2 */}
-              <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
-                <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold ring-4 ring-primary-container/10">
-                  2
-                </div>
-                <span className="text-[10px] md:text-xs font-bold text-primary">Qualifications</span>
-              </div>
-              
-              {/* Step 3 */}
-              <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
-                <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">
-                  3
-                </div>
-                <span className="text-[10px] md:text-xs font-semibold text-gray-400">Availability</span>
-              </div>
+              {role === "family" ? (
+                <>
+                  {/* Step 1 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-[#aeedd5] text-[#316d5b] flex items-center justify-center font-bold">
+                      <CheckCircle className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-500">Basic Info</span>
+                  </div>
+                  
+                  {/* Step 2 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold ring-4 ring-primary-container/10">
+                      2
+                    </div>
+                    <span className="text-[10px] md:text-xs font-bold text-primary">Beneficiary</span>
+                  </div>
+                  
+                  {/* Step 3 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">
+                      3
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-400">Address Details</span>
+                  </div>
 
-              {/* Step 4 */}
-              <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
-                <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">
-                  4
-                </div>
-                <span className="text-[10px] md:text-xs font-semibold text-gray-400">Preferences</span>
-              </div>
+                  {/* Step 4 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">
+                      4
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-400">Review</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Step 1 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-[#aeedd5] text-[#316d5b] flex items-center justify-center font-bold">
+                      <CheckCircle className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-500">Basic Info</span>
+                  </div>
+                  
+                  {/* Step 2 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold ring-4 ring-primary-container/10">
+                      2
+                    </div>
+                    <span className="text-[10px] md:text-xs font-bold text-primary">Qualifications</span>
+                  </div>
+                  
+                  {/* Step 3 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">
+                      3
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-400">Availability</span>
+                  </div>
 
-              {/* Step 5 */}
-              <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
-                <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">
-                  5
-                </div>
-                <span className="text-[10px] md:text-xs font-semibold text-gray-400">Review</span>
-              </div>
+                  {/* Step 4 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">
+                      4
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-400">Preferences</span>
+                  </div>
+
+                  {/* Step 5 */}
+                  <div className="flex flex-col items-center gap-2 bg-[#fcf9f6] px-2 md:px-4">
+                    <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">
+                      5
+                    </div>
+                    <span className="text-[10px] md:text-xs font-semibold text-gray-400">Review</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -192,164 +303,289 @@ export default function QualificationsPage() {
           <div className="bg-white rounded-3xl border border-sand-high p-8 md:p-10 custom-shadow space-y-8">
             <div>
               <h1 className="font-display text-2xl md:text-3xl font-bold text-primary mb-2">
-                Experience &amp; Qualifications
+                {role === "family" ? "Beneficiary Information" : "Experience & Qualifications"}
               </h1>
               <p className="text-gray-500 text-sm md:text-base font-medium">
-                Help us match you with the right families by sharing your professional background.
+                {role === "family"
+                  ? "Tell us about the person who needs companion care services."
+                  : "Help us match you with the right families by sharing your professional background."}
               </p>
             </div>
 
             <form onSubmit={handleNext} className="space-y-8">
-              {/* Specialty & Experience Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 block">Caregiver Type</label>
-                  <div className="relative">
-                    <select
-                      value={specialization}
-                      onChange={(e) => {
-                        setSpecialization(e.target.value);
-                        setErrors(prev => ({ ...prev, specialization: "" }));
-                      }}
-                      className="w-full h-14 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-sm font-medium"
-                    >
-                      <option value="">Select your specialization</option>
-                      <option value="medical">Medical (RN, LPN, CNA)</option>
-                      <option value="companion">Companion Care</option>
-                      <option value="general">General Support</option>
-                    </select>
-                  </div>
-                  {errors.specialization && (
-                    <p className="text-red-500 text-xs font-semibold">{errors.specialization}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 block">Years of Experience</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="e.g. 5"
-                      value={experience}
-                      onChange={(e) => {
-                        setExperience(e.target.value);
-                        setErrors(prev => ({ ...prev, experience: "" }));
-                      }}
-                      className="w-full h-14 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-sm font-medium"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">
-                      Years
-                    </span>
-                  </div>
-                  {errors.experience && (
-                    <p className="text-red-500 text-xs font-semibold">{errors.experience}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Education Upload Area */}
-              <div className="space-y-3">
-                <label className="text-sm font-bold text-gray-700 block">Education &amp; Certifications</label>
-                
-                {certFile ? (
-                  <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center text-[#1f8a8a]">
-                        <FileText className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-800 truncate max-w-[200px] md:max-w-xs">{certFile.name}</p>
-                        <p className="text-xs text-gray-400 font-medium">{certFile.size}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeFile("cert")}
-                      className="text-gray-400 hover:text-red-500 p-2 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center gap-4 cursor-pointer hover:border-primary hover:bg-teal-50/10 transition-all bg-gray-50/50">
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      className="hidden"
-                      onChange={(e) => handleFileChange(e, "cert")}
-                      disabled={isCertUploading}
-                    />
-                    <div className="w-14 h-14 rounded-full bg-[#aeedd5] flex items-center justify-center text-[#316d5b]">
-                      <Upload className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-primary font-bold">
-                        {isCertUploading ? "Uploading..." : "Click to upload or drag and drop"}
-                      </p>
-                      <p className="text-xs text-gray-400 font-medium mt-1">PDF, JPG or PNG (max. 10MB)</p>
-                    </div>
-                  </label>
-                )}
-                {errors.cert && (
-                  <p className="text-red-500 text-xs font-semibold">{errors.cert}</p>
-                )}
-              </div>
-
-              {/* ID Verification Upload */}
-              <div className="space-y-3">
-                <label className="text-sm font-bold text-gray-700 block">Identity Verification</label>
-                
-                {idFile ? (
-                  <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center text-[#1f8a8a]">
-                        <FileText className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-800 truncate max-w-[200px] md:max-w-xs">{idFile.name}</p>
-                        <p className="text-xs text-gray-400 font-medium">{idFile.size}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeFile("id")}
-                      className="text-gray-400 hover:text-red-500 p-2 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center p-4 bg-gray-50 border border-gray-200 rounded-xl gap-4">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500">
-                      <Shield className="w-6 h-6" />
-                    </div>
-                    <div className="flex-grow text-left">
-                      <p className="text-sm font-bold text-gray-800">Upload Government Issued ID</p>
-                      <p className="text-xs text-gray-400 font-medium">Passport, Driver's License or National ID</p>
-                    </div>
-                    <label className="flex-shrink-0 px-4 py-2 font-semibold text-xs text-primary hover:bg-teal-50/50 rounded-lg transition-colors border border-primary/20 cursor-pointer">
+              {role === "family" ? (
+                <>
+                  {/* Beneficiary Name & Age */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-700 block">Beneficiary Full Name</label>
                       <input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        className="hidden"
-                        onChange={(e) => handleFileChange(e, "id")}
-                        disabled={isIdUploading}
+                        type="text"
+                        placeholder="e.g. John Doe"
+                        value={beneficiaryName}
+                        onChange={(e) => {
+                          setBeneficiaryName(e.target.value);
+                          setErrors(prev => ({ ...prev, beneficiaryName: "" }));
+                        }}
+                        className="w-full h-14 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-sm font-medium"
                       />
-                      {isIdUploading ? "Uploading..." : "Browse File"}
-                    </label>
+                      {errors.beneficiaryName && (
+                        <p className="text-red-500 text-xs font-semibold">{errors.beneficiaryName}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-700 block">Age</label>
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="e.g. 75"
+                        value={beneficiaryAge}
+                        onChange={(e) => {
+                          setBeneficiaryAge(e.target.value);
+                          setErrors(prev => ({ ...prev, beneficiaryAge: "" }));
+                        }}
+                        className="w-full h-14 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-sm font-medium"
+                      />
+                      {errors.beneficiaryAge && (
+                        <p className="text-red-500 text-xs font-semibold">{errors.beneficiaryAge}</p>
+                      )}
+                    </div>
                   </div>
-                )}
-                {errors.id && (
-                  <p className="text-red-500 text-xs font-semibold">{errors.id}</p>
-                )}
-              </div>
+
+                  {/* Gender & Category */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                    <div className="space-y-2.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">Gender</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setBeneficiaryGender("male")}
+                          className={`h-14 rounded-xl border-2 transition-all cursor-pointer font-bold text-sm ${
+                            beneficiaryGender === "male"
+                              ? "border-button bg-button/5 text-button"
+                              : "border-gray-200 bg-white text-gray-500 hover:border-gray-400"
+                          }`}
+                        >
+                          Male
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBeneficiaryGender("female")}
+                          className={`h-14 rounded-xl border-2 transition-all cursor-pointer font-bold text-sm ${
+                            beneficiaryGender === "female"
+                              ? "border-button bg-button/5 text-button"
+                              : "border-gray-200 bg-white text-gray-500 hover:border-gray-400"
+                          }`}
+                        >
+                          Female
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">Category</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setBeneficiaryCategory("elderly")}
+                          className={`h-14 rounded-xl border-2 transition-all cursor-pointer font-bold text-sm ${
+                            beneficiaryCategory === "elderly"
+                              ? "border-button bg-button/5 text-button"
+                              : "border-gray-200 bg-white text-gray-500 hover:border-gray-400"
+                          }`}
+                        >
+                          Elderly Care
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBeneficiaryCategory("special_needs")}
+                          className={`h-14 rounded-xl border-2 transition-all cursor-pointer font-bold text-sm ${
+                            beneficiaryCategory === "special_needs"
+                              ? "border-button bg-button/5 text-button"
+                              : "border-gray-200 bg-white text-gray-500 hover:border-gray-400"
+                          }`}
+                        >
+                          Special Needs
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Condition Details */}
+                  <div className="space-y-2 text-left">
+                    <label className="text-sm font-bold text-gray-700 block">Condition / Care Needs Details</label>
+                    <textarea
+                      rows={4}
+                      placeholder="e.g. Beneficiary has mild cognitive impairment and needs help with daily tasks, conversation, and mobility support during afternoon walks."
+                      value={beneficiaryCondition}
+                      onChange={(e) => {
+                        setBeneficiaryCondition(e.target.value);
+                        setErrors(prev => ({ ...prev, beneficiaryCondition: "" }));
+                      }}
+                      className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-sm font-medium leading-relaxed resize-none"
+                    />
+                    {errors.beneficiaryCondition && (
+                      <p className="text-red-500 text-xs font-semibold">{errors.beneficiaryCondition}</p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Specialty & Experience Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-700 block">Caregiver Type</label>
+                      <div className="relative">
+                        <select
+                          value={specialization}
+                          onChange={(e) => {
+                            setSpecialization(e.target.value);
+                            setErrors(prev => ({ ...prev, specialization: "" }));
+                          }}
+                          className="w-full h-14 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-sm font-medium"
+                        >
+                          <option value="">Select your specialization</option>
+                          <option value="medical">Medical (RN, LPN, CNA)</option>
+                          <option value="companion">Companion Care</option>
+                          <option value="general">General Support</option>
+                        </select>
+                      </div>
+                      {errors.specialization && (
+                        <p className="text-red-500 text-xs font-semibold">{errors.specialization}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-700 block">Years of Experience</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="e.g. 5"
+                          value={experience}
+                          onChange={(e) => {
+                            setExperience(e.target.value);
+                            setErrors(prev => ({ ...prev, experience: "" }));
+                          }}
+                          className="w-full h-14 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-700 text-sm font-medium"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">
+                          Years
+                        </span>
+                      </div>
+                      {errors.experience && (
+                        <p className="text-red-500 text-xs font-semibold">{errors.experience}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Education Upload Area */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-bold text-gray-700 block">Education &amp; Certifications</label>
+                    
+                    {certFile ? (
+                      <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center text-[#1f8a8a]">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-gray-800 truncate max-w-[200px] md:max-w-xs">{certFile.name}</p>
+                            <p className="text-xs text-gray-400 font-medium">{certFile.size}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFile("cert")}
+                          className="text-gray-400 hover:text-red-500 p-2 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center gap-4 cursor-pointer hover:border-primary hover:bg-teal-50/10 transition-all bg-gray-50/50">
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          className="hidden"
+                          onChange={(e) => handleFileChange(e, "cert")}
+                          disabled={isCertUploading}
+                        />
+                        <div className="w-14 h-14 rounded-full bg-[#aeedd5] flex items-center justify-center text-[#316d5b]">
+                          <Upload className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-primary font-bold">
+                            {isCertUploading ? "Uploading..." : "Click to upload or drag and drop"}
+                          </p>
+                          <p className="text-xs text-gray-400 font-medium mt-1">PDF, JPG or PNG (max. 10MB)</p>
+                        </div>
+                      </label>
+                    )}
+                    {errors.cert && (
+                      <p className="text-red-500 text-xs font-semibold">{errors.cert}</p>
+                    )}
+                  </div>
+
+                  {/* ID Verification Upload */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-bold text-gray-700 block">Identity Verification</label>
+                    
+                    {idFile ? (
+                      <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center text-[#1f8a8a]">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-gray-800 truncate max-w-[200px] md:max-w-xs">{idFile.name}</p>
+                            <p className="text-xs text-gray-400 font-medium">{idFile.size}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFile("id")}
+                          className="text-gray-400 hover:text-red-500 p-2 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center p-4 bg-gray-50 border border-gray-200 rounded-xl gap-4">
+                        <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500">
+                          <Shield className="w-6 h-6" />
+                        </div>
+                        <div className="flex-grow text-left">
+                          <p className="text-sm font-bold text-gray-800">Upload Government Issued ID</p>
+                          <p className="text-xs text-gray-400 font-medium">Passport, Driver's License or National ID</p>
+                        </div>
+                        <label className="flex-shrink-0 px-4 py-2 font-semibold text-xs text-primary hover:bg-teal-50/50 rounded-lg transition-colors border border-primary/20 cursor-pointer">
+                          <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            className="hidden"
+                            onChange={(e) => handleFileChange(e, "id")}
+                            disabled={isIdUploading}
+                          />
+                          {isIdUploading ? "Uploading..." : "Browse File"}
+                        </label>
+                      </div>
+                    )}
+                    {errors.id && (
+                      <p className="text-red-500 text-xs font-semibold">{errors.id}</p>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* Security Warning */}
               <div className="p-4 bg-[#fcf9f6] rounded-xl flex items-start gap-3 border border-sand-high">
                 <Shield className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-gray-500 font-medium leading-relaxed">
-                  Your documents are encrypted and stored securely. We only use them to verify your professional background for family peace of mind.
+                <p className="text-xs text-gray-500 font-medium leading-relaxed text-left">
+                  {role === "family"
+                    ? "Your family profile is encrypted and stored securely. We only share details with matching caregiver companions."
+                    : "Your documents are encrypted and stored securely. We only use them to verify your professional background for family peace of mind."}
                 </p>
               </div>
 
@@ -382,7 +618,9 @@ export default function QualificationsPage() {
                 alt="Verified Skills representation"
               />
               <div>
-                <p className="text-xs font-bold text-gray-800">Verified Skills</p>
+                <p className="text-xs font-bold text-gray-800">
+                  {role === "family" ? "Verified Companions" : "Verified Skills"}
+                </p>
                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Trusted by 2k+ Families</p>
               </div>
             </div>
@@ -392,7 +630,9 @@ export default function QualificationsPage() {
                 <Award className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-800">Quality First</p>
+                <p className="text-xs font-bold text-gray-800">
+                  {role === "family" ? "Secure Match" : "Quality First"}
+                </p>
                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Background Checked</p>
               </div>
             </div>
@@ -402,7 +642,9 @@ export default function QualificationsPage() {
                 <Users className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-800">Community</p>
+                <p className="text-xs font-bold text-gray-800">
+                  {role === "family" ? "Care Circle" : "Community"}
+                </p>
                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Professional Network</p>
               </div>
             </div>
