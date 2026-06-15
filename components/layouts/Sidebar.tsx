@@ -24,7 +24,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const clearAuth = useAuthStore((state) => state.clearAuth);
+  const clearAuth = useAuthStore((state: AuthState) => state.clearAuth);
   
   const [menuOpen, setMenuOpen] = useState(false);
 

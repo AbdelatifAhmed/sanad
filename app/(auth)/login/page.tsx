@@ -12,6 +12,7 @@ import {
   CheckCircle
 } from "lucide-react";
 import { api } from "@/lib/services/api";
+import { useAuthStore } from "@/store/authStore";
 import Image from "next/image";
 
 export default function LoginPage() {
@@ -61,24 +62,27 @@ export default function LoginPage() {
     setServerError("");
 
     try {
-     const response = await api.post("/auth/login", {
+      const response = await api.post("/auth/login", {
         email: formData.email,
         password: formData.password,
       });
-      const data = await response.data;
+      const data = response.data;
 
       setSuccess(true);
       if (data.token) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
+        // Update the global auth store state so guards allow the user inside
+        useAuthStore.getState().setAuth(data.user, data.token);
       }
 
       setTimeout(() => {
         const role = data.user.role;
-        router.push(role === "companion" ? "/companion" : "/family");
-      }, 2000);
+        router.push(role === "companion" ? "/companion/dashboard" : "/family/dashboard");
+      }, 1500);
     } catch (err: any) {
-      setServerError(err.message);
+      const message = err.response?.data?.message || err.response?.data?.error || err.message || "Invalid credentials. Please try again.";
+      setServerError(message);
     } finally {
       setLoading(false);
     }

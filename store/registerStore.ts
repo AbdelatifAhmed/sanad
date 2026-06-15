@@ -60,7 +60,7 @@ interface RegisterState {
   resetRegisterForm: () => void;
 }
 
-export const useRegisterStore = create<RegisterState>((set) => ({
+export const useRegisterStore = create<RegisterState>((set: any) => ({
   step: 1,
   role: null,
   name: '',
@@ -85,18 +85,18 @@ export const useRegisterStore = create<RegisterState>((set) => ({
     documents: { nationalIdUrl: '', criminalRecordUrl: '' },
   },
 
-  setRole: (role) => set({ role }),
-  nextStep: () => set((state) => ({ step: state.step + 1 })),
-  prevStep: () => set((state) => ({ step: state.step - 1 })),
+  setRole: (role: 'family' | 'companion') => set({ role }),
+  nextStep: () => set((state: RegisterState) => ({ step: state.step + 1 })),
+  prevStep: () => set((state: RegisterState) => ({ step: state.step - 1 })),
   
-  updateBasicInfo: (info) => set(info),
-  updateLocation: (location) => set({ location }),
+  updateBasicInfo: (info: Partial<Pick<RegisterState, 'name' | 'email' | 'password' | 'phone'>>) => set(info),
+  updateLocation: (location: RegisterState['location']) => set({ location }),
   
-  updateFamilyData: (data) => 
-    set((state) => ({ familyData: { ...state.familyData, ...data } })),
+  updateFamilyData: (data: Partial<RegisterState['familyData']>) => 
+    set((state: RegisterState) => ({ familyData: { ...state.familyData, ...data } })),
     
-  updateCompanionData: (data) => 
-    set((state) => ({ companionData: { ...state.companionData, ...data } })),
+  updateCompanionData: (data: Partial<RegisterState['companionData']>) => 
+    set((state: RegisterState) => ({ companionData: { ...state.companionData, ...data } })),
 
   resetRegisterForm: () => set({
     step: 1, role: null, name: '', email: '', password: '', phone: '', location: null,
