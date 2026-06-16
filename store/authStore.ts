@@ -3,19 +3,19 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
-      user: null,
-      accessToken: null,
-      isAuthenticated: false,
+    (set: any) => ({
+      user: null as UserData | null,
+      accessToken: null as string | null,
+      isAuthenticated: false as boolean,
 
-      setAuth: (user, accessToken) => 
+      setAuth: (user: UserData, accessToken: string) => 
         set({ user, accessToken, isAuthenticated: true }),
 
       clearAuth: () => 
         set({ user: null, accessToken: null, isAuthenticated: false }),
 
-      updateAvatar: (avatarUrl) =>
-        set((state) => ({
+      updateAvatar: (avatarUrl: string) =>
+        set((state: AuthState) => ({
           user: state.user ? { ...state.user, avatar: avatarUrl } : null,
         })),
     }),

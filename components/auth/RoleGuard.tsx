@@ -30,8 +30,8 @@ export default function RoleGuard({
   fallbackPath,
 }: RoleGuardProps) {
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state: AuthState) => state.user);
+  const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
 
   useEffect(() => {
     if (!isAuthenticated) {

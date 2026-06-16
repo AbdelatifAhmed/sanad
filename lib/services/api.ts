@@ -34,14 +34,14 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
+  (error: any) => {
     return Promise.reject(error);
   },
 );
 
 api.interceptors.response.use(
-  (response) => response, 
-  async (error) => {
+  (response: any) => response, 
+  async (error: any) => {
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
