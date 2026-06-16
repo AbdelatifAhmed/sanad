@@ -210,6 +210,7 @@ exports.refreshToken = async (req, res) => {
 
     return res.status(200).json({
       accessToken,
+      user: userResponse(user),
     });
   } catch (err) {
     return res.status(401).json({ message: messages.auth.invalidToken[req.lang || "en"] });
