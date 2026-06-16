@@ -10,11 +10,11 @@ export async function getServerAuthToken(): Promise<string> {
   }
 
   try {
-    const res = await fetch("http://localhost:5000/api/auth/refresh-token", {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/refresh-token`, {
       method: "POST",
       headers: {
-        "Cookie": `refreshToken=${refreshToken}`
-      }
+        "Cookie": `refreshToken=${refreshToken}`,
+      },
     });
 
     if (!res.ok) {

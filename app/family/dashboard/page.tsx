@@ -4,14 +4,24 @@ import React from "react";
 import Link from "next/link";
 import { LogOut, Search, Clock, Home, User } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { logoutUser } from "@/lib/API";
+import { useAuthStore } from "@/store/authStore";
 
 export default function FamilyDashboard() {
   const router = useRouter();
+  const clearAuth = useAuthStore((state: any) => state.clearAuth);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/login");
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      clearAuth();
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      router.push("/login");
+    }
   };
 
   return (

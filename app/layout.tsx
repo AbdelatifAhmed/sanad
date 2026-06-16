@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Literata, Be_Vietnam_Pro, Noto_Sans_Arabic, Plus_Jakarta_Sans, Inter } from "next/font/google";
 import "./globals.css";
+import AuthInit from "@/components/auth/AuthInit";
 
 const literata = Literata({
   variable: "--font-literata",
@@ -50,7 +51,10 @@ export default function RootLayout({
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
       </head>
-      <body className="min-h-full flex flex-col bg-sand text-[#1c1c1a] font-body">{children}</body>
+      <body className="min-h-full flex flex-col bg-sand text-[#1c1c1a] font-body">
+        <AuthInit />
+        {children}
+      </body>
     </html>
   );
 }

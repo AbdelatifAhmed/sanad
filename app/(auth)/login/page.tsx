@@ -62,18 +62,24 @@ export default function LoginPage() {
     setServerError("");
 
     try {
-      const response = await api.post("/auth/login", {
-        email: formData.email,
-        password: formData.password,
-      });
+      const response = await api.post(
+        "/auth/login",
+        {
+          email: formData.email,
+          password: formData.password,
+        },
+        {
+          withCredentials: true,
+        }
+      );
       const data = response.data;
 
       setSuccess(true);
-      if (data.token) {
-        localStorage.setItem("token", data.token);
+      if (data.accessToken) {
+        localStorage.setItem("token", data.accessToken);
         localStorage.setItem("user", JSON.stringify(data.user));
         // Update the global auth store state so guards allow the user inside
-        useAuthStore.getState().setAuth(data.user, data.token);
+        useAuthStore.getState().setAuth(data.user, data.accessToken);
       }
 
       setTimeout(() => {

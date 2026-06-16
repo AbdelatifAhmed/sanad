@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 
+import { logoutUser } from "@/lib/API";
+
 export interface SidebarItem {
   label: string;
   href: string;
@@ -35,12 +37,18 @@ export default function Sidebar({
     return () => window.removeEventListener("click", closeMenu);
   }, [menuOpen]);
 
-  const handleLogout = (e: React.MouseEvent) => {
+  const handleLogout = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    clearAuth();
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/login");
+    try {
+      await logoutUser();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      clearAuth();
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      router.push("/login");
+    }
   };
 
   const toggleMenu = (e: React.MouseEvent) => {
