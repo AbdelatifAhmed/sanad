@@ -348,6 +348,23 @@ const messages = {
       en: "Payment transaction details retrieved successfully.",
       ar: "تم جلب تفاصيل المعاملة المالية بنجاح."
     }
+    ,
+    paymentNotFound: {
+      en: "Payment record not found for this booking.",
+      ar: "لم يتم العثور على سجل دفع لهذا الحجز."
+    },
+    paymentNotSettled: {
+      en: "Payment not settled yet. Cannot release payout.",
+      ar: "الدفع لم يتم تسويته بعد. لا يمكن صرف المبلغ."
+    },
+    alreadyReleased: {
+      en: "Payout already released for this payment.",
+      ar: "تم صرف المبلغ بالفعل لهذا الدفع."
+    },
+    payoutReleased: {
+      en: "Payout released to companion successfully.",
+      ar: "تم صرف المبلغ للمرافق بنجاح."
+    }
   },
   admin: {
     banSelf: {

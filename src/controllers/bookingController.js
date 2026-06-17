@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Booking = require('../models/booking.schema');
 const Companion = require('../models/companion.schema');
+const Payment = require('../models/payment.schema');
 const { sendNotification } = require('../services/notificationService');
 const bookingService = require("../services/bookingService");
 const { getSocketIds } = require("../utils/socketManager");
@@ -237,7 +238,35 @@ const updateBookingStatus = async (req, res) => {
 
     booking.status = status;
     const updatedBooking = await booking.save();
-    
+
+    // If booking completed and payment was already made, release payout to companion
+    try {
+      if (status === 'completed' && updatedBooking.paymentStatus === 'paid') {
+        const payment = await Payment.findOne({ bookingId: updatedBooking._id });
+        if (payment && payment.status === 'paid' && !payment.payoutReleased) {
+          payment.payoutReleased = true;
+          payment.payoutTransactionId = 'payout_' + Math.random().toString(36).substr(2, 9).toUpperCase();
+          payment.payoutDate = new Date();
+          await payment.save();
+
+          if (typeof sendNotification === 'function') {
+            await sendNotification(
+              updatedBooking.companionId,
+              req.user._id,
+              lang === 'en' ? 'Payout Released' : 'تم صرف المبلغ',
+              lang === 'en'
+                ? `Your payout for booking ${updatedBooking._id} has been released.`
+                : `تم صرف أجر الحجز ${updatedBooking._id}.`,
+              'payment',
+              req.io
+            );
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error releasing payout after completion:', err);
+    }
+
     return res.status(200).json({
       message: messages.booking.statusUpdated[lang],
       booking: updatedBooking

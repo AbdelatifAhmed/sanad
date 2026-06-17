@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { payBooking, getMyPayments, getAdminPayments } = require("../controllers/paymentController");
+const { payBooking, getMyPayments, getAdminPayments, releasePayout } = require("../controllers/paymentController");
 const { authenticate } = require("../middleware/authMiddleware");
 const { isAdmin, isFamily } = require("../middleware/RoleMiddleware");
 
@@ -14,5 +14,8 @@ router.get("/me", getMyPayments);
 
 // Admin gets all payments/statistics
 router.get("/admin", isAdmin, getAdminPayments);
+
+// Admin/manual release payout for a booking
+router.post("/:id/release", isAdmin, releasePayout);
 
 module.exports = router;

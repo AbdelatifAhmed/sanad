@@ -43,6 +43,17 @@ const paymentSchema = new mongoose.Schema(
     transactionId: {
       type: String,
     },
+    // payout fields
+    payoutReleased: {
+      type: Boolean,
+      default: false,
+    },
+    payoutTransactionId: {
+      type: String,
+    },
+    payoutDate: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

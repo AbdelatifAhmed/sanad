@@ -217,8 +217,52 @@ const getAdminPayments = async (req, res) => {
   }
 };
 
+const releasePayout = async function (req, res) {
+    try {
+      const lang = req.lang || 'en';
+      const bookingId = req.params.id;
+
+      const payment = await Payment.findOne({ bookingId });
+      if (!payment) {
+        return res.status(404).json({ status: 'fail', message: messages.payment.paymentNotFound[lang] });
+      }
+
+      if (payment.status !== 'paid') {
+        return res.status(400).json({ status: 'fail', message: messages.payment.paymentNotSettled[lang] });
+      }
+
+      if (payment.payoutReleased) {
+        return res.status(400).json({ status: 'fail', message: messages.payment.alreadyReleased[lang] });
+      }
+
+      payment.payoutReleased = true;
+      payment.payoutTransactionId = 'payout_' + Math.random().toString(36).substr(2, 9).toUpperCase();
+      payment.payoutDate = new Date();
+      await payment.save();
+
+      if (typeof sendNotification === 'function') {
+        await sendNotification(
+          payment.companionId,
+          req.user._id,
+          lang === 'en' ? 'Payout Released' : 'تم صرف المبلغ',
+          lang === 'en'
+            ? `Your payout for booking ${bookingId} has been released.`
+            : `تم صرف أجر الحجز ${bookingId}.`,
+          'payment',
+          req.io
+        );
+      }
+
+      return res.status(200).json({ status: 'success', message: messages.payment.payoutReleased[lang], data: { payment } });
+    } catch (error) {
+      console.error('Error releasing payout:', error);
+      return res.status(500).json({ status: 'error', message: messages.common.serverError[req.lang || 'en'], error: error.message });
+    }
+  }
+
 module.exports = {
   payBooking,
   getMyPayments,
   getAdminPayments,
+  releasePayout
 };
