@@ -125,6 +125,11 @@ export const getFamilyBookings = async () => {
   return res.data.data;
 };
 
+export const getFamilyDashboardStats = async (config?: any) => {
+  const res = await api.get("/family/me/dashboard-stats", config);
+  return res.data.data;
+};
+
 // --- CHAT ROUTER (/chat) ---
 export const sendChatMessage = async (data: any) => {
   const res = await api.post("/chat", data);
