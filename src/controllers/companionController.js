@@ -250,7 +250,9 @@ const getCompanionById = async (req, res) => {
       });
     }
 
-    const companion = await Companion.findById(id).populate('userId', 'name email phone');
+    const companion = await Companion.findById(id)
+      .populate('userId', 'name email phone avatar location')
+      .populate('skills', 'nameAr nameEn category');
 
     if (!companion) {
       return res.status(404).json({
@@ -339,6 +341,297 @@ const updateMyLocation = async (req, res) => {
   }
 };
 
+const getCompanionDashboardStats = async (req, res) => {
+  try {
+    const lang = req.headers["accept-language"] || "en";
+
+    if (!req.user || req.user.role !== "companion") {
+      return res.status(403).json({
+        status: "fail",
+        message:
+          lang === "en"
+            ? "Access denied. Only companions can view dashboard stats."
+            : "عذراً، هذا الحساب لا يملك صلاحيات للوصول إلى إحصائيات لوحة التحكم.",
+      });
+    }
+
+    const companion = await Companion.findOne({ userId: req.user._id });
+    if (!companion) {
+      return res.status(404).json({
+        status: "fail",
+        message:
+          lang === "en"
+            ? "Companion profile not found."
+            : "لم يتم العثور على ملف تعريف المرافق الخاص بك.",
+      });
+    }
+
+    // 1. Total Requests & Growth
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(today.getDate() - 60);
+
+    const [totalRequests, requestsThisMonth, requestsLastMonth] =
+      await Promise.all([
+        Booking.countDocuments({ companionId: req.user._id }),
+        Booking.countDocuments({
+          companionId: req.user._id,
+          createdAt: { $gte: thirtyDaysAgo },
+        }),
+        Booking.countDocuments({
+          companionId: req.user._id,
+          createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo },
+        }),
+      ]);
+
+    let growthPercentage = 0;
+    if (requestsLastMonth === 0) {
+      growthPercentage = requestsThisMonth > 0 ? 100 : 0;
+    } else {
+      growthPercentage = Math.round(
+        ((requestsThisMonth - requestsLastMonth) / requestsLastMonth) * 100,
+      );
+    }
+
+    // 2. Active Bookings
+    const activeBookingsCount = await Booking.countDocuments({
+      companionId: req.user._id,
+      status: { $in: ["approved", "active"] },
+    });
+
+    // 3. Upcoming Visits count & Next visit label
+    const activeBookings = await Booking.find({
+      companionId: req.user._id,
+      status: { $in: ["approved", "active"] },
+    });
+
+    let upcomingVisitsCount = 0;
+    let nextSlotDateTime = null;
+    let minDiff = Infinity;
+
+    for (const booking of activeBookings) {
+      if (booking.schedule && Array.isArray(booking.schedule)) {
+        for (const slot of booking.schedule) {
+          if (!slot.date || !slot.startTime) continue;
+
+          const slotDate = new Date(slot.date);
+          const [hours, minutes] = slot.startTime.split(":").map(Number);
+          const slotDateTime = new Date(
+            slotDate.getFullYear(),
+            slotDate.getMonth(),
+            slotDate.getDate(),
+            hours || 0,
+            minutes || 0,
+            0,
+            0,
+          );
+
+          const diff = slotDateTime - today;
+          if (diff >= 0) {
+            upcomingVisitsCount++;
+            if (diff < minDiff) {
+              minDiff = diff;
+              nextSlotDateTime = slotDateTime;
+            }
+          }
+        }
+      }
+    }
+
+    let nextVisitLabel =
+      lang === "en" ? "No upcoming visits" : "لا توجد زيارات قادمة";
+    if (nextSlotDateTime) {
+      const diffMinutes = Math.floor(minDiff / (1000 * 60));
+      const diffHours = Math.floor(diffMinutes / 60);
+
+      if (diffMinutes < 60) {
+        nextVisitLabel =
+          lang === "en"
+            ? `Next in ${diffMinutes}m`
+            : `التالي خلال ${diffMinutes} د`;
+      } else if (diffHours < 24) {
+        nextVisitLabel =
+          lang === "en"
+            ? `Next in ${diffHours}h`
+            : `التالي خلال ${diffHours} س`;
+      } else if (diffHours < 48) {
+        const timeString = nextSlotDateTime.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
+        nextVisitLabel =
+          lang === "en" ? `Tomorrow, ${timeString}` : `غداً، ${timeString}`;
+      } else {
+        const dateString = nextSlotDateTime.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+        const timeString = nextSlotDateTime.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
+        nextVisitLabel =
+          lang === "en"
+            ? `${dateString}, ${timeString}`
+            : `${dateString}، ${timeString}`;
+      }
+    }
+
+    // 4. Rating
+    const rating = companion.rating || 5;
+
+    // 5. Profile Completion
+    let completion = 0;
+    const missingFields = [];
+
+    if (companion.bio && companion.bio.trim() !== "") {
+      completion += 20;
+    } else {
+      missingFields.push("bio");
+    }
+
+    if (companion.hourlyRate && companion.hourlyRate > 0) {
+      completion += 20;
+    } else {
+      missingFields.push("hourlyRate");
+    }
+
+    if (companion.skills && companion.skills.length > 0) {
+      completion += 20;
+    } else {
+      missingFields.push("skills");
+    }
+
+    if (
+      companion.availability &&
+      companion.availability.some((a) => a.slots && a.slots.length > 0)
+    ) {
+      completion += 20;
+    } else {
+      missingFields.push("availability");
+    }
+
+    // Documents (last 20%)
+    const docs = companion.documents || {};
+    if (companion.companionType === "specialized") {
+      let docPoints = 0;
+      if (
+        docs.nationalIdUrl &&
+        docs.nationalIdUrl !== "placeholder_national_id.jpg"
+      )
+        docPoints += 20 / 3;
+      else missingFields.push("documents.nationalIdUrl");
+
+      if (
+        docs.criminalRecordUrl &&
+        docs.criminalRecordUrl !== "placeholder_criminal_record.jpg"
+      )
+        docPoints += 20 / 3;
+      else missingFields.push("documents.criminalRecordUrl");
+
+      if (docs.syndicateCardUrl) docPoints += 20 / 3;
+      else missingFields.push("documents.syndicateCardUrl");
+
+      completion += docPoints;
+    } else {
+      let docPoints = 0;
+      if (
+        docs.nationalIdUrl &&
+        docs.nationalIdUrl !== "placeholder_national_id.jpg"
+      )
+        docPoints += 10;
+      else missingFields.push("documents.nationalIdUrl");
+
+      if (
+        docs.criminalRecordUrl &&
+        docs.criminalRecordUrl !== "placeholder_criminal_record.jpg"
+      )
+        docPoints += 10;
+      else missingFields.push("documents.criminalRecordUrl");
+
+      completion += docPoints;
+    }
+
+    completion = Math.round(completion);
+
+    let completionMessage =
+      lang === "en"
+        ? "Complete your profile details to start receiving bookings."
+        : "أكمل تفاصيل ملفك الشخصي لتلقي الحجوزات.";
+    if (completion === 100) {
+      completionMessage =
+        lang === "en"
+          ? "Your profile is fully complete and ready!"
+          : "ملفك الشخصي مكتمل وجاهز!";
+    } else if (
+      companion.companionType === "specialized" &&
+      !docs.syndicateCardUrl
+    ) {
+      completionMessage =
+        lang === "en"
+          ? "Finish setting up your specialized care certificates."
+          : "أكمل إعداد شهادات الرعاية المتخصصة الخاصة بك.";
+    } else if (
+      !docs.nationalIdUrl ||
+      docs.nationalIdUrl === "placeholder_national_id.jpg" ||
+      !docs.criminalRecordUrl ||
+      docs.criminalRecordUrl === "placeholder_criminal_record.jpg"
+    ) {
+      completionMessage =
+        lang === "en"
+          ? "Finish uploading your required identification documents."
+          : "أكمل رفع مستندات الهوية المطلوبة.";
+    }
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        totalRequests: {
+          count: totalRequests,
+          growthPercentage:
+            growthPercentage >= 0
+              ? `+${growthPercentage}%`
+              : `${growthPercentage}%`,
+        },
+        activeBookings: {
+          count: activeBookingsCount,
+          statusLabel:
+            activeBookingsCount > 0
+              ? lang === "en"
+                ? "Active"
+                : "نشط"
+              : lang === "en"
+                ? "Inactive"
+                : "غير نشط",
+        },
+        upcomingVisits: {
+          count: upcomingVisitsCount,
+          nextVisitLabel,
+        },
+        averageRating: {
+          rating,
+          stars: Math.round(rating),
+        },
+        profileCompletion: {
+          percentage: completion,
+          message: completionMessage,
+          missingFields,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching companion dashboard stats:", error);
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   getCompanionSchedule,
   updateCompanionProfile,
@@ -346,5 +639,6 @@ module.exports = {
   getVerifiedCompanions,
   getCompanionById,
   getMyCompanionProfile,
-  updateMyLocation
+  updateMyLocation,
+  getCompanionDashboardStats,
 };
