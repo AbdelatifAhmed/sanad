@@ -1,11 +1,10 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { LogOut, Search, Clock, Home, User } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { logoutUser } from "@/lib/API";
 import { useAuthStore } from "@/store/authStore";
+import { Clock, Home, LogOut, Search, User } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function FamilyDashboard() {
   const router = useRouter();
