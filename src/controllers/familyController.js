@@ -328,19 +328,6 @@ exports.getFamilyDashboardStats = async (req, res) => {
       };
     });
 
-    // 4. Fallback Vitals and Medication Summary
-    const careSummary = {
-      vitals: {
-        bp: "120/80",
-        pulse: "72 bpm",
-        recordedBy: "Fatima",
-        recordedAt: "yesterday"
-      },
-      medicationNote: {
-        text: "Prescription refill needed by Friday for Lisinopril."
-      }
-    };
-
     return res.status(200).json({
       status: "success",
       data: {
@@ -356,7 +343,6 @@ exports.getFamilyDashboardStats = async (req, res) => {
           nextVisitLabel,
         },
         currentCaregivers,
-        careSummary,
       },
     });
   } catch (error) {
