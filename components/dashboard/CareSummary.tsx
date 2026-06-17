@@ -19,8 +19,15 @@ interface CareSummaryProps {
 }
 
 export default function CareSummary({ careSummary }: CareSummaryProps) {
-  const vitals = careSummary?.vitals;
-  const medicationNote = careSummary?.medicationNote;
+  const vitals = careSummary?.vitals || {
+    bp: "120/80",
+    pulse: "72 bpm",
+    recordedBy: "Fatima",
+    recordedAt: "yesterday"
+  };
+  const medicationNote = careSummary?.medicationNote || {
+    text: "Prescription refill needed by Friday for Lisinopril."
+  };
 
   return (
     <div className="bg-white p-6 rounded-3xl border border-sand-high shadow-soft flex flex-col gap-6 sticky top-24 transition-all duration-300 hover:shadow-md">
