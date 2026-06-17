@@ -250,7 +250,9 @@ const getCompanionById = async (req, res) => {
       });
     }
 
-    const companion = await Companion.findById(id).populate('userId', 'name email phone');
+    const companion = await Companion.findById(id)
+      .populate('userId', 'name email phone avatar location')
+      .populate('skills', 'nameAr nameEn category');
 
     if (!companion) {
       return res.status(404).json({
