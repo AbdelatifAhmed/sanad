@@ -353,3 +353,46 @@ exports.getFamilyDashboardStats = async (req, res) => {
     });
   }
 };
+
+exports.getFamilyProfile = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'family') {
+      return res.status(403).json({ status: 'fail', message: 'Access denied.' });
+    }
+    const familyProfile = await Family.findOne({ familyId: req.user._id });
+    if (!familyProfile) {
+      return res.status(200).json({ status: 'success', data: { profile: null, beneficiaries: [] } });
+    }
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        profile: familyProfile,
+        beneficiaries: familyProfile.beneficiaries || [],
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching family profile:', error);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+exports.getFamilyJobPosts = async (req, res) => {
+  try {
+    const JobPost = require('../models/jobPost.schema');
+    if (!req.user || req.user.role !== 'family') {
+      return res.status(403).json({ status: 'fail', message: 'Access denied.' });
+    }
+    const jobs = await JobPost.find({ familyId: req.user._id })
+      .populate('requiredSkills', 'nameAr nameEn')
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      status: 'success',
+      results: jobs.length,
+      data: { jobPosts: jobs },
+    });
+  } catch (error) {
+    console.error('Error fetching family job posts:', error);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
