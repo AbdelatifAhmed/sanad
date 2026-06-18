@@ -51,7 +51,6 @@ const companionDebtSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-companionDebtSchema.index({ companionId: 1 });
 companionDebtSchema.index({ totalDebt: 1 });
 companionDebtSchema.index({ status: 1 });
 
