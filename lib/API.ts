@@ -1,3 +1,17 @@
+import type {
+  ApiResponse,
+  LoginResponse,
+  Booking,
+  CompanionProfile,
+  JobPost,
+  Proposal,
+  NotificationItem,
+  PaymentRecord,
+  CreateBookingPayload,
+  SendProposalBody,
+  UpdateProposalStatusBody,
+  PayBookingBody,
+} from "@/types";
 import { api } from "./services/api";
 
 // --- AUTH ROUTER (/auth) ---
@@ -6,18 +20,18 @@ export const registerUser = async (data: any) => {
   return res.data;
 };
 
-export const loginUser = async (data: any) => {
-  const res = await api.post("/auth/login", data);
-  return res.data;
+export const loginUser = async (data: any): Promise<LoginResponse> => {
+  const res = await api.post<ApiResponse<LoginResponse>>("/auth/login", data);
+  return res.data.data as LoginResponse;
 };
 
-export const refreshUserToken = async () => {
-  const res = await api.post("/auth/refresh-token");
-  return res.data;
+export const refreshUserToken = async (): Promise<LoginResponse> => {
+  const res = await api.post<ApiResponse<LoginResponse>>("/auth/refresh-token");
+  return res.data.data as LoginResponse;
 };
 
-export const logoutUser = async () => {
-  const res = await api.post("/auth/logout");
+export const logoutUser = async (): Promise<ApiResponse<null>> => {
+  const res = await api.post<ApiResponse<null>>("/auth/logout");
   return res.data;
 };
 
@@ -43,45 +57,45 @@ export const clearAIChatSession = async () => {
 };
 
 // --- BOOKINGS ROUTER (/bookings) ---
-export const createBooking = async (data: any) => {
-  const res = await api.post("/bookings", data);
-  return res.data.data;
+export const createBooking = async (data: CreateBookingPayload): Promise<Booking> => {
+  const res = await api.post<ApiResponse<Booking>>("/bookings", data);
+  return res.data.data as Booking;
 };
 
-export const getCompanionRequests = async () => {
-  const res = await api.get("/bookings/companion/requests");
-  return res.data.data;
+export const getCompanionRequests = async (): Promise<Booking[]> => {
+  const res = await api.get<ApiResponse<Booking[]>>("/bookings/companion/requests");
+  return res.data.data as Booking[];
 };
 
-export const respondToBooking = async (id: string, data: any) => {
-  const res = await api.put(`/bookings/${id}/respond`, data);
-  return res.data.data;
+export const respondToBooking = async (id: string, data: any): Promise<Booking> => {
+  const res = await api.put<ApiResponse<Booking>>(`/bookings/${id}/respond`, data);
+  return res.data.data as Booking;
 };
 
-export const updateBookingStatus = async (id: string, data: any) => {
-  const res = await api.put(`/bookings/${id}/status`, data);
-  return res.data.data;
+export const updateBookingStatus = async (id: string, data: any): Promise<Booking> => {
+  const res = await api.put<ApiResponse<Booking>>(`/bookings/${id}/status`, data);
+  return res.data.data as Booking;
 };
 
-export const bookingCheckIn = async (id: string, data: any) => {
-  const res = await api.post(`/bookings/${id}/check-in`, data);
-  return res.data.data;
+export const bookingCheckIn = async (id: string, data: any): Promise<Booking> => {
+  const res = await api.post<ApiResponse<Booking>>(`/bookings/${id}/check-in`, data);
+  return res.data.data as Booking;
 };
 
-export const bookingCheckOut = async (id: string, data: any) => {
-  const res = await api.post(`/bookings/${id}/check-out`, data);
-  return res.data.data;
+export const bookingCheckOut = async (id: string, data: any): Promise<Booking> => {
+  const res = await api.post<ApiResponse<Booking>>(`/bookings/${id}/check-out`, data);
+  return res.data.data as Booking;
 };
 
 // --- COMPANION ROUTER (/companion) ---
-export const getVerifiedCompanions = async (params?: any) => {
-  const res = await api.get("/companion", { params });
-  return res.data.data;
+export const getVerifiedCompanions = async (params?: any): Promise<CompanionProfile[]> => {
+  const res = await api.get<ApiResponse<CompanionProfile[]>>("/companion", { params });
+  return res.data.data as CompanionProfile[];
 };
 
-export const getCompanionById = async (id: string) => {
-  const res = await api.get(`/companion/${id}`);
-  return res.data.data;
+export const getCompanionById = async (id: string): Promise<CompanionProfile> => {
+  const res = await api.get<ApiResponse<CompanionProfile>>(`/companion/${id}`);
+  return res.data.data as CompanionProfile;
 };
 
 export const updateCompanionProfile = async (data: any) => {
@@ -104,9 +118,9 @@ export const getMyCompanionProfile = async (config?: any) => {
   return res.data.data;
 };
 
-export const getCompanionBookings = async () => {
-  const res = await api.get("/companion/me/bookings");
-  return res.data.data;
+export const getCompanionBookings = async (): Promise<Booking[]> => {
+  const res = await api.get<ApiResponse<Booking[]>>("/companion/me/bookings");
+  return res.data.data as Booking[];
 };
 
 export const getCompanionDashboardStats = async (config?: any) => {
@@ -120,9 +134,9 @@ export const updateFamilyProfile = async (data: any) => {
   return res.data.data;
 };
 
-export const getFamilyBookings = async () => {
-  const res = await api.get("/family/bookings");
-  return res.data.data;
+export const getFamilyBookings = async (): Promise<Booking[]> => {
+  const res = await api.get<ApiResponse<Booking[]>>("/family/bookings");
+  return res.data.data as Booking[];
 };
 
 export const getFamilyDashboardStats = async (config?: any) => {
@@ -158,36 +172,39 @@ export const createJobPost = async (data: any) => {
   return res.data.data;
 };
 
-export const getJobPostsForCompanions = async () => {
-  const res = await api.get("/job-posts");
-  return res.data.data;
+export const getJobPostsForCompanions = async (): Promise<JobPost[]> => {
+  const res = await api.get<ApiResponse<JobPost[]>>("/job-posts");
+  return res.data.data as JobPost[];
 };
 
 // --- PROPOSALS ROUTER (/proposals) ---
-export const sendProposal = async (data: any) => {
-  const res = await api.post("/proposals", data);
-  return res.data.data;
+export const sendProposal = async (data: SendProposalBody): Promise<Proposal> => {
+  const res = await api.post<ApiResponse<Proposal>>("/proposals", data);
+  return res.data.data as Proposal;
 };
 
-export const updateProposalStatus = async (proposalId: string, data: any) => {
-  const res = await api.patch(`/proposals/${proposalId}/status`, data);
-  return res.data.data;
+export const updateProposalStatus = async (
+  proposalId: string,
+  data: UpdateProposalStatusBody,
+): Promise<Proposal> => {
+  const res = await api.patch<ApiResponse<Proposal>>(`/proposals/${proposalId}/status`, data);
+  return res.data.data as Proposal;
 };
 
-export const getProposalsForJob = async (jobId: string) => {
-  const res = await api.get(`/proposals/job/${jobId}`);
-  return res.data.data;
+export const getProposalsForJob = async (jobId: string): Promise<Proposal[]> => {
+  const res = await api.get<ApiResponse<Proposal[]>>(`/proposals/job/${jobId}`);
+  return res.data.data as Proposal[];
 };
 
 // --- PAYMENTS ROUTER (/payments) ---
-export const payBooking = async (id: string, data: any) => {
-  const res = await api.post(`/payments/${id}/pay`, data);
-  return res.data.data;
+export const payBooking = async (id: string, data: PayBookingBody): Promise<PaymentRecord> => {
+  const res = await api.post<ApiResponse<PaymentRecord>>(`/payments/${id}/pay`, data);
+  return res.data.data as PaymentRecord;
 };
 
-export const getMyPayments = async () => {
-  const res = await api.get("/payments/me");
-  return res.data.data;
+export const getMyPayments = async (): Promise<PaymentRecord[]> => {
+  const res = await api.get<ApiResponse<PaymentRecord[]>>("/payments/me");
+  return res.data.data as PaymentRecord[];
 };
 
 export const getAdminPayments = async () => {
@@ -217,9 +234,9 @@ export const deleteReview = async (id: string) => {
 };
 
 // --- NOTIFICATIONS ROUTER (/notifications) ---
-export const getUserNotifications = async () => {
-  const res = await api.get("/notifications");
-  return res.data.data;
+export const getUserNotifications = async (): Promise<NotificationItem[]> => {
+  const res = await api.get<ApiResponse<NotificationItem[]>>("/notifications");
+  return res.data.data as NotificationItem[];
 };
 
 export const markAllNotificationsAsRead = async () => {

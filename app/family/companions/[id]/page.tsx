@@ -145,7 +145,7 @@ export default async function CompanionProfilePage({ params }: PageProps) {
       <div className="max-w-xl mx-auto my-12 bg-red-50 border border-red-200 text-red-700 p-8 rounded-3xl text-center space-y-4 shadow-soft">
         <h3 className="text-lg font-bold">Error Loading Caregiver Profile</h3>
         <p className="text-sm text-red-600">
-          We couldn't retrieve this caregiver's profile. Please verify the ID or make sure you are logged in.
+          We couldn&apos;t retrieve this caregiver&apos;s profile. Please verify the ID or make sure you are logged in.
         </p>
         <a 
           href={`/family/companions/${id}`}
