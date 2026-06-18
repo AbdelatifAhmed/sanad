@@ -281,3 +281,20 @@ export const adminToggleBanUser = async (id: string, data?: any) => {
   const res = await api.put(`/admin/users/${id}/toggle-ban`, data);
   return res.data.data;
 };
+
+// --- CARE REQUESTS (mapped to /job-posts) ---
+export const createCareRequest = async (data: any) => {
+  const res = await api.post("/job-posts", data);
+  return res.data.data;
+};
+
+export const getFamilyCareRequests = async () => {
+  const res = await api.get("/family/my-job-posts");
+  return res.data.data;
+};
+
+// --- FAMILY PROFILE & BENEFICIARIES ---
+export const getFamilyElderlyProfiles = async () => {
+  const res = await api.get("/family/profile");
+  return res.data.data;
+};

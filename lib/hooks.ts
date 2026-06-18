@@ -52,6 +52,9 @@ import {
   adminGetAllReviews,
   adminGetAllUsers,
   adminToggleBanUser,
+  createCareRequest,
+  getFamilyCareRequests,
+  getFamilyElderlyProfiles,
 } from "./API";
 
 // ==========================================
@@ -1212,6 +1215,79 @@ export const useAdminToggleBanUser = () => {
       setIsLoading(true);
       setError(null);
       const res = await adminToggleBanUser(id, data);
+      return res;
+    } catch (err: any) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { execute, isLoading, error };
+};
+
+// ==========================================
+//          CARE REQUEST HOOKS
+// ==========================================
+
+export const useFamilyElderlyProfiles = () => {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
+
+  const fetch = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await getFamilyElderlyProfiles();
+      setData(res);
+    } catch (err: any) {
+      setError(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { data, isLoading, error, refetch: fetch };
+};
+
+export const useFamilyCareRequests = () => {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
+
+  const fetch = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await getFamilyCareRequests();
+      setData(res);
+    } catch (err: any) {
+      setError(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { data, isLoading, error, refetch: fetch };
+};
+
+export const useCreateCareRequest = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<any>(null);
+
+  const execute = async (data: any) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const res = await createCareRequest(data);
       return res;
     } catch (err: any) {
       setError(err);
