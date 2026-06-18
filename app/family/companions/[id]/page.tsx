@@ -1,11 +1,10 @@
-import React from "react";
-import { serverFetch } from "@/lib/serverAuth";
-import CompanionHeader from "@/components/companion/CompanionHeader";
 import CompanionAbout from "@/components/companion/CompanionAbout";
-import CompanionSkills from "@/components/companion/CompanionSkills";
-import CompanionCertifications from "@/components/companion/CompanionCertifications";
 import CompanionBookingCard from "@/components/companion/CompanionBookingCard";
+import CompanionCertifications from "@/components/companion/CompanionCertifications";
 import CompanionGuarantee from "@/components/companion/CompanionGuarantee";
+import CompanionHeader from "@/components/companion/CompanionHeader";
+import CompanionSkills from "@/components/companion/CompanionSkills";
+import { serverFetch } from "@/lib/serverAuth";
 
 interface PageProps {
   params: Promise<{ id: string }>;

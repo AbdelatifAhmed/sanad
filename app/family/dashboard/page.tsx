@@ -11,48 +11,21 @@ async function getStats() {
 }
 
 export default async function FamilyDashboard() {
+  let stats = null;
+  let loadError = false;
+
   try {
-    const stats = await getStats();
-    const userName = stats?.user?.name ? stats.user.name.split(" ")[0] : "Sarah";
-    const userAvatar = stats?.user?.avatar || "/avatar_1.jpg";
-
-    return (
-      <div className="max-w-6xl w-full mx-auto space-y-8 pb-12 animate-fade-in select-none">
-        
-        {/* Welcome Header */}
-        <WelcomeHeader userName={userName} userAvatar={userAvatar} />
-
-        {/* CTA Action Buttons Grid */}
-        <QuickActions />
-
-        {/* Main Content Grid: Overview & Caregivers on Left, Care Summary on Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Left Side (col-span-2) */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Overview Section */}
-            <OverviewSection 
-              activeRequestsCount={stats?.activeRequests?.count ?? 0}
-              upcomingVisitsCount={stats?.upcomingVisits?.count ?? 0}
-              nextVisitLabel={stats?.upcomingVisits?.nextVisitLabel ?? "No upcoming visits"}
-            />
-
-            {/* Current Caregivers Section */}
-            <CurrentCaregivers caregivers={stats?.currentCaregivers ?? []} />
-          </div>
-
-          {/* Right Side - Care Summary Sidebar (col-span-1) */}
-          <div className="lg:col-span-1">
-            <CareSummary careSummary={stats?.careSummary} />
-          </div>
-        </div>
-      </div>
-    );
-  } catch (err: any) {
-    if (err.digest === "DYNAMIC_SERVER_USAGE" || err.message?.includes("Dynamic server usage")) {
+    stats = await getStats();
+  } catch (err: unknown) {
+    const error = err as { digest?: string; message?: string };
+    if (error.digest === "DYNAMIC_SERVER_USAGE" || error.message?.includes("Dynamic server usage")) {
       throw err;
     }
     console.error("Error loading family dashboard:", err);
+    loadError = true;
+  }
+
+  if (loadError) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-3xl text-center">
         <p className="font-semibold">Failed to load dashboard data. Please make sure you are logged in.</p>
@@ -65,4 +38,40 @@ export default async function FamilyDashboard() {
       </div>
     );
   }
+
+  const userName = stats?.user?.name ? stats.user.name.split(" ")[0] : "Sarah";
+  const userAvatar = stats?.user?.avatar || "/avatar_1.jpg";
+
+  return (
+    <div className="max-w-6xl w-full mx-auto space-y-8 pb-12 animate-fade-in select-none">
+      
+      {/* Welcome Header */}
+      <WelcomeHeader userName={userName} userAvatar={userAvatar} />
+
+      {/* CTA Action Buttons Grid */}
+      <QuickActions />
+
+      {/* Main Content Grid: Overview & Caregivers on Left, Care Summary on Right */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left Side (col-span-2) */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* Overview Section */}
+          <OverviewSection 
+            activeRequestsCount={stats?.activeRequests?.count ?? 0}
+            upcomingVisitsCount={stats?.upcomingVisits?.count ?? 0}
+            nextVisitLabel={stats?.upcomingVisits?.nextVisitLabel ?? "No upcoming visits"}
+          />
+
+          {/* Current Caregivers Section */}
+          <CurrentCaregivers caregivers={stats?.currentCaregivers ?? []} />
+        </div>
+
+        {/* Right Side - Care Summary Sidebar (col-span-1) */}
+        <div className="lg:col-span-1">
+          <CareSummary careSummary={stats?.careSummary} />
+        </div>
+      </div>
+    </div>
+  );
 }
