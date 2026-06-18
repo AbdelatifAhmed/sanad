@@ -149,6 +149,21 @@ const createBooking = async (req, res) => {
     });
 
     const savedBooking = await newBooking.save();
+    // Notify companion about new direct booking request
+    try {
+      await sendNotification(
+        companionId,
+        familyId,
+        lang === 'en' ? 'New Booking Request' : 'طلب حجز جديد',
+        lang === 'en'
+          ? `You have a new booking request from ${familyProfile.name || 'a family'}.` 
+          : `لديك طلب حجز جديد من العائلة.`,
+        'booking',
+        req.io
+      );
+    } catch (err) {
+      console.error('Failed to send booking notification:', err.message);
+    }
     return res.status(201).json({
       message: messages.booking.successCreated[lang],
       booking: savedBooking
@@ -238,6 +253,23 @@ const updateBookingStatus = async (req, res) => {
 
     booking.status = status;
     const updatedBooking = await booking.save();
+
+    // Notify relevant parties about status update
+    try {
+      const otherParty = req.user.role === 'family' ? updatedBooking.companionId : updatedBooking.familyId;
+      await sendNotification(
+        otherParty,
+        req.user._id,
+        lang === 'en' ? 'Booking Status Updated' : 'تم تحديث حالة الحجز',
+        lang === 'en'
+          ? `Booking ${updatedBooking._id} status changed to ${status}.`
+          : `تم تغيير حالة الحجز إلى ${status}.`,
+        'booking',
+        req.io
+      );
+    } catch (err) {
+      console.error('Failed to send booking status notification:', err.message);
+    }
 
     // If booking completed and payment was already made, release payout to companion
     try {

@@ -347,8 +347,7 @@ const messages = {
     paymentDetailsRetrieved: {
       en: "Payment transaction details retrieved successfully.",
       ar: "تم جلب تفاصيل المعاملة المالية بنجاح."
-    }
-    ,
+    },
     paymentNotFound: {
       en: "Payment record not found for this booking.",
       ar: "لم يتم العثور على سجل دفع لهذا الحجز."
@@ -364,6 +363,38 @@ const messages = {
     payoutReleased: {
       en: "Payout released to companion successfully.",
       ar: "تم صرف المبلغ للمرافق بنجاح."
+    },
+    bookingNotInPaymentState: {
+      en: "Booking is not in payment state. Must be pending_payment.",
+      ar: "الحجز ليس في حالة الدفع. يجب أن يكون في حالة انتظار الدفع."
+    },
+    paymentInitiated: {
+      en: "Payment initiated. Please complete payment at the gateway.",
+      ar: "تم بدء عملية الدفع. يرجى إكمال الدفع على بوابة الدفع."
+    },
+    paymentConfirmed: {
+      en: "Payment confirmed successfully. Booking is now active.",
+      ar: "تم تأكيد الدفع بنجاح. الحجز الآن نشط."
+    },
+    paymentFailed: {
+      en: "Payment failed. Please try again.",
+      ar: "فشل الدفع. يرجى المحاولة مجددا."
+    },
+    invalidWebhook: {
+      en: "Invalid webhook data.",
+      ar: "بيانات webhook غير صحيحة."
+    },
+    refundNotEligible: {
+      en: "This booking is not eligible for refund.",
+      ar: "هذا الحجز غير مؤهل للاسترجاع."
+    },
+    refundTooLate: {
+      en: "Refund window has closed. Service has already started.",
+      ar: "انتهت فترة الاسترجاع. بدأت الخدمة بالفعل."
+    },
+    refundSuccess: {
+      en: "Refund processed successfully.",
+      ar: "تم معالجة الاسترجاع بنجاح."
     }
   },
   admin: {

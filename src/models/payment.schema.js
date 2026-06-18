@@ -37,10 +37,13 @@ const paymentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "paid", "refunded", "failed"],
+      enum: ["pending", "paid", "refunded", "failed", "abandoned"],
       default: "pending",
     },
     transactionId: {
+      type: String,
+    },
+    webhookId: {
       type: String,
     },
     // payout fields
@@ -53,6 +56,26 @@ const paymentSchema = new mongoose.Schema(
     },
     payoutDate: {
       type: Date,
+    },
+    // refund fields
+    refundStatus: {
+      type: String,
+      enum: ["none", "pending", "completed", "failed"],
+      default: "none",
+    },
+    refundTransactionId: {
+      type: String,
+    },
+    refundDate: {
+      type: Date,
+    },
+    refundReason: {
+      type: String,
+    },
+    // cash payment debt tracking
+    debtRecorded: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

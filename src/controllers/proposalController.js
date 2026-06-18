@@ -4,6 +4,7 @@ const Booking = require("../models/booking.schema");
 const Companion = require("../models/companion.schema");
 const { hasBookingConflict } = require("../utils/checkConflict"); 
 const messages = require("../utils/messages"); 
+const { sendNotification } = require('../services/notificationService');
 const sendProposal = async (req, res) => {
  try {
     const lang = req.lang || "en";
@@ -49,6 +50,22 @@ const sendProposal = async (req, res) => {
       proposedRate,
       coverLetter,
     });
+
+    // Notify job owner (family) about new proposal
+    try {
+      await sendNotification(
+        jobPost.familyId,
+        req.user._id,
+        lang === 'en' ? 'New Proposal Submitted' : 'تم تقديم عرض جديد',
+        lang === 'en'
+          ? `A companion has submitted a proposal for your job post: ${jobPost.title}`
+          : `لقد تم تقديم عرض على طلب العمل الخاص بك: ${jobPost.title}`,
+        'proposal',
+        req.io
+      );
+    } catch (err) {
+      console.error('Failed to send proposal notification:', err.message);
+    }
 
     return res.status(201).json({
       status: "success",
@@ -191,6 +208,21 @@ const updateProposalStatus = async (req, res) => {
     if (status === "rejected") {
       proposal.status = "rejected";
       await proposal.save();
+      // Notify companion about rejection
+      try {
+        await sendNotification(
+          proposal.companionId,
+          req.user._id,
+          lang === 'en' ? 'Proposal Rejected' : 'تم رفض العرض',
+          lang === 'en'
+            ? `Your proposal for job ${jobPost.title} has been rejected.`
+            : `تم رفض عرضك على طلب العمل ${jobPost.title}.`,
+          'proposal',
+          req.io
+        );
+      } catch (err) {
+        console.error('Failed to notify proposal rejection:', err.message);
+      }
       return res.status(200).json({ status: "success", message: messages.proposal.proposalRejected[lang] });
     }
 
@@ -236,10 +268,49 @@ const updateProposalStatus = async (req, res) => {
       jobPost.status = "filled";
       await jobPost.save();
 
+      // Reject all other pending proposals and notify those companions
       await Proposal.updateMany(
         { jobPostId: jobPost._id, _id: { $ne: proposal._id }, status: "pending" },
         { status: "rejected" }
       );
+
+      try {
+        const rejected = await Proposal.find({ jobPostId: jobPost._id, status: 'rejected' }).lean();
+        for (const p of rejected) {
+          try {
+            await sendNotification(
+              p.companionId,
+              req.user._id,
+              lang === 'en' ? 'Proposal Rejected' : 'تم رفض العرض',
+              lang === 'en'
+                ? `Your proposal for job ${jobPost.title} was not selected.`
+                : `عرضك على طلب العمل ${jobPost.title} لم يتم اختياره.`,
+              'proposal',
+              req.io
+            );
+          } catch (err) {
+            console.error('Failed to notify rejected proposal companion:', err.message);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to process rejected proposals notifications:', err.message);
+      }
+
+      // Notify accepted companion about acceptance and new booking
+      try {
+        await sendNotification(
+          proposal.companionId,
+          req.user._id,
+          lang === 'en' ? 'Proposal Accepted' : 'تم قبول العرض',
+          lang === 'en'
+            ? `Your proposal for job ${jobPost.title} has been accepted. A booking was created.`
+            : `تم قبول عرضك على طلب العمل ${jobPost.title} وتم إنشاء حجز.`,
+          'proposal',
+          req.io
+        );
+      } catch (err) {
+        console.error('Failed to notify accepted companion:', err.message);
+      }
 
       return res.status(200).json({
         status: "success",

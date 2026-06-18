@@ -1,6 +1,7 @@
 const JobPost = require("../models/jobPost.schema");
 const Family = require("../models/family.schema");
 const messages = require("../utils/messages");
+const { sendNotification } = require('../services/notificationService');
 
 // شكل الداتا المرسلة من الفرونت اند
 // {
@@ -99,6 +100,22 @@ const createJobPost = async (req, res) => {
         governorate: location.governorate
       }
     });
+
+    // Notify family (creator) that job post was created
+    try {
+      await sendNotification(
+        req.user._id,
+        req.user._id,
+        lang === 'en' ? 'Job Post Created' : 'تم إنشاء طلب العمل',
+        lang === 'en'
+          ? `Your job post "${title}" has been created and is now open for proposals.`
+          : `تم إنشاء طلب العمل "${title}" وهو الآن متاح لتلقي العروض.`,
+        'jobpost',
+        req.io
+      );
+    } catch (err) {
+      console.error('Failed to send job post creation notification:', err.message);
+    }
 
     return res.status(201).json({
       status: "success",
