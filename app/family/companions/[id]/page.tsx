@@ -26,7 +26,7 @@ export default async function CompanionProfilePage({ params }: PageProps) {
       throw new Error("Companion not found");
     }
 
-    // Dynamic mapping from database schema to page/components format
+    // Dynamic mapping from database schema , to page/components format
     const name = companion.userId?.name || "Caregiver";
     const avatar = companion.userId?.avatar || "/avatar_3.jpg";
     const verified = companion.verificationStatus === "verified";
@@ -66,7 +66,7 @@ export default async function CompanionProfilePage({ params }: PageProps) {
 
     // Extract clinical skills names
     const skillsList = companion.skills && companion.skills.length > 0
-      ? companion.skills.map((s: any) => s.nameEn || s.nameAr)
+      ? companion.skills.map((s: { nameEn?: string; nameAr?: string }) => s.nameEn || s.nameAr)
       : ["General Caregiving"];
 
     // Languages and transportation fallbacks (as they aren't explicitly fields in Mongoose schema yet)

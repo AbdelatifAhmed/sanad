@@ -1,0 +1,50 @@
+{
+  "app": {
+    "name": "رعاية سند",
+    "familyDashboard": "لوحة العائلة",
+    "careDashboard": "لوحة المرافق"
+  },
+  "nav": {
+    "dashboard": "الرئيسية",
+    "browse": "تصفح",
+    "myPosts": "طلباتي",
+    "requests": "الطلبات",
+    "bookings": "الحجوزات",
+    "calendar": "التقويم",
+    "messages": "الرسائل",
+    "wallet": "المحفظة",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "logout": "تسجيل الخروج",
+    "account": "الحساب",
+    "userAccount": "حساب المستخدم"
+  },
+  "settings": {
+    "familyTitle": "إعدادات العائلة",
+    "companionTitle": "إعدادات المرافق",
+    "familySubtitle": "تحكم في تفضيلات مساحة العائلة واللغة ومظهر التطبيق.",
+    "companionSubtitle": "اضبط تفضيلات مساحة المرافق واللغة ومظهر التطبيق.",
+    "preferences": "التفضيلات",
+    "preferencesDescription": "يتم حفظ هذه الإعدادات على هذا الجهاز واستخدامها عند عرض التطبيق من الخادم.",
+    "theme": "المظهر",
+    "themeDescription": "اختر نمط الواجهة الأنسب لسير عمل الرعاية.",
+    "light": "فاتح",
+    "dark": "داكن",
+    "system": "النظام",
+    "language": "اللغة",
+    "languageDescription": "بدل بين الإنجليزية والعربية في التطبيق.",
+    "english": "الإنجليزية",
+    "arabic": "العربية",
+    "account": "الحساب",
+    "accountDescription": "حافظ على تحديث بيانات التواصل وملف الرعاية.",
+    "security": "الأمان",
+    "securityDescription": "راجع جلسات الدخول وتفضيلات حماية الحساب.",
+    "notifications": "الإشعارات",
+    "notificationsDescription": "تحكم في تنبيهات الحجوزات والرسائل وجدول الرعاية.",
+    "comingSoon": "قريبا",
+    "currentRole": "مساحة العمل",
+    "familyRole": "العائلة",
+    "companionRole": "المرافق",
+    "saved": "تم الحفظ"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "app": {
+    "name": "Dignified Care",
+    "familyDashboard": "Family Dashboard",
+    "careDashboard": "Care Dashboard"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "browse": "Browse",
+    "myPosts": "My Posts",
+    "requests": "Requests",
+    "bookings": "Bookings",
+    "calendar": "Calendar",
+    "messages": "Messages",
+    "wallet": "Wallet",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Logout",
+    "account": "Account",
+    "userAccount": "User Account"
+  },
+  "settings": {
+    "familyTitle": "Family settings",
+    "companionTitle": "Companion settings",
+    "familySubtitle": "Manage your family workspace preferences, account language, and visual theme.",
+    "companionSubtitle": "Tune your companion workspace preferences, account language, and visual theme.",
+    "preferences": "Preferences",
+    "preferencesDescription": "These settings are saved on this device and used when the app renders on the server.",
+    "theme": "Theme",
+    "themeDescription": "Choose the interface style that feels comfortable for your care workflow.",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "language": "Language",
+    "languageDescription": "Switch between English and Arabic across the app.",
+    "english": "English",
+    "arabic": "Arabic",
+    "account": "Account",
+    "accountDescription": "Keep your contact and care profile details up to date.",
+    "security": "Security",
+    "securityDescription": "Review your login sessions and account protection preferences.",
+    "notifications": "Notifications",
+    "notificationsDescription": "Control booking, message, and care schedule alerts.",
+    "comingSoon": "Coming soon",
+    "currentRole": "Workspace",
+    "familyRole": "Family",
+    "companionRole": "Companion",
+    "saved": "Saved"
+  }
+}

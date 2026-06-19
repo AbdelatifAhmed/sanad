@@ -89,7 +89,8 @@ export default function CompanionRequests() {
           combinedText.includes("critical") || 
           combinedText.includes("emergency");
           
-        const dateObj = b.schedule?.[0]?.date ? new Date(b.schedule[0].date) : new Date();
+        const scheduleItem = (b.schedule as Array<{ date?: string | Date }> | undefined)?.[0];
+        const dateObj = scheduleItem?.date ? new Date(scheduleItem.date) : new Date();
         const formattedDate = dateObj.toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -97,7 +98,8 @@ export default function CompanionRequests() {
         });
 
         // Use backend's user city or compute simulated distance
-        const distance = b.familyId?.location?.city ? (Math.random() * 8 + 2).toFixed(1) : "4.5";
+        const familyLocation = (b.familyId as { location?: { city?: string } })?.location;
+        const distance = familyLocation?.city ? (Math.random() * 8 + 2).toFixed(1) : "4.5";
 
         return {
           id: b._id,
@@ -123,7 +125,7 @@ export default function CompanionRequests() {
   }, []);
 
   useEffect(() => {
-    fetchRequests();
+    void fetchRequests();
   }, [fetchRequests]);
 
   // Auto-close toast
