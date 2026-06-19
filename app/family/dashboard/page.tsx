@@ -4,7 +4,6 @@ import WelcomeHeader from "@/components/dashboard/WelcomeHeader";
 import QuickActions from "@/components/dashboard/QuickActions";
 import OverviewSection from "@/components/dashboard/OverviewSection";
 import CurrentCaregivers from "@/components/dashboard/CurrentCaregivers";
-import CareSummary from "@/components/dashboard/CareSummary";
 
 async function getStats() {
   return serverFetch("/family/me/dashboard-stats");
@@ -51,27 +50,15 @@ export default async function FamilyDashboard() {
       {/* CTA Action Buttons Grid */}
       <QuickActions />
 
-      {/* Main Content Grid: Overview & Caregivers on Left, Care Summary on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left Side (col-span-2) */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Overview Section */}
-          <OverviewSection 
-            activeRequestsCount={stats?.activeRequests?.count ?? 0}
-            upcomingVisitsCount={stats?.upcomingVisits?.count ?? 0}
-            nextVisitLabel={stats?.upcomingVisits?.nextVisitLabel ?? "No upcoming visits"}
-          />
+      {/* Overview Section */}
+      <OverviewSection 
+        activeRequestsCount={stats?.activeRequests?.count ?? 0}
+        upcomingVisitsCount={stats?.upcomingVisits?.count ?? 0}
+        nextVisitLabel={stats?.upcomingVisits?.nextVisitLabel ?? "No upcoming visits"}
+      />
 
-          {/* Current Caregivers Section */}
-          <CurrentCaregivers caregivers={stats?.currentCaregivers ?? []} />
-        </div>
-
-        {/* Right Side - Care Summary Sidebar (col-span-1) */}
-        <div className="lg:col-span-1">
-          <CareSummary careSummary={stats?.careSummary} />
-        </div>
-      </div>
+      {/* Current Caregivers Section */}
+      <CurrentCaregivers caregivers={stats?.currentCaregivers ?? []} />
     </div>
   );
 }

@@ -31,6 +31,9 @@ export default function OverviewSection({
             <span className="text-xs font-semibold text-gray-500 mt-1 block tracking-wide">
               Active Requests
             </span>
+            <span className="text-[10px] text-gray-400 font-medium mt-0.5 block">
+              Total ongoing contracts & pending requests
+            </span>
           </div>
         </div>
 
@@ -53,6 +56,9 @@ export default function OverviewSection({
             </span>
             <span className="text-xs font-semibold text-gray-500 mt-1 block tracking-wide">
               Upcoming Visits
+            </span>
+            <span className="text-[10px] text-gray-400 font-medium mt-0.5 block">
+              Individual scheduled sessions/shifts
             </span>
           </div>
         </div>

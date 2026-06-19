@@ -1,9 +1,10 @@
 import CompanionAbout from "@/components/companion/CompanionAbout";
 import CompanionBookingCard from "@/components/companion/CompanionBookingCard";
 import CompanionCertifications from "@/components/companion/CompanionCertifications";
-import CompanionGuarantee from "@/components/companion/CompanionGuarantee";
 import CompanionHeader from "@/components/companion/CompanionHeader";
 import CompanionSkills from "@/components/companion/CompanionSkills";
+import CompanionHobbies from "@/components/companion/CompanionHobbies";
+import CompanionAvailability from "@/components/companion/CompanionAvailability";
 import { serverFetch } from "@/lib/serverAuth";
 
 interface PageProps {
@@ -69,71 +70,49 @@ export default async function CompanionProfilePage({ params }: PageProps) {
       ? companion.skills.map((s: { nameEn?: string; nameAr?: string }) => s.nameEn || s.nameAr)
       : ["General Caregiving"];
 
-    // Languages and transportation fallbacks (as they aren't explicitly fields in Mongoose schema yet)
-    const languages = "Arabic (Native), English (Fluent)";
-    const transportation = "Has own vehicle";
-
-    // Map certifications dynamically based on clinical specialization
-    const getCertifications = (specialization: string) => {
-      if (specialization === "nursing") {
-        return [
-          { title: "Advanced First Aid & CPR", issuer: "Red Crescent Society, 2023" },
-          { title: "Dementia Care Specialist", issuer: "Alzheimer's Association, 2021" }
-        ];
-      }
-      if (specialization === "physiotherapy") {
-        return [
-          { title: "Licensed Physiotherapist", issuer: "Dubai Health Authority, 2022" },
-          { title: "Sports Rehabilitation Cert.", issuer: "AHA, 2023" }
-        ];
-      }
-      return [
-        { title: "First Aid & CPR Certification", issuer: "Red Crescent Society, 2023" }
-      ];
-    };
-    const certifications = getCertifications(companion.specialization);
+    // Extract hobbies
+    const hobbiesList = companion.hobbies && companion.hobbies.length > 0
+      ? companion.hobbies
+      : [];
 
     return (
       <div className="max-w-6xl w-full mx-auto space-y-8 pb-16 animate-fade-in select-none">
         
-        {/* 2-Column Desktop Layout / Stacks on Mobile */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Left Side (col-span-2) */}
-          <div className="lg:col-span-2 space-y-8">
-            
-            <CompanionHeader 
-              name={name}
-              avatar={avatar}
-              verified={verified}
-              title={title}
-              rating={rating}
-              reviewsCount={reviewsCount}
-              location={location}
-              experience={experience}
-            />
-
-            <CompanionAbout bio={bioParagraphs} />
-
-            {/* Skills & Certifications Side-by-Side Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <CompanionSkills skills={skillsList} />
-              <CompanionCertifications certifications={certifications} />
-            </div>
-          </div>
-
-          {/* Right Side / Sidebar Column */}
-          <div className="space-y-6">
-            <CompanionBookingCard 
-              hourlyRate={companion.hourlyRate}
-              languages={languages}
-              transportation={transportation}
-              name={name}
-            />
-
-            <CompanionGuarantee />
-          </div>
+        {/* Row 1: Header & Booking Card (Equal size / Symmetrical height) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+          <CompanionHeader 
+            name={name}
+            avatar={avatar}
+            verified={verified}
+            title={title}
+            rating={rating}
+            reviewsCount={reviewsCount}
+            location={location}
+            experience={experience}
+          />
+          <CompanionBookingCard 
+            hourlyRate={companion.hourlyRate}
+            name={name}
+          />
         </div>
+
+        {/* Row 2: About Me Section */}
+        <div className="w-full">
+          <CompanionAbout bio={bioParagraphs} />
+        </div>
+
+        {/* Row 3: Skills, Certifications (Verified Credentials) & Hobbies Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <CompanionSkills skills={skillsList} />
+          <CompanionCertifications documents={companion.documents} />
+          <CompanionHobbies hobbies={hobbiesList} />
+        </div>
+
+        {/* Row 4: Availability Schedule */}
+        <div className="w-full">
+          <CompanionAvailability availability={companion.availability} />
+        </div>
+
       </div>
     );
   } catch (err: any) {

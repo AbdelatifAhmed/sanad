@@ -171,8 +171,8 @@ export default function Sidebar({
       </aside>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-stitch-surface border-t border-stitch-outline/20 flex items-center z-40 px-2 font-stitch-body select-none">
-        <div className="flex-1 flex overflow-x-auto scrollbar-none gap-4 h-full items-center py-1.5 pr-2">
-          {navItems.map((item) => {
+        <div className="flex-1 flex justify-around h-full items-center py-1.5">
+          {navItems.slice(0, 4).map((item) => {
             const isActive = 
               pathname === item.href || 
               (item.href !== "/" && pathname.startsWith(item.href + "/"));
@@ -201,9 +201,33 @@ export default function Sidebar({
         <div className="relative flex items-center justify-center shrink-0 w-16 h-full">
           {menuOpen && (
             <div 
-              className="absolute bottom-20 right-2 bg-stitch-surface border border-stitch-outline/20 rounded-2xl p-2 shadow-premium z-50 animate-fade-in flex flex-col gap-0.5 w-44"
+              className="absolute bottom-20 right-2 bg-stitch-surface border border-stitch-outline/20 rounded-2xl p-2 shadow-premium z-50 animate-fade-in flex flex-col gap-0.5 w-48"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Extra nav items (shown only in the mobile popover) */}
+              {navItems.slice(4).map((item) => {
+                const isActive = 
+                  pathname === item.href || 
+                  (item.href !== "/" && pathname.startsWith(item.href + "/"));
+
+                return (
+                  <Link 
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm font-medium ${
+                      isActive 
+                        ? "bg-stitch-secondary-container text-stitch-on-secondary-container font-semibold" 
+                        : "text-stitch-on-surface hover:text-stitch-on-secondary-container hover:bg-stitch-secondary-container/15"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-lg">{item.icon}</span>
+                    <span>{item.labelKey ? tNav(item.labelKey) : item.label}</span>
+                  </Link>
+                );
+              })}
+
+              {navItems.length > 4 && <div className="h-px bg-stitch-outline/10 my-1" />}
+
               <Link 
                 href={`${rolePrefix}/settings`} 
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stitch-secondary-container/15 text-stitch-on-surface hover:text-stitch-on-secondary-container text-sm font-medium transition-colors"
