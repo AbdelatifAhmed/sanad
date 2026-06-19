@@ -82,15 +82,15 @@ export default function FamilyCompanionsPage() {
   // Reset page on filter change
   useEffect(() => {
     // Only reset page if filters have actually changed
-    if (filters.search || filters.specialization || filters.minRating || filters.maxRate) {
+    if (filters.search || filters.specialization || filters.rating || filters.rate) {
       setPage(1);
     }
-  }, [filters.search, filters.specialization, filters.minRating, filters.maxRate]);
+  }, [filters.search, filters.specialization, filters.rating, filters.rate]);
 
   // Map raw API data to a safe shape
   const allCompanions = useMemo(() => {
     const raw: Record<string, unknown>[] = (data as Record<string, unknown> | undefined)?.companions as Record<string, unknown>[] ?? (data as Record<string, unknown>[] | undefined) ?? [];
-    return raw.map((c: Record<string, unknown>) => ({
+    return raw.map((c: any) => ({
       id: c._id ?? c.id,
       name: c.userId?.name ?? "Caregiver",
       avatar: c.userId?.avatar ?? "/avatar_1.jpg",

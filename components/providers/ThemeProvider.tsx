@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { isThemeMode, type ThemeMode } from "@/lib/theme";
+export type { ThemeMode };
 
 interface ThemeContextValue {
   theme: ThemeMode;
