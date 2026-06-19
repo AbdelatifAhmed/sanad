@@ -180,11 +180,39 @@ const getJobPostsForCompanions = async (req, res) => {
   }
 };
 
+const getJobPostById = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    const { id } = req.params;
+    const job = await JobPost.findById(id)
+      .populate("familyId", "name phone")
+      .populate("requiredSkills", "nameAr nameEn");
+    if (!job) {
+      return res.status(404).json({ 
+        status: "fail",
+        message: messages.jobPost.notFound[lang]
+      });
+    }
+    return res.status(200).json({
+      status: "success",
+      data: { job }
+    });
+  } catch (error) {
+    console.error("Error fetching job post by ID:", error);
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+updateJobPost = async (req, res) => {
+  
+}
+
 const queryOrBody = (req) => {
   return req.method === "GET" ? req.query : req.body;
 };
 
 module.exports = {
   createJobPost,
-  getJobPostsForCompanions
+  getJobPostsForCompanions,
+  getJobPostById
 };
