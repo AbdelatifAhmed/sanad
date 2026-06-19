@@ -639,7 +639,7 @@ export default function ReviewPage() {
               </p>
             </div>
             <button
-              onClick={() => router.push(role === "family" ? "/family" : "/companion")}
+              onClick={() => router.push(role === "family" ? "/family/dashboard" : "/companion/dashboard")}
               className="w-full bg-primary text-white py-3.5 rounded-xl font-bold text-base hover:opacity-95 transition-all cursor-pointer shadow-md shadow-primary/15"
             >
               Go to Dashboard

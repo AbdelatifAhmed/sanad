@@ -385,7 +385,7 @@ export default function RegisterPage() {
 
                 <p className="text-center text-sm text-gray-500 pt-2 font-medium">
                   <span className="mr-1">Already have an account?</span>
-                  <Link href="/Login" className="text-button font-bold hover:underline decoration-2 underline-offset-4">
+                  <Link href="/login" className="text-button font-bold hover:underline decoration-2 underline-offset-4">
                     Log in
                   </Link>
                 </p>
