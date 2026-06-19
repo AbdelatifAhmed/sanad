@@ -10,6 +10,7 @@ const navItems: SidebarItem[] = [
   { labelKey: "messages", href: "/family/messages", icon: "chat_bubble" },
   { labelKey: "wallet", href: "/family/wallet", icon: "wallet" },
   { labelKey: "profile", href: "/family/profile", icon: "person" },
+  { labelKey: "settings", href: "/family/settings", icon: "settings" },
 ];
 
 export default function FamilyLayout({

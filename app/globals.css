@@ -57,6 +57,13 @@
   color-scheme: light;
 }
 
+html[lang="ar"] {
+  --font-display: var(--font-ibm-plex-sans-arabic), var(--font-noto-arabic), sans-serif;
+  --font-body: var(--font-ibm-plex-sans-arabic), var(--font-noto-arabic), sans-serif;
+  --font-stitch-display: var(--font-ibm-plex-sans-arabic), var(--font-noto-arabic), sans-serif;
+  --font-stitch-body: var(--font-ibm-plex-sans-arabic), var(--font-noto-arabic), sans-serif;
+}
+
 [data-theme="dark"] {
   color-scheme: dark;
 
@@ -201,7 +208,7 @@ body {
   color: #8ee6a6 !important;
 }
 
-[data-theme="dark"] [class*="text-[#856404"] {
+[data-theme="dark"] [class*="text-[#856404]"] {
   color: #f2d58a !important;
 }
 

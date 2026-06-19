@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
-import { Literata, Be_Vietnam_Pro, Noto_Sans_Arabic, Plus_Jakarta_Sans, Inter } from "next/font/google";
+import { Literata, Be_Vietnam_Pro, IBM_Plex_Sans_Arabic, Noto_Sans_Arabic, Plus_Jakarta_Sans, Inter } from "next/font/google";
 import "./globals.css";
 import AuthInit from "@/components/auth/AuthInit";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -24,6 +24,12 @@ const notoArabic = Noto_Sans_Arabic({
   variable: "--font-noto-arabic",
   subsets: ["arabic"],
   weight: ["400", "600", "700"],
+});
+
+const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
+  variable: "--font-ibm-plex-sans-arabic",
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -62,7 +68,7 @@ export default async function RootLayout({
       data-theme={resolvedTheme}
       data-theme-mode={theme}
       suppressHydrationWarning
-      className={`${literata.variable} ${beVietnamPro.variable} ${notoArabic.variable} ${plusJakartaSans.variable} ${inter.variable} h-full antialiased`}
+      className={`${literata.variable} ${beVietnamPro.variable} ${ibmPlexSansArabic.variable} ${notoArabic.variable} ${plusJakartaSans.variable} ${inter.variable} h-full antialiased`}
     >
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
