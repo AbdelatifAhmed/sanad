@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import type { AuthState } from "@/types";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 
@@ -32,8 +33,15 @@ export default function RoleGuard({
   const router = useRouter();
   const user = useAuthStore((state: AuthState) => state.user);
   const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
     if (!isAuthenticated) {
       router.replace("/login");
       return;
@@ -42,13 +50,9 @@ export default function RoleGuard({
     if (user && user.role !== allowedRole) {
       router.replace(fallbackPath ?? `/${user.role}/dashboard`);
     }
-  }, [allowedRole, fallbackPath, isAuthenticated, router, user]);
+  }, [isHydrated, isAuthenticated, user, allowedRole, router, fallbackPath]);
 
-  if (!isAuthenticated || !user) {
-    return null;
-  }
-
-  if (user.role !== allowedRole) {
+  if (!isHydrated || !isAuthenticated || !user || user.role !== allowedRole) {
     return null;
   }
 

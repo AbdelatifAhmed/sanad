@@ -3,6 +3,7 @@ import Sidebar, { SidebarItem } from "@/components/layouts/Sidebar";
 
 const navItems: SidebarItem[] = [
   { label: "Dashboard", href: "/family/dashboard", icon: "home" },
+  { label: "Browse", href: "/family/companions", icon: "manage_search" },
   { label: "Requests", href: "/family/requests", icon: "pending_actions" },
   { label: "Bookings", href: "/family/bookings", icon: "event_available" },
   { label: "Calendar", href: "/family/schedule", icon: "calendar_today" },

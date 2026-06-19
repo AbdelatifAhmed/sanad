@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/services/api";
 
 interface ServiceRequest {
@@ -44,7 +44,7 @@ export default function CompanionRequests() {
     type: "success" | "info";
   } | null>(null);
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -120,11 +120,11 @@ export default function CompanionRequests() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchRequests();
-  }, []);
+  }, [fetchRequests]);
 
   // Auto-close toast
   useEffect(() => {
