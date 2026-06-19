@@ -23,7 +23,7 @@ export default function CompanionHeader({
   experience,
 }: CompanionHeaderProps) {
   return (
-    <div className="bg-white p-6 md:p-8 rounded-3xl border border-sand-high/60 shadow-soft flex flex-col md:flex-row items-center md:items-start gap-6">
+    <div className="bg-white p-6 md:p-8 rounded-3xl border border-sand-high/60 shadow-soft flex flex-col md:flex-row items-center md:items-start gap-6 h-full w-full">
       {/* Round Avatar with online indicator */}
       <div className="relative shrink-0">
         <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-2 border-[#005c53]/10 shadow-md">
