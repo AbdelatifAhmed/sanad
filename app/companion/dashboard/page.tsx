@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { BookingScheduleEntry, UserData } from "@/types";
 import { getServerAuthToken } from "@/lib/serverAuth";
 import {
   getCompanionDashboardStats,
@@ -17,9 +18,9 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
   const searchParamsVal = await searchParams;
   const viewMode = (searchParamsVal.view as "list" | "timeline") || "list";
 
-  let stats = null;
-  let schedule: any[] = [];
-  let profile = null;
+  let stats: Record<string, unknown> | null = null;
+  let schedule: BookingScheduleEntry[] = [];
+  let profile: { userId?: UserData; [key: string]: unknown } | null = null;
   let errorStatus: number | null = null;
   let errorMessage = "";
 
@@ -40,10 +41,11 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
     stats = statsData;
     schedule = scheduleData?.schedule || [];
     profile = profileData?.companion;
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const error = err as { response?: { status?: number; data?: { message?: string } }; status?: number; message?: string };
     console.error("Error loading dashboard data:", err);
-    errorStatus = err.response?.status || err.status || 500;
-    errorMessage = err.response?.data?.message || err.message || "Failed to load dashboard data. Please try again later.";
+    errorStatus = error.response?.status || error.status || 500;
+    errorMessage = error.response?.data?.message || error.message || "Failed to load dashboard data. Please try again later.";
   }
 
   // Handle Missing Profile (404 Companion Profile Not Found)

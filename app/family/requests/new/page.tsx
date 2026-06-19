@@ -61,7 +61,6 @@ const STEP_HERO = [
 
 export default function NewCareRequestPage() {
   const { execute: createRequest, isLoading: submitting } = useCreateCareRequest();
-  const { user } = useAuthStore();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [formData, setFormData] = useState<CareRequestFormData>(INITIAL_FORM);
@@ -122,10 +121,11 @@ export default function NewCareRequestPage() {
       await createRequest(payload);
       setSubmitted(true);
       scrollTop();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
       const msg =
-        err?.response?.data?.message ||
-        err?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
         "Failed to submit. Please try again.";
       setSubmitError(msg);
     }

@@ -1,0 +1,152 @@
+{
+  "app": {
+    "name": "Dignified Care",
+    "familyDashboard": "Family Dashboard",
+    "careDashboard": "Care Dashboard"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "browse": "Browse",
+    "myPosts": "My Posts",
+    "requests": "Requests",
+    "bookings": "Bookings",
+    "calendar": "Calendar",
+    "messages": "Messages",
+    "wallet": "Wallet",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Logout",
+    "account": "Account",
+    "userAccount": "User Account"
+  },
+  "settings": {
+    "familyTitle": "Family settings",
+    "companionTitle": "Companion settings",
+    "familySubtitle": "Manage your family workspace preferences, account language, and visual theme.",
+    "companionSubtitle": "Tune your companion workspace preferences, account language, and visual theme.",
+    "preferences": "Preferences",
+    "preferencesDescription": "These settings are saved on this device and used when the app renders on the server.",
+    "theme": "Theme",
+    "themeDescription": "Choose the interface style that feels comfortable for your care workflow.",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "language": "Language",
+    "languageDescription": "Switch between English and Arabic across the app.",
+    "english": "English",
+    "arabic": "Arabic",
+    "account": "Account",
+    "accountDescription": "Keep your contact and care profile details up to date.",
+    "security": "Security",
+    "securityDescription": "Review your login sessions and account protection preferences.",
+    "notifications": "Notifications",
+    "notificationsDescription": "Control booking, message, and care schedule alerts.",
+    "comingSoon": "Coming soon",
+    "currentRole": "Workspace",
+    "familyRole": "Family",
+    "companionRole": "Companion",
+    "saved": "Saved"
+  },
+  "landing": {
+    "header": {
+      "howItWorks": "How it Works",
+      "whySanad": "Why Sanad",
+      "reviews": "Reviews",
+      "login": "Log In",
+      "getStarted": "Get Started",
+      "dashboard": "Dashboard",
+      "theme": "Switch theme",
+      "language": "Switch language",
+      "menu": "Toggle navigation menu"
+    },
+    "hero": {
+      "badge": "Trusted by 10,000+ Families",
+      "title": "Care You Can Trust for Your",
+      "titleAccent": "Loved Ones.",
+      "description": "Sanad connects families with verified, compassionate caregivers. From medical assistance to daily companionship, find the perfect support today.",
+      "familyCta": "Find a Caregiver",
+      "companionCta": "Become a Caregiver",
+      "rating": "Based on 2,500+ reviews",
+      "quoteTitle": "The support we needed.",
+      "quoteText": "Sanad helped us find Sarah, who has been a blessing for my mother.",
+      "quoteAuthor": "The Miller Family"
+    },
+    "stats": {
+      "caregivers": "Verified Caregivers",
+      "families": "Families Assisted",
+      "satisfaction": "Satisfaction Rate",
+      "support": "Platform Support"
+    },
+    "how": {
+      "title": "How Sanad Works",
+      "subtitle": "Getting dignified care is simple and secure. Follow these three steps to get started.",
+      "step1Title": "1. Find Your Match",
+      "step1Text": "Browse detailed profiles of caregivers in your area. Filter by specialty, experience, and ratings.",
+      "step2Title": "2. Request Care",
+      "step2Text": "Schedule an introductory meeting or book care directly through our secure booking system.",
+      "step3Title": "3. Receive Care",
+      "step3Text": "Receive professional support in the comfort of home. Payment and tracking are handled in-app."
+    },
+    "audience": {
+      "families": "For Families",
+      "familiesTitle": "Peace of mind for you and your family",
+      "familiesItem1": "Direct access to top-rated medical and companion care",
+      "familiesItem2": "Flexible scheduling from hourly to 24/7 care",
+      "familiesItem3": "Secure, transparent payment processing",
+      "familiesCta": "Start Your Search",
+      "caregivers": "For Caregivers",
+      "caregiversTitle": "Grow your professional care career",
+      "caregiversItem1": "Set your own rates and keep more of what you earn",
+      "caregiversItem2": "Choose your clients and manage your schedule",
+      "caregiversItem3": "Professional development and community support",
+      "caregiversCta": "Join the Network"
+    },
+    "why": {
+      "title": "Why Choose Sanad?",
+      "subtitle": "We are building the world's most trusted community for home care.",
+      "verifiedTitle": "Verified Caregivers",
+      "verifiedText": "Every caregiver undergoes rigorous ID and background checks.",
+      "chatTitle": "Secure Chat",
+      "chatText": "Communicate safely through our encrypted messaging system.",
+      "bookingTitle": "Easy Booking",
+      "bookingText": "Seamlessly manage appointments and shifts with one tap.",
+      "communityTitle": "Trusted Community",
+      "communityText": "A feedback-driven network ensuring the highest standards."
+    },
+    "testimonials": {
+      "title": "Trusted by Families Everywhere",
+      "one": "Finding a post-op nurse through Sanad was incredibly easy. The quality of care was exceptional.",
+      "oneName": "James D.",
+      "familyMember": "Family Member",
+      "two": "As a professional nurse, Sanad gives me the flexibility I need while allowing me to connect with wonderful families.",
+      "twoName": "Linda W.",
+      "caregiver": "RN and Caregiver",
+      "three": "The verification process gave us the confidence we needed to bring someone into our home.",
+      "threeName": "Maryam A."
+    },
+    "cta": {
+      "title": "Start Caring Today with Sanad",
+      "subtitle": "Join thousands of families finding dignified care every day. It takes less than 2 minutes to get started.",
+      "family": "Find a Caregiver",
+      "companion": "Become a Caregiver"
+    },
+    "footer": {
+      "description": "Sanad is a dedicated platform for healthcare support, focusing on dignity, respect, and professional care for the elderly.",
+      "company": "Company",
+      "about": "About Us",
+      "howItWorks": "How it Works",
+      "careers": "Careers",
+      "contact": "Contact",
+      "resources": "Resources",
+      "guides": "Caregiver Guides",
+      "safety": "Safety Tips",
+      "badges": "Trust Badges",
+      "help": "Help Center",
+      "legal": "Legal",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "cookies": "Cookie Policy",
+      "rights": "All rights reserved."
+    }
+  }
+}

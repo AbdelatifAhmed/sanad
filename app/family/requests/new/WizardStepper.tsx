@@ -16,7 +16,6 @@ export default function WizardStepper({ currentStep }: WizardStepperProps) {
       {steps.map((step) => {
         const isCompleted = step.number < currentStep;
         const isActive = step.number === currentStep;
-        const isPending = step.number > currentStep;
 
         return (
           <div

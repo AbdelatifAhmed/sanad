@@ -14,7 +14,7 @@ export default function AuthInit() {
         if (accessToken && user) {
           useAuthStore.getState().setAuth(user, accessToken);
         }
-      } catch (err) {
+      } catch {
         // Silent catch: if refresh fails (guest or expired), api interceptor
         // handles logout if needed, or we just stay unauthenticated.
         console.debug('AuthInit: No valid session found');

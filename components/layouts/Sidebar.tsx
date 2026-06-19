@@ -4,12 +4,28 @@ import { useState, useEffect } from "react";
 import type { AuthState } from "@/types";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/store/authStore";
 
 import { logoutUser } from "@/lib/API";
 
+type NavLabelKey =
+  | "dashboard"
+  | "browse"
+  | "myPosts"
+  | "requests"
+  | "bookings"
+  | "calendar"
+  | "messages"
+  | "wallet"
+  | "profile"
+  | "settings";
+
+type AppLabelKey = "name" | "familyDashboard" | "careDashboard";
+
 export interface SidebarItem {
-  label: string;
+  label?: string;
+  labelKey?: NavLabelKey;
   href: string;
   icon: string; 
 }
@@ -17,16 +33,22 @@ export interface SidebarItem {
 interface SidebarProps {
   title?: string;
   subtitle?: string;
+  titleKey?: AppLabelKey;
+  subtitleKey?: AppLabelKey;
   navItems: SidebarItem[];
 }
 
 export default function Sidebar({
   title = "Dignified Care",
   subtitle = "Care Dashboard",
+  titleKey,
+  subtitleKey,
   navItems,
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const tNav = useTranslations("nav");
+  const tApp = useTranslations("app");
   const clearAuth = useAuthStore((state: AuthState) => state.clearAuth);
   
   const [menuOpen, setMenuOpen] = useState(false);
@@ -60,22 +82,18 @@ export default function Sidebar({
   const isCompanion = pathname.startsWith("/companion");
   const rolePrefix = isCompanion ? "/companion" : "/family";
 
-  const mobileNavItems = [
-    { label: "Dashboard", href: `${rolePrefix}/dashboard`, icon: "home" },
-    { label: "Requests", href: `${rolePrefix}/requests`, icon: "pending_actions" },
-    { label: "Messages", href: `${rolePrefix}/messages`, icon: "chat_bubble" },
-    { label: "Wallet", href: `${rolePrefix}/wallet`, icon: "wallet" },
-  ];
+  const resolvedTitle = titleKey ? tApp(titleKey) : title;
+  const resolvedSubtitle = subtitleKey ? tApp(subtitleKey) : subtitle;
 
   return (
     <>
-      <aside className="hidden md:flex w-72 bg-white flex-col border-r border-stitch-outline/20 h-screen sticky top-0 font-stitch-body select-none shrink-0">
+      <aside className="hidden md:flex w-72 bg-stitch-surface flex-col border-r border-stitch-outline/20 h-screen sticky top-0 font-stitch-body select-none shrink-0">
         <div className="p-8 pb-6">
           <h1 className="text-2xl font-stitch-display font-bold text-primary tracking-tight">
-            {title}
+            {resolvedTitle}
           </h1>
           <p className="text-xs font-medium text-stitch-on-surface-variant/60 mt-1 uppercase tracking-wider">
-            {subtitle}
+            {resolvedSubtitle}
           </p>
         </div>
 
@@ -104,7 +122,7 @@ export default function Sidebar({
                 >
                   {item.icon}
                 </span>
-                <span className="text-sm tracking-wide">{item.label}</span>
+                <span className="text-sm tracking-wide">{item.labelKey ? tNav(item.labelKey) : item.label}</span>
               </Link>
             );
           })}
@@ -113,15 +131,15 @@ export default function Sidebar({
         <div className="p-6 border-t border-stitch-outline/10 relative">
           {menuOpen && (
             <div 
-              className="absolute bottom-24 left-4 right-4 bg-white border border-stitch-outline/20 rounded-2xl p-2 shadow-premium z-50 animate-fade-in flex flex-col gap-0.5"
+              className="absolute bottom-24 left-4 right-4 bg-stitch-surface border border-stitch-outline/20 rounded-2xl p-2 shadow-premium z-50 animate-fade-in flex flex-col gap-0.5"
               onClick={(e) => e.stopPropagation()}
             >
               <Link 
-                href={`${rolePrefix}/profile`} 
+                href={`${rolePrefix}/settings`} 
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stitch-secondary-container/15 text-stitch-on-surface hover:text-stitch-on-secondary-container text-sm font-medium transition-colors"
               >
                 <span className="material-symbols-outlined text-xl">settings</span>
-                <span>Settings</span>
+                <span>{tNav("settings")}</span>
               </Link>
               <div className="h-px bg-stitch-outline/10 my-1" />
               <button 
@@ -129,7 +147,7 @@ export default function Sidebar({
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 text-sm font-semibold transition-colors text-left cursor-pointer"
               >
                 <span className="material-symbols-outlined text-xl text-red-500">logout</span>
-                <span>Logout</span>
+                <span>{tNav("logout")}</span>
               </button>
             </div>
           )}
@@ -142,7 +160,7 @@ export default function Sidebar({
               <span className="material-symbols-outlined">person</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-stitch-on-surface truncate">User Account</p>
+              <p className="text-sm font-semibold text-stitch-on-surface truncate">{tNav("userAccount")}</p>
               <p className="text-xs text-stitch-on-surface-variant/60 truncate">user@sanad.com</p>
             </div>
             <span className="material-symbols-outlined text-stitch-on-surface-variant/50 text-lg transition-transform duration-200" style={{ transform: menuOpen ? 'rotate(180deg)' : 'none' }}>
@@ -152,7 +170,7 @@ export default function Sidebar({
         </div>
       </aside>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-stitch-outline/20 flex items-center z-40 px-2 font-stitch-body select-none">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-stitch-surface border-t border-stitch-outline/20 flex items-center z-40 px-2 font-stitch-body select-none">
         <div className="flex-1 flex justify-around h-full items-center py-1.5">
           {navItems.slice(0, 4).map((item) => {
             const isActive = 
@@ -172,7 +190,7 @@ export default function Sidebar({
                 <span className={`material-symbols-outlined text-2xl ${isActive ? "[font-variation-settings:'FILL'_1]" : ""}`}>
                   {item.icon}
                 </span>
-                <span className="text-[10px] font-semibold tracking-tight">{item.label}</span>
+                <span className="text-[10px] font-semibold tracking-tight">{item.labelKey ? tNav(item.labelKey) : item.label}</span>
               </Link>
             );
           })}
@@ -183,7 +201,7 @@ export default function Sidebar({
         <div className="relative flex items-center justify-center shrink-0 w-16 h-full">
           {menuOpen && (
             <div 
-              className="absolute bottom-20 right-2 bg-white border border-stitch-outline/20 rounded-2xl p-2 shadow-premium z-50 animate-fade-in flex flex-col gap-0.5 w-48"
+              className="absolute bottom-20 right-2 bg-stitch-surface border border-stitch-outline/20 rounded-2xl p-2 shadow-premium z-50 animate-fade-in flex flex-col gap-0.5 w-48"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Extra nav items (shown only in the mobile popover) */}
@@ -203,7 +221,7 @@ export default function Sidebar({
                     }`}
                   >
                     <span className="material-symbols-outlined text-lg">{item.icon}</span>
-                    <span>{item.label}</span>
+                    <span>{item.labelKey ? tNav(item.labelKey) : item.label}</span>
                   </Link>
                 );
               })}
@@ -211,11 +229,11 @@ export default function Sidebar({
               {navItems.length > 4 && <div className="h-px bg-stitch-outline/10 my-1" />}
 
               <Link 
-                href={`${rolePrefix}/profile`} 
+                href={`${rolePrefix}/settings`} 
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stitch-secondary-container/15 text-stitch-on-surface hover:text-stitch-on-secondary-container text-sm font-medium transition-colors"
               >
                 <span className="material-symbols-outlined text-lg">settings</span>
-                <span>Settings</span>
+                <span>{tNav("settings")}</span>
               </Link>
               <div className="h-px bg-stitch-outline/10 my-1" />
               <button 
@@ -223,7 +241,7 @@ export default function Sidebar({
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 text-sm font-semibold transition-colors text-left cursor-pointer"
               >
                 <span className="material-symbols-outlined text-lg text-red-500">logout</span>
-                <span>Logout</span>
+                <span>{tNav("logout")}</span>
               </button>
             </div>
           )}
@@ -239,7 +257,7 @@ export default function Sidebar({
             <div className="w-8 h-8 rounded-full bg-stitch-primary/10 flex items-center justify-center text-stitch-primary shrink-0">
               <span className="material-symbols-outlined text-xl">person</span>
             </div>
-            <span className="text-[10px] font-semibold tracking-tight">Account</span>
+            <span className="text-[10px] font-semibold tracking-tight">{tNav("account")}</span>
           </button>
         </div>
       </nav>
