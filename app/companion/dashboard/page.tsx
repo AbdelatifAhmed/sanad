@@ -6,7 +6,7 @@ import {
   getCompanionSchedule,
   getMyCompanionProfile,
 } from "@/lib/API";
-import { StatsSection, ProfileCompletion } from "@/components/dashboard/StatsOverview";
+import { StatsSection, ProfileCompletion, type DashboardStats } from "@/components/dashboard/StatsOverview";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { ScheduleOverview } from "@/components/dashboard/ScheduleOverview";
 
@@ -18,8 +18,8 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
   const searchParamsVal = await searchParams;
   const viewMode = (searchParamsVal.view as "list" | "timeline") || "list";
 
-  let stats: Record<string, unknown> | null = null;
-  let schedule: BookingScheduleEntry[] = [];
+  let stats: DashboardStats | null = null;
+  let schedule: any[] = [];
   let profile: { userId?: UserData; [key: string]: unknown } | null = null;
   let errorStatus: number | null = null;
   let errorMessage = "";

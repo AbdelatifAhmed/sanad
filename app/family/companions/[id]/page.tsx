@@ -91,6 +91,7 @@ export default async function CompanionProfilePage({ params }: PageProps) {
             experience={experience}
           />
           <CompanionBookingCard 
+            id={id}
             hourlyRate={companion.hourlyRate}
             name={name}
           />
