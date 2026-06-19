@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createJobPost,
   getJobPostsForCompanions,
+  getJobPostById
 } = require("../controllers/jobPostController");
 const { authenticate } = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/RoleMiddleware");
@@ -17,4 +18,5 @@ router.post(
 router.get("/", authenticate, authorizeRoles("companion", "admin"), getJobPostsForCompanions)
   .put("/", authenticate, authorizeRoles("companion", "admin"), getJobPostsForCompanions);
 
+router.get("/:id", authenticate, getJobPostById);
 module.exports = router;
