@@ -213,7 +213,115 @@
       "governorateRequired": "Please select a region/governorate.",
       "cityRequired": "Please select a city.",
       "addressRequired": "Street address is required.",
-      "careTypeRequired": "Please select the type of care required."
+      "careTypeRequired": "Please select the type of care required.",
+      "workingDaysRequired": "Please select at least one working day.",
+      "durationRequired": "Please specify duration in weeks.",
+      "taskListRequired": "Please add at least one required task."
+    },
+    "schedule": {
+      "startDate": "Service Date",
+      "recurringStartDate": "Start Date",
+      "workingDays": "Required Working Days",
+      "workingDaysDesc": "Select the days care is required each week",
+      "workingHours": "Daily Working Hours",
+      "workingHoursDesc": "Set the daily start and end time for the caregiver",
+      "duration": "Duration (weeks)",
+      "durationDesc": "How many weeks do you need this care arrangement?",
+      "customWeeks": "Enter custom weeks...",
+      "orSpecifyCustom": "Or specify custom weeks",
+      "hoursPerDay": "Daily Hours",
+      "weeklyHours": "Weekly Hours",
+      "totalDuration": "Total Duration",
+      "daysSelected": "days selected:",
+      "daySelected": "day selected:",
+      "weeks": "weeks",
+      "week": "week",
+      "hours": "h",
+      "hoursAr": "ساعة",
+      "months": {
+        "4": "1 month (4 weeks)",
+        "8": "2 months (8 weeks)",
+        "12": "3 months (12 weeks)",
+        "24": "6 months (24 weeks)"
+      },
+      "presets": {
+        "daily": "Daily",
+        "weekdays": "Weekdays",
+        "weekends": "Weekends"
+      },
+      "dayNames": {
+        "Saturday": "Sat",
+        "Sunday": "Sun",
+        "Monday": "Mon",
+        "Tuesday": "Tue",
+        "Wednesday": "Wed",
+        "Thursday": "Thu",
+        "Friday": "Fri"
+      }
+    },
+    "tasks": {
+      "title": "Required Tasks Checklist",
+      "subtitle": "Choose the tasks you want the caregiver to perform during their visit",
+      "placeholder": "Add a custom task...",
+      "addButton": "Add",
+      "recommended": "Recommended tasks for this care type:",
+      "emptyTasks": "No tasks added yet. Select from the suggestions or add custom tasks.",
+      "tasksAdded": "Tasks Added",
+      "recommendations": {
+        "elderly_care": [
+          "Personal hygiene assistance",
+          "Mobility support & walking assistance",
+          "Light housekeeping around the elderly",
+          "Assisting with meals & hydration",
+          "Reminding about medications"
+        ],
+        "companionship": [
+          "Friendly conversation & active listening",
+          "Accompanying to medical appointments",
+          "Reading books or playing board games",
+          "Short walks in the neighborhood",
+          "Help with hobbies and crafts"
+        ],
+        "home_nursing": [
+          "Monitoring vital signs (BP, heart rate, temp)",
+          "Administering prescribed medications",
+          "Wound care & dressing changes",
+          "Assisting with medical equipment usage",
+          "Coordinating with the primary physician"
+        ],
+        "physical_therapy": [
+          "Assisting with prescribed rehab exercises",
+          "Stretching and posture correction support",
+          "Helping with transfer maneuvers (bed to chair)",
+          "Monitoring daily activity tolerance",
+          "Assisted walking and gait training"
+        ],
+        "child_care": [
+          "Supervising homework and reading",
+          "Preparing healthy child meals",
+          "Engaging in educational games",
+          "Maintaining bedtime routine",
+          "Light picking up of play areas"
+        ]
+      }
+    },
+    "locationPicker": {
+      "geoNotSupported": "Geolocation is not supported by your browser",
+      "geocodeFailed": "Failed to get address details. Please try again.",
+      "unknownLocation": "Unknown Location",
+      "unknown": "Unknown",
+      "enablePermissions": "Please enable location permissions in your browser.",
+      "capturedTitle": "Location Captured",
+      "shareTitle": "Share Your Location",
+      "capturedDesc": "We've successfully detected your area for better matching.",
+      "shareDesc": "Allow us to detect your location to connect you with nearby services.",
+      "detecting": "Detecting...",
+      "updateLocation": "Update Location",
+      "detectMy": "Detect My Location",
+      "currentAddress": "Current Address",
+      "city": "City",
+      "governorate": "Governorate",
+      "gpsBadge": "GPS"
     }
   }
 }
