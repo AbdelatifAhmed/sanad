@@ -157,12 +157,16 @@ exports.updateFamilyProfile = async (req, res) => {
                 error: `Beneficiary with ID ${b._id} not found.`
               });
             }
-            if (b.name !== undefined) existingB.name = b.name.trim();
-            if (b.age !== undefined) existingB.age = b.age;
-            if (b.gender !== undefined) existingB.gender = b.gender;
-            if (b.category !== undefined) existingB.category = b.category;
-            if (b.conditionDetails !== undefined) existingB.conditionDetails = b.conditionDetails.trim();
-            if (b.interests !== undefined) existingB.interests = b.interests;
+            if (b.isDeleted === true) {
+              familyProfile.beneficiaries.pull(b._id);
+            } else {
+              if (b.name !== undefined) existingB.name = b.name.trim();
+              if (b.age !== undefined) existingB.age = b.age;
+              if (b.gender !== undefined) existingB.gender = b.gender;
+              if (b.category !== undefined) existingB.category = b.category;
+              if (b.conditionDetails !== undefined) existingB.conditionDetails = b.conditionDetails.trim();
+              if (b.interests !== undefined) existingB.interests = b.interests;
+            }
           } else {
             
             familyProfile.beneficiaries.push({
