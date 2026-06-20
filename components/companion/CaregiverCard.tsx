@@ -105,7 +105,7 @@ export default function CaregiverCard({
             View Profile
           </Link>
           <Link
-            href={`/family/companions/${id}#book`}
+            href={`/family/companions/${id}/request`}
             className="flex-1 py-2.5 text-center text-xs font-bold bg-stitch-primary text-white rounded-xl hover:shadow-md hover:opacity-90 transition-all active:scale-95"
           >
             Book Now
