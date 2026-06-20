@@ -48,7 +48,7 @@ export default function RoleGuard({
     }
 
     if (user && user.role !== allowedRole) {
-      router.replace(fallbackPath ?? `/${user.role}`);
+      router.replace(fallbackPath ?? `/${user.role}/dashboard`);
     }
   }, [isHydrated, isAuthenticated, user, allowedRole, router, fallbackPath]);
 
