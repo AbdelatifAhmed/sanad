@@ -61,9 +61,24 @@ const companionSchema = new mongoose.Schema(
       default: "pending",
     },
     documents: {
-      nationalIdUrl: { type: String, required: true },
-      criminalRecordUrl: { type: String, required: true },
-      syndicateCardUrl: { type: String },
+      nationalIdCard: {
+        url: { type: String, required: true },
+        public_id: { type: String, required: true }
+      },
+      criminalRecord: {
+        url: { type: String, required: true },
+        public_id: { type: String, required: true }
+      },
+      medicalCertificates: [
+        {
+          url: { type: String, required: true },
+          public_id: { type: String, required: true }
+        }
+      ],
+      syndicateCard: {
+        url: { type: String },
+        public_id: { type: String }
+      }
     },
     rating: {
       type: Number,
