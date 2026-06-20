@@ -198,7 +198,7 @@ exports.refreshToken = async (req, res) => {
       return res.status(401).json({ message: messages.auth.invalidToken[lang] });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
 
     const user = await User.findById(decoded.id);
 
