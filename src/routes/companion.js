@@ -15,6 +15,11 @@ const { isCompanion } = require('../middleware/RoleMiddleware');
 
 // Public/Family accessible routes (Require authentication only)
 router.get('/', authenticate, getVerifiedCompanions);
+
+// Specific companion profile route (before wildcard :id to prevent conflict)
+router.get('/me', authenticate, isCompanion, getMyCompanionProfile);
+
+// Public/Family accessible wildcard route
 router.get('/:id', authenticate, getCompanionById);
 
 // Companion-only routes
@@ -23,7 +28,6 @@ router.put('/profile', updateCompanionProfile);
 router.patch('/profile', updateCompanionProfile);
 router.get('/me/schedule', getCompanionSchedule);
 router.patch('/me/availability', updateCompanionAvailability);
-router.get('/me', getMyCompanionProfile);
 router.get('/me/bookings', getCompanionBookings);
 router.get('/me/dashboard-stats', getCompanionDashboardStats);
 
