@@ -83,6 +83,15 @@ const bookingSchema = new mongoose.Schema(
     notes: {
       type: String,
     },
+    location: {
+      geo: {
+        type: { type: String, default: "Point" },
+        coordinates: { type: [Number] },
+      },
+      readableAddress: { type: String, trim: true },
+      city: { type: String, trim: true },
+      governorate: { type: String, trim: true },
+    },
   },
   { timestamps: true },
 );
