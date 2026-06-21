@@ -23,7 +23,8 @@ const createBooking = async (req, res) => {
       notes,
       taskList,
       totalHours,
-      schedule
+      schedule,
+      location
     } = req.body;
 
     if (!companionId || !beneficiaryId || totalHours === undefined || !schedule) {
@@ -145,7 +146,8 @@ const createBooking = async (req, res) => {
       workingDays: workingDaysArray, 
       schedule: resolvedSchedule,
       notes,
-      status: 'pending' 
+      status: 'pending',
+      location
     });
 
     const savedBooking = await newBooking.save();

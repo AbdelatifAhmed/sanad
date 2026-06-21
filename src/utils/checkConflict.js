@@ -12,8 +12,12 @@ const hasBookingConflict = async (companionId, newStartDate, newEndDate, newWork
     
     workingDays: { $in: newWorkingDays },
     
-    "schedule.startTime": { $lt: newEndTime },
-    "schedule.endTime": { $gt: newStartTime }
+    schedule: {
+      $elemMatch: {
+        startTime: { $lt: newEndTime },
+        endTime: { $gt: newStartTime }
+      }
+    }
   });
 
   return !!conflictingBooking;
