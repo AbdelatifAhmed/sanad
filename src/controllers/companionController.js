@@ -134,7 +134,7 @@ const getCompanionSchedule = async (req, res) => {
     }
 
     const confirmedBookings = await Booking.find({
-      companionId: companionProfile._id,
+      companionId: req.user.id,
       status: { $in: ['approved', 'active'] } 
     })
     .populate({
@@ -343,7 +343,7 @@ const updateMyLocation = async (req, res) => {
 
 const getCompanionDashboardStats = async (req, res) => {
   try {
-    const lang = req.headers["accept-language"] || "en";
+    const lang = req.lang || "en";
 
     if (!req.user || req.user.role !== "companion") {
       return res.status(403).json({
@@ -457,22 +457,25 @@ const getCompanionDashboardStats = async (req, res) => {
             ? `Next in ${diffHours}h`
             : `التالي خلال ${diffHours} س`;
       } else if (diffHours < 48) {
-        const timeString = nextSlotDateTime.toLocaleTimeString("en-US", {
+        const timeString = nextSlotDateTime.toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
           hour: "2-digit",
           minute: "2-digit",
           hour12: true,
+          numberingSystem: "latn",
         });
         nextVisitLabel =
           lang === "en" ? `Tomorrow, ${timeString}` : `غداً، ${timeString}`;
       } else {
-        const dateString = nextSlotDateTime.toLocaleDateString("en-US", {
+        const dateString = nextSlotDateTime.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
           month: "short",
           day: "numeric",
+          numberingSystem: "latn",
         });
-        const timeString = nextSlotDateTime.toLocaleTimeString("en-US", {
+        const timeString = nextSlotDateTime.toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
           hour: "2-digit",
           minute: "2-digit",
           hour12: true,
+          numberingSystem: "latn",
         });
         nextVisitLabel =
           lang === "en"
