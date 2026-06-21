@@ -9,7 +9,6 @@ const navItems: SidebarItem[] = [
   { labelKey: "messages", href: "/companion/messages", icon: "chat_bubble" },
   { labelKey: "wallet", href: "/companion/wallet", icon: "wallet" },
   { labelKey: "profile", href: "/companion/profile", icon: "person" },
-  { labelKey: "settings", href: "/companion/settings", icon: "settings" },
 ];
 
 export default function CompanionLayout({

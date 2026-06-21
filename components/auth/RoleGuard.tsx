@@ -47,7 +47,13 @@ export default function RoleGuard({
       return;
     }
 
-    if (user && user.role !== allowedRole) {
+    if (!user) {
+      useAuthStore.getState().clearAuth();
+      router.replace("/login");
+      return;
+    }
+
+    if (user.role !== allowedRole) {
       router.replace(fallbackPath ?? `/${user.role}/dashboard`);
     }
   }, [isHydrated, isAuthenticated, user, allowedRole, router, fallbackPath]);

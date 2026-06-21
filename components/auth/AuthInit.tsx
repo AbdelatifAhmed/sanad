@@ -17,7 +17,8 @@ export default function AuthInit() {
       } catch {
         // Silent catch: if refresh fails (guest or expired), api interceptor
         // handles logout if needed, or we just stay unauthenticated.
-        console.debug('AuthInit: No valid session found');
+        useAuthStore.getState().clearAuth();
+        console.debug('AuthInit: No valid session found, cleared auth state');
       }
     };
 
