@@ -41,7 +41,7 @@ export default async function DirectCareRequestPage({ params }: PageProps) {
     : 5;
 
   const mappedCompanion = {
-    id: companion?.userId?._id || id,
+    id: companion?.userId?._id || id, // Booking backend needs User._id; profile navigation uses userId fallback
     name: companion?.userId?.name || "Amina Al-Farsi",
     avatar: companion?.userId?.avatar || "/avatar_3.jpg",
     rating: companion?.rating ?? 4.9,

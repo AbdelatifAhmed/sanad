@@ -150,12 +150,12 @@ export default function NewCareRequestPage() {
   /* ---------- Wizard ---------- */
   return (
     <div className="max-w-6xl w-full mx-auto">
-      <div className="mb-8">
+      {/* <div className="mb-8">
         <h1 className="text-2xl font-bold text-[#1b1c1c]">Post a New Care Request</h1>
         <p className="text-sm text-[#3e4949] mt-1">
           Complete the 3-step form to find the perfect caregiver for your family.
         </p>
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left column: hero + stepper */}
