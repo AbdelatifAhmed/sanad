@@ -1,14 +1,17 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
-export function RecentActivity() {
+export async function RecentActivity() {
+  const t = await getTranslations("companionDashboard");
+
   return (
     <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-stitch-outline/10 shadow-soft space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-xs font-bold uppercase tracking-wider text-stitch-on-surface-variant/50">
-          Recent Activity
+          {t("recentActivity")}
         </h3>
         <Link href="/companion/dashboard" className="text-xs font-bold text-stitch-primary hover:underline">
-          View All
+          {t("viewAll")}
         </Link>
       </div>
 
@@ -19,10 +22,10 @@ export function RecentActivity() {
             <span className="material-symbols-outlined text-xl">check_circle</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-stitch-on-surface truncate">New Booking Confirmed</p>
-            <p className="text-xs text-stitch-on-surface-variant/75 truncate mt-0.5">With patient Mrs. Clara Smith for Tomorrow, 10:00 AM</p>
+            <p className="text-sm font-bold text-stitch-on-surface truncate">{t("newBookingConfirmed")}</p>
+            <p className="text-xs text-stitch-on-surface-variant/75 truncate mt-0.5">{t("claraBookingDesc")}</p>
           </div>
-          <span className="text-[10px] text-stitch-on-surface-variant/50 shrink-0 self-start mt-0.5">2m ago</span>
+          <span className="text-[10px] text-stitch-on-surface-variant/50 shrink-0 self-start mt-0.5">{t("twoMinutesAgo")}</span>
         </div>
 
         {/* Activity 2 */}
@@ -31,10 +34,10 @@ export function RecentActivity() {
             <span className="material-symbols-outlined text-xl">chat_bubble</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-stitch-on-surface truncate">Message from John Doe</p>
-            <p className="text-xs text-stitch-on-surface-variant/75 truncate italic mt-0.5">"Could we reschedule the medication checkup?"</p>
+            <p className="text-sm font-bold text-stitch-on-surface truncate">{t("messageFromJohn")}</p>
+            <p className="text-xs text-stitch-on-surface-variant/75 truncate italic mt-0.5">{t("johnMessageDesc")}</p>
           </div>
-          <span className="text-[10px] text-stitch-on-surface-variant/50 shrink-0 self-start mt-0.5">1h ago</span>
+          <span className="text-[10px] text-stitch-on-surface-variant/50 shrink-0 self-start mt-0.5">{t("oneHourAgo")}</span>
         </div>
       </div>
     </div>
