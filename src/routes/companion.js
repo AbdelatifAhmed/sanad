@@ -7,7 +7,8 @@ const {
   getVerifiedCompanions,
   getCompanionById,
   getMyCompanionProfile,
-  getCompanionDashboardStats
+  getCompanionDashboardStats,
+  updateMyLocation
 } = require('../controllers/companionController');
 const { getCompanionBookings } = require("../controllers/BookingDashboradController");
 const { authenticate } = require('../middleware/authMiddleware');
@@ -28,6 +29,7 @@ router.put('/profile', updateCompanionProfile);
 router.patch('/profile', updateCompanionProfile);
 router.get('/me/schedule', getCompanionSchedule);
 router.patch('/me/availability', updateCompanionAvailability);
+router.patch('/me/location', updateMyLocation);
 router.get('/me/bookings', getCompanionBookings);
 router.get('/me/dashboard-stats', getCompanionDashboardStats);
 

@@ -71,9 +71,12 @@ exports.uploadCompanionDocuments = async (req, res) => {
     const updates = { documents: { ...companion.documents?.toObject() } };
 
     // Helper to push upload promise
-    const handleUpload = async (fileBuffer, fieldName, isArray = false) => {
+    const handleUpload = async (fileBuffer, fieldName, isArray = false, certName = null) => {
       const result = await uploadToCloudinary(fileBuffer, "sanad/documents");
       const docData = { url: result.secure_url, public_id: result.public_id };
+      if (certName) {
+        docData.name = certName;
+      }
       
       if (isArray) {
         if (!updates.documents[fieldName]) updates.documents[fieldName] = [];
@@ -102,10 +105,18 @@ exports.uploadCompanionDocuments = async (req, res) => {
       uploadPromises.push(handleUpload(files.syndicateCard[0].buffer, "syndicateCard"));
     }
 
-    // 4. Medical Certificates (Array)
-    if (files.medicalCertificates && files.medicalCertificates.length > 0) {
-      for (const file of files.medicalCertificates) {
-        uploadPromises.push(handleUpload(file.buffer, "medicalCertificates", true));
+    // 4. Certificates (Array)
+    if (files.Certificates && files.Certificates.length > 0) {
+      // If multiple certificates are uploaded, we expect multiple names or a default.
+      // For simplicity, we check req.body.certificateName which could be an array or string.
+      let certNames = req.body.certificateName;
+      if (!Array.isArray(certNames)) {
+        certNames = certNames ? [certNames] : [];
+      }
+      for (let i = 0; i < files.Certificates.length; i++) {
+        const file = files.Certificates[i];
+        const certName = certNames[i] || `Certificate ${i + 1}`;
+        uploadPromises.push(handleUpload(file.buffer, "Certificates", true, certName));
       }
     }
 
@@ -125,5 +136,31 @@ exports.uploadCompanionDocuments = async (req, res) => {
   } catch (error) {
     console.error("Upload Companion Documents Error:", error);
     res.status(500).json({ message: "Internal server error during upload" });
+  }
+};
+
+/**
+ * Upload Public File (e.g., during Registration)
+ * Handles uploading a single file and returns { url, public_id } without needing auth.
+ */
+exports.uploadPublicFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file provided" });
+    }
+
+    // Upload to Cloudinary under a public/temp folder
+    const result = await uploadToCloudinary(req.file.buffer, "sanad/public_documents");
+
+    res.status(200).json({
+      message: "File uploaded successfully",
+      file: {
+        url: result.secure_url,
+        public_id: result.public_id,
+      },
+    });
+  } catch (error) {
+    console.error("Public Upload Error:", error);
+    res.status(500).json({ message: "Internal server error during public upload" });
   }
 };

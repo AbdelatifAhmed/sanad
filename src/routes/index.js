@@ -18,6 +18,7 @@ const skillRoutes = require("./skillRoutes");
 const jobPostRoutes = require("./jobPostRputes");
 const proposalRoutes = require("./proposalRoutes");
 const paymentRoutes = require("./paymentRoutes");
+const uploadRoutes = require("./upload.routes");
 
 // Apply localization middleware globally to all API routes
 router.use(langMiddleware);
@@ -39,5 +40,6 @@ router.use("/skills", skillRoutes);
 router.use("/job-posts", jobPostRoutes);
 router.use("/proposals", proposalRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/upload", uploadRoutes);
 
 module.exports = router;

@@ -25,6 +25,7 @@ const companionSchema = new mongoose.Schema(
     bioEmbedding: {
       type: [Number],
       required: false,
+      select: false,
     },
     hourlyRate: {
       type: Number,
@@ -69,8 +70,9 @@ const companionSchema = new mongoose.Schema(
         url: { type: String, required: true },
         public_id: { type: String, required: true }
       },
-      medicalCertificates: [
+      Certificates: [
         {
+          name: { type: String, required: true },
           url: { type: String, required: true },
           public_id: { type: String, required: true }
         }
@@ -82,8 +84,8 @@ const companionSchema = new mongoose.Schema(
     },
     rating: {
       type: Number,
-      default: 5,
-      min: [1, "التقييم لا يقل عن 1"],
+      default: 0,
+      min: [0, "التقييم لا يقل عن 0"],
       max: [5, "التقييم لا يزيد عن 5"],
       set: (val) => Math.round(val * 10) / 10,
     },
