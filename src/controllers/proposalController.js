@@ -103,31 +103,48 @@ const getProposalsForJob = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean(); 
 
+    const validProposals = proposals.filter(p => p.companionId);
+
     const updatedProposals = await Promise.all(
-      proposals.map(async (proposal) => {
-        
-        const companionProfile = await Companion.findOne({ userId: proposal.companionId._id }).select("rating");
-        proposal.companionId.averageRating = companionProfile ? companionProfile.rating : 4.5; // 4.5 كقيمة افتراضية للمبتدئين
-
-        if (proposal.status === "pending") {
-          const newStartDate = new Date();
-          const newEndDate = new Date();
-          newEndDate.setDate(newStartDate.getDate() + (jobPost.schedule.durationInWeeks * 7));
+      validProposals.map(async (proposal) => {
+        try {
+          const companionProfile = await Companion.findOne({ userId: proposal.companionId._id })
+            .select("rating companionType specialization reviewCount");
           
-          const { workingDays, startTime, endTime } = jobPost.schedule;
+          proposal.companionId.averageRating = companionProfile ? companionProfile.rating : 4.5;
+          proposal.companionId.companionType = companionProfile ? companionProfile.companionType : "general";
+          proposal.companionId.specialization = companionProfile ? companionProfile.specialization : "none";
+          proposal.companionId.reviewCount = companionProfile ? companionProfile.reviewCount : 0;
 
-          const isBusyNow = await hasBookingConflict(
-            proposal.companionId._id,
-            newStartDate,
-            newEndDate,
-            workingDays,
-            startTime,
-            endTime
-          );
+          if (proposal.status === "pending") {
+            const newStartDate = new Date();
+            const newEndDate = new Date();
+            newEndDate.setDate(newStartDate.getDate() + (jobPost.schedule.durationInWeeks * 7));
+            
+            const { workingDays, startTime, endTime } = jobPost.schedule;
 
-          proposal.isConflicting = isBusyNow;
-        } else {
+            const isBusyNow = await hasBookingConflict(
+              proposal.companionId._id,
+              newStartDate,
+              newEndDate,
+              workingDays,
+              startTime,
+              endTime
+            );
+
+            proposal.isConflicting = isBusyNow;
+          } else {
+            proposal.isConflicting = false;
+          }
+        } catch (err) {
+          console.error(`Error processing companion details for proposal ${proposal._id}:`, err);
           proposal.isConflicting = false;
+          if (proposal.companionId) {
+            proposal.companionId.averageRating = 4.5;
+            proposal.companionId.companionType = "general";
+            proposal.companionId.specialization = "none";
+            proposal.companionId.reviewCount = 0;
+          }
         }
         return proposal;
       })
@@ -325,9 +342,71 @@ const updateProposalStatus = async (req, res) => {
   }
 };
 
+const getMyProposals = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    
+    if (req.user.role !== "companion") {
+      return res.status(403).json({ status: "fail", message: messages.common.forbidden[lang] });
+    }
+
+    const { status } = req.query;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 6;
+    const skip = (page - 1) * limit;
+
+    const query = { companionId: req.user._id };
+    if (status && ["pending", "accepted", "rejected"].includes(status)) {
+      query.status = status;
+    }
+
+    // Get total counts for filters/stats cards
+    const totalCount = await Proposal.countDocuments({ companionId: req.user._id });
+    const pendingCount = await Proposal.countDocuments({ companionId: req.user._id, status: "pending" });
+    const acceptedCount = await Proposal.countDocuments({ companionId: req.user._id, status: "accepted" });
+    const rejectedCount = await Proposal.countDocuments({ companionId: req.user._id, status: "rejected" });
+
+    const totalFiltered = await Proposal.countDocuments(query);
+    const proposals = await Proposal.find(query)
+      .populate({
+        path: "jobPostId",
+        populate: {
+          path: "familyId",
+          select: "name email phone avatar"
+        }
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        proposals,
+        pagination: {
+          total: totalFiltered,
+          page,
+          limit,
+          pages: Math.ceil(totalFiltered / limit)
+        },
+        stats: {
+          total: totalCount,
+          pending: pendingCount,
+          accepted: acceptedCount,
+          rejected: rejectedCount
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Error fetching companion proposals:", error);
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+};
 
 module.exports = {
   sendProposal,
   getProposalsForJob,
-  updateProposalStatus
+  updateProposalStatus,
+  getMyProposals
 };

@@ -189,7 +189,7 @@ const updateBookingStatus = async (req, res) => {
       return res.status(400).json({ error: messages.booking.statusRequired[lang] });
     }
 
-    const validStatuses = ['pending', 'approved', 'active', 'completed', 'cancelled'];
+    const validStatuses = ['pending',"pending_payment", 'approved', 'active', 'completed', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: messages.booking.invalidStatus[lang] });
     }

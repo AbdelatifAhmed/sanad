@@ -42,8 +42,8 @@ const userSchema = new mongoose.Schema(
       governorate: { type: String },
     },
     avatar: {
-      type: String, 
-      trim: true,
+      url: { type: String, trim: true },
+      public_id: { type: String, trim: true }
     },
   },
   { timestamps: true },

@@ -3,6 +3,7 @@ const Companion = require('../models/companion.schema');
 const Booking = require('../models/booking.schema.js'); 
 const { generateEmbedding } = require('../services/ai/ragService');
 const User = require('../models/user.schema');
+const Skill = require('../models/skills.schema');
 const messages = require("../utils/messages");
 
 
@@ -16,10 +17,11 @@ const updateCompanionProfile = async (req, res) => {
     }
 
     const userId = req.user._id;
-    const { bio, hourlyRate, skills, hobbies, availability } = req.body;
+    const { bio, hourlyRate, skills, hobbies, availability, companionType, specialization } = req.body;
 
     const existingCompanion = await Companion.findOne({ userId });
 
+    // Validate only if fields are being updated or on initial profile creation
     if (!existingCompanion) {
       if (bio === undefined || typeof bio !== 'string' || bio.trim() === '') {
         return res.status(400).json({ error: messages.companion.bioRequired[lang] });
@@ -66,16 +68,56 @@ const updateCompanionProfile = async (req, res) => {
       }
     }
 
+    // Update User model fields if provided
+    const userUpdate = {};
+    if (req.body.name !== undefined) userUpdate.name = req.body.name.trim();
+    if (req.body.phone !== undefined) userUpdate.phone = req.body.phone.trim();
+    if (req.body.location !== undefined) {
+      const { coordinates, readableAddress, city, governorate } = req.body.location;
+      userUpdate.location = {
+        geo: coordinates ? { type: "Point", coordinates } : undefined,
+        readableAddress,
+        city,
+        governorate
+      };
+    }
+
+    if (Object.keys(userUpdate).length > 0) {
+      await User.findByIdAndUpdate(userId, { $set: userUpdate }, { runValidators: true });
+    }
+
+    // Prepare updates for Companion model
     const setUpdate = {};
     if (bio !== undefined) setUpdate.bio = bio;
     if (hourlyRate !== undefined) setUpdate.hourlyRate = hourlyRate;
-    if (skills !== undefined) setUpdate.skills = skills;
+    if (companionType !== undefined) setUpdate.companionType = companionType;
+    if (specialization !== undefined) setUpdate.specialization = specialization;
+    
+    if (skills !== undefined) {
+      const skillDocs = await Promise.all(skills.map(async (skillName) => {
+        let skill = await Skill.findOne({ $or: [{ nameEn: skillName }, { nameAr: skillName }] });
+        if (!skill) {
+          skill = await Skill.create({ nameEn: skillName, nameAr: skillName, category: 'general_care' });
+        }
+        return skill._id;
+      }));
+      setUpdate.skills = skillDocs;
+    }
+
     if (hobbies !== undefined) setUpdate.hobbies = hobbies;
     if (availability !== undefined) setUpdate.availability = availability;
 
+    // Handle Bio Embedding generation
     if (bio !== undefined || skills !== undefined || hobbies !== undefined) {
-      const bioText = bio || (existingCompanion ? existingCompanion.bio : '');
-      const skillsText = Array.isArray(skills) ? skills.join(' ') : (existingCompanion && Array.isArray(existingCompanion.skills) ? existingCompanion.skills.join(' ') : '');
+      const bioText = bio !== undefined ? bio : (existingCompanion ? existingCompanion.bio : '');
+      let skillsText = '';
+      if (Array.isArray(skills)) {
+        skillsText = skills.join(' ');
+      } else if (existingCompanion && existingCompanion.skills && existingCompanion.skills.length > 0) {
+        // Fetch skill names from DB
+        const skillDocs = await Skill.find({ _id: { $in: existingCompanion.skills } });
+        skillsText = skillDocs.map(s => lang === 'ar' ? s.nameAr : s.nameEn).join(' ');
+      }
       const hobbiesText = Array.isArray(hobbies) ? hobbies.join(' ') : (existingCompanion && Array.isArray(existingCompanion.hobbies) ? existingCompanion.hobbies.join(' ') : '');
       
       const fullText = `${bioText} ${skillsText} ${hobbiesText}`.trim();
@@ -89,25 +131,51 @@ const updateCompanionProfile = async (req, res) => {
       }
     }
 
-   
-    const updatedCompanion = await Companion.findOneAndUpdate(
-      { userId },
-      {
-        $set: setUpdate,
-        $setOnInsert: {
-          companionType: 'general',
-          specialization: 'none',
-          verificationStatus: 'pending',
-          documents: {
-            nationalIdUrl: 'placeholder_national_id.jpg',
-            criminalRecordUrl: 'placeholder_criminal_record.jpg'
-          }
+    let updatedCompanion;
+    if (existingCompanion) {
+      // Update existing profile (only validates fields that are set)
+      updatedCompanion = await Companion.findOneAndUpdate(
+        { userId },
+        { $set: setUpdate },
+        { new: true, runValidators: true }
+      );
+    } else {
+      // Create new profile with necessary default documents structure matching schema
+      const newCompanionData = {
+        userId,
+        companionType: companionType || 'general',
+        specialization: specialization || 'none',
+        bio,
+        hourlyRate,
+        skills: setUpdate.skills || [],
+        hobbies: hobbies || [],
+        availability: availability || [],
+        documents: {
+          nationalIdCard: {
+            url: 'placeholder_national_id.jpg',
+            public_id: 'placeholder_national_id'
+          },
+          criminalRecord: {
+            url: 'placeholder_criminal_record.jpg',
+            public_id: 'placeholder_criminal_record'
+          },
+          Certificates: []
         }
-      },
-      { new: true, upsert: true, runValidators: true }
-    );
+      };
 
-    return res.status(200).json(updatedCompanion);
+      if (setUpdate.bioEmbedding) {
+        newCompanionData.bioEmbedding = setUpdate.bioEmbedding;
+      }
+
+      updatedCompanion = await Companion.create(newCompanionData);
+    }
+
+    // Return fully populated companion profile matching the frontend expectations
+    const populatedCompanion = await Companion.findById(updatedCompanion._id)
+      .populate('userId', 'name email phone location avatar')
+      .populate('skills', 'nameAr nameEn category');
+
+    return res.status(200).json(populatedCompanion);
   } catch (error) {
     console.error('Error updating companion profile:', error);
     if (error.name === 'ValidationError') {
@@ -212,7 +280,7 @@ const getVerifiedCompanions = async (req, res) => {
 
     const total = await Companion.countDocuments({ verificationStatus: 'verified' });
     const companions = await Companion.find({ verificationStatus: 'verified' })
-      .populate('userId', 'name email phone')
+      .populate('userId', 'name email phone avatar location')
       .skip(skip)
       .limit(limit);
 
@@ -250,9 +318,18 @@ const getCompanionById = async (req, res) => {
       });
     }
 
-    const companion = await Companion.findById(id)
+    // First try finding by the Companion document's own _id
+    let companion = await Companion.findById(id)
       .populate('userId', 'name email phone avatar location')
       .populate('skills', 'nameAr nameEn category');
+
+    // If not found, the caller may have passed the User's _id
+    // (e.g. when navigating from proposals where companionId is a User ref)
+    if (!companion) {
+      companion = await Companion.findOne({ userId: id })
+        .populate('userId', 'name email phone avatar location')
+        .populate('skills', 'nameAr nameEn category');
+    }
 
     if (!companion) {
       return res.status(404).json({
@@ -287,7 +364,9 @@ const getMyCompanionProfile = async (req, res) => {
       });
     }
 
-    const companion = await Companion.findOne({ userId: req.user.id }).populate('userId', 'name email phone');
+    const companion = await Companion.findOne({ userId: req.user.id })
+      .populate('userId', 'name email phone location avatar')
+      .populate('skills', 'nameAr nameEn category');
 
     if (!companion) {
       return res.status(404).json({
