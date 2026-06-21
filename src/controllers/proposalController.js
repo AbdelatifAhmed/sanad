@@ -325,9 +325,71 @@ const updateProposalStatus = async (req, res) => {
   }
 };
 
+const getMyProposals = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    
+    if (req.user.role !== "companion") {
+      return res.status(403).json({ status: "fail", message: messages.common.forbidden[lang] });
+    }
+
+    const { status } = req.query;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 6;
+    const skip = (page - 1) * limit;
+
+    const query = { companionId: req.user._id };
+    if (status && ["pending", "accepted", "rejected"].includes(status)) {
+      query.status = status;
+    }
+
+    // Get total counts for filters/stats cards
+    const totalCount = await Proposal.countDocuments({ companionId: req.user._id });
+    const pendingCount = await Proposal.countDocuments({ companionId: req.user._id, status: "pending" });
+    const acceptedCount = await Proposal.countDocuments({ companionId: req.user._id, status: "accepted" });
+    const rejectedCount = await Proposal.countDocuments({ companionId: req.user._id, status: "rejected" });
+
+    const totalFiltered = await Proposal.countDocuments(query);
+    const proposals = await Proposal.find(query)
+      .populate({
+        path: "jobPostId",
+        populate: {
+          path: "familyId",
+          select: "name email phone avatar"
+        }
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        proposals,
+        pagination: {
+          total: totalFiltered,
+          page,
+          limit,
+          pages: Math.ceil(totalFiltered / limit)
+        },
+        stats: {
+          total: totalCount,
+          pending: pendingCount,
+          accepted: acceptedCount,
+          rejected: rejectedCount
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Error fetching companion proposals:", error);
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+};
 
 module.exports = {
   sendProposal,
   getProposalsForJob,
-  updateProposalStatus
+  updateProposalStatus,
+  getMyProposals
 };
