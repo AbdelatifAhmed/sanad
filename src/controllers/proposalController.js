@@ -103,31 +103,48 @@ const getProposalsForJob = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean(); 
 
+    const validProposals = proposals.filter(p => p.companionId);
+
     const updatedProposals = await Promise.all(
-      proposals.map(async (proposal) => {
-        
-        const companionProfile = await Companion.findOne({ userId: proposal.companionId._id }).select("rating");
-        proposal.companionId.averageRating = companionProfile ? companionProfile.rating : 4.5; // 4.5 كقيمة افتراضية للمبتدئين
-
-        if (proposal.status === "pending") {
-          const newStartDate = new Date();
-          const newEndDate = new Date();
-          newEndDate.setDate(newStartDate.getDate() + (jobPost.schedule.durationInWeeks * 7));
+      validProposals.map(async (proposal) => {
+        try {
+          const companionProfile = await Companion.findOne({ userId: proposal.companionId._id })
+            .select("rating companionType specialization reviewCount");
           
-          const { workingDays, startTime, endTime } = jobPost.schedule;
+          proposal.companionId.averageRating = companionProfile ? companionProfile.rating : 4.5;
+          proposal.companionId.companionType = companionProfile ? companionProfile.companionType : "general";
+          proposal.companionId.specialization = companionProfile ? companionProfile.specialization : "none";
+          proposal.companionId.reviewCount = companionProfile ? companionProfile.reviewCount : 0;
 
-          const isBusyNow = await hasBookingConflict(
-            proposal.companionId._id,
-            newStartDate,
-            newEndDate,
-            workingDays,
-            startTime,
-            endTime
-          );
+          if (proposal.status === "pending") {
+            const newStartDate = new Date();
+            const newEndDate = new Date();
+            newEndDate.setDate(newStartDate.getDate() + (jobPost.schedule.durationInWeeks * 7));
+            
+            const { workingDays, startTime, endTime } = jobPost.schedule;
 
-          proposal.isConflicting = isBusyNow;
-        } else {
+            const isBusyNow = await hasBookingConflict(
+              proposal.companionId._id,
+              newStartDate,
+              newEndDate,
+              workingDays,
+              startTime,
+              endTime
+            );
+
+            proposal.isConflicting = isBusyNow;
+          } else {
+            proposal.isConflicting = false;
+          }
+        } catch (err) {
+          console.error(`Error processing companion details for proposal ${proposal._id}:`, err);
           proposal.isConflicting = false;
+          if (proposal.companionId) {
+            proposal.companionId.averageRating = 4.5;
+            proposal.companionId.companionType = "general";
+            proposal.companionId.specialization = "none";
+            proposal.companionId.reviewCount = 0;
+          }
         }
         return proposal;
       })
