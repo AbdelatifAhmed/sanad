@@ -55,6 +55,7 @@ import {
   createCareRequest,
   getFamilyCareRequests,
   getFamilyElderlyProfiles,
+  getJobPostById,
 } from "./API";
 
 // ==========================================
@@ -1299,3 +1300,30 @@ export const useCreateCareRequest = () => {
 
   return { execute, isLoading, error };
 };
+
+export const useJobPostById = (id: string) => {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
+
+  const fetch = useCallback(async () => {
+    if (!id) return;
+    try {
+      setIsLoading(true);
+      const res = await getJobPostById(id);
+      setData(res);
+    } catch (err: any) {
+      setError(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { data, isLoading, error, refetch: fetch };
+};
+
+

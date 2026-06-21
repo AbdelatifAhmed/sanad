@@ -177,6 +177,12 @@ export const getJobPostsForCompanions = async (): Promise<JobPost[]> => {
   return res.data.data as JobPost[];
 };
 
+export const getJobPostById = async (id: string): Promise<JobPost> => {
+  const res = await api.get<ApiResponse<any>>(`/job-posts/${id}`);
+  return (res.data.data?.job ?? res.data.data) as JobPost;
+};
+
+
 // --- PROPOSALS ROUTER (/proposals) ---
 export const sendProposal = async (data: SendProposalBody): Promise<Proposal> => {
   const res = await api.post<ApiResponse<Proposal>>("/proposals", data);
@@ -192,9 +198,10 @@ export const updateProposalStatus = async (
 };
 
 export const getProposalsForJob = async (jobId: string): Promise<Proposal[]> => {
-  const res = await api.get<ApiResponse<Proposal[]>>(`/proposals/job/${jobId}`);
-  return res.data.data as Proposal[];
+  const res = await api.get<ApiResponse<any>>(`/proposals/job/${jobId}`);
+  return (res.data.data?.proposals ?? res.data.data) as Proposal[];
 };
+
 
 // --- PAYMENTS ROUTER (/payments) ---
 export const payBooking = async (id: string, data: PayBookingBody): Promise<PaymentRecord> => {

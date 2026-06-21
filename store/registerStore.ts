@@ -43,9 +43,9 @@ interface RegisterState {
     hobbies: string[];
     availability: Array<{ day: string; slots: string[] }>;
     documents: {
-      nationalIdUrl: string;
-      criminalRecordUrl: string;
-      syndicateCardUrl?: string;
+      nationalIdUrl?: { url: string; public_id: string };
+      criminalRecordUrl?: { url: string; public_id: string };
+      syndicateCardUrl?: { url: string; public_id: string };
     };
   };
 
@@ -82,7 +82,7 @@ export const useRegisterStore = create<RegisterState>((set: any) => ({
     skills: [],
     hobbies: [],
     availability: [],
-    documents: { nationalIdUrl: '', criminalRecordUrl: '' },
+    documents: {},
   },
 
   setRole: (role: 'family' | 'companion') => set({ role }),
@@ -103,7 +103,7 @@ export const useRegisterStore = create<RegisterState>((set: any) => ({
     familyData: { address: { city: '', area: '', fullAddress: '' }, beneficiaries: [] },
     companionData: {
       companionType: 'general', specialization: 'none', bio: '', hourlyRate: 0,
-      skills: [], hobbies: [], availability: [], documents: { nationalIdUrl: '', criminalRecordUrl: '' }
+      skills: [], hobbies: [], availability: [], documents: {}
     }
   })
 }));

@@ -17,7 +17,8 @@
     "settings": "Settings",
     "logout": "Logout",
     "account": "Account",
-    "userAccount": "User Account"
+    "userAccount": "User Account",
+    "applications": "Applications"
   },
   "settings": {
     "familyTitle": "Family settings",

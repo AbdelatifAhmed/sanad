@@ -3,10 +3,11 @@
 import { useRegisterStore } from "@/store/registerStore";
 import { ArrowLeft, ArrowRight, CheckCircle, Loader2, Trash2, Upload } from "lucide-react";
 import React, { useState } from "react";
+import { uploadPublicFile } from "@/lib/api/upload.api";
 
 interface FileUploaderProps {
   label: string;
-  onUpload: (url: string) => void;
+  onUpload: (fileData: { url: string; public_id: string }) => void;
   onRemove: () => void;
   currentUrl?: string;
   required?: boolean;
@@ -14,25 +15,34 @@ interface FileUploaderProps {
 
 const FileUploader = ({ label, onUpload, onRemove, currentUrl, required }: FileUploaderProps) => {
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploading(true);
-    
-    // Simulation of Cloudinary Upload
-    // In a real app, you would use:
-    // const formData = new FormData();
-    // formData.append("file", file);
-    // formData.append("upload_preset", "your_preset");
-    // const res = await axios.post("https://api.cloudinary.com/v1_1/your_cloud/image/upload", formData);
-    // onUpload(res.data.secure_url);
+    // Validate type and size (5MB limit)
+    const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      setError("Only JPEG, PNG, and PDF are allowed.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("File size exceeds 5MB limit.");
+      return;
+    }
 
-    setTimeout(() => {
-      onUpload(`https://placeholder.com/${file.name}`);
+    setUploading(true);
+    setError(null);
+    
+    try {
+      const result = await uploadPublicFile(file);
+      onUpload(result);
+    } catch (err) {
+      setError("Failed to upload. Please try again.");
+    } finally {
       setUploading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -61,28 +71,30 @@ const FileUploader = ({ label, onUpload, onRemove, currentUrl, required }: FileU
           </button>
         </div>
       ) : (
-        <label className="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-3 cursor-pointer hover:border-primary hover:bg-teal-50/5 transition-all bg-gray-50/50 group">
-          <input
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            className="hidden"
-            onChange={handleFileChange}
-            disabled={uploading}
-          />
-          {uploading ? (
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
-              <Upload className="w-5 h-5" />
+        <>
+          <label className={`border-2 border-dashed ${error ? 'border-red-300 bg-red-50/50' : 'border-gray-200 bg-gray-50/50 hover:border-primary hover:bg-teal-50/5'} rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-3 cursor-pointer transition-all group`}>
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={handleFileChange}
+              disabled={uploading}
+            />
+            {uploading ? (
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
+                <Upload className="w-5 h-5" />
+              </div>
+            )}
+            <div>
+              <p className={`text-xs font-bold ${error ? 'text-red-500' : 'text-primary'}`}>
+                {uploading ? "Uploading..." : error || "Click to upload document"}
+              </p>
+              <p className="text-[10px] text-gray-400 font-medium mt-1">PDF, JPG or PNG (max. 5MB)</p>
             </div>
-          )}
-          <div>
-            <p className="text-xs text-primary font-bold">
-              {uploading ? "Uploading..." : "Click to upload document"}
-            </p>
-            <p className="text-[10px] text-gray-400 font-medium mt-1">PDF, JPG or PNG (max. 10MB)</p>
-          </div>
-        </label>
+          </label>
+        </>
       )}
     </div>
   );
@@ -91,22 +103,19 @@ const FileUploader = ({ label, onUpload, onRemove, currentUrl, required }: FileU
 export default function CompanionDocuments() {
   const { companionData, updateCompanionData, nextStep, prevStep } = useRegisterStore();
 
-  const handleUpload = (field: keyof typeof companionData.documents, url: string) => {
+  const handleUpload = (field: keyof typeof companionData.documents, fileData: { url: string; public_id: string }) => {
     updateCompanionData({
       documents: {
         ...companionData.documents,
-        [field]: url,
+        [field]: fileData,
       },
     });
   };
 
   const handleRemove = (field: keyof typeof companionData.documents) => {
-    updateCompanionData({
-      documents: {
-        ...companionData.documents,
-        [field]: "",
-      },
-    });
+    const updatedDocuments = { ...companionData.documents };
+    delete updatedDocuments[field];
+    updateCompanionData({ documents: updatedDocuments });
   };
 
   const isComplete = companionData.documents.nationalIdUrl && companionData.documents.criminalRecordUrl;
@@ -124,23 +133,23 @@ export default function CompanionDocuments() {
         <FileUploader
           label="National ID Card"
           required
-          currentUrl={companionData.documents.nationalIdUrl}
-          onUpload={(url) => handleUpload("nationalIdUrl", url)}
+          currentUrl={companionData.documents.nationalIdUrl?.url}
+          onUpload={(fileData) => handleUpload("nationalIdUrl", fileData)}
           onRemove={() => handleRemove("nationalIdUrl")}
         />
 
         <FileUploader
           label="Criminal Record (الفيش الجنائي)"
           required
-          currentUrl={companionData.documents.criminalRecordUrl}
-          onUpload={(url) => handleUpload("criminalRecordUrl", url)}
+          currentUrl={companionData.documents.criminalRecordUrl?.url}
+          onUpload={(fileData) => handleUpload("criminalRecordUrl", fileData)}
           onRemove={() => handleRemove("criminalRecordUrl")}
         />
 
         <FileUploader
           label="Syndicate Card (Optional)"
-          currentUrl={companionData.documents.syndicateCardUrl}
-          onUpload={(url) => handleUpload("syndicateCardUrl", url)}
+          currentUrl={companionData.documents.syndicateCardUrl?.url}
+          onUpload={(fileData) => handleUpload("syndicateCardUrl", fileData)}
           onRemove={() => handleRemove("syndicateCardUrl")}
         />
       </div>

@@ -140,6 +140,8 @@ export interface JobPost {
   schedule: JobPostSchedule;
   location: LocationDetails;
   status: JobPostStatus;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
 
 export interface Proposal {
@@ -149,6 +151,8 @@ export interface Proposal {
   proposedRate: number;
   coverLetter: string;
   status: ProposalStatus;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
 
 export interface NotificationItem {

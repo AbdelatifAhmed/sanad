@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react"; // 💡 قمنا بحذف useEffect
+import React, { useState, useEffect } from "react";
 import { MapPin, Navigation, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { useRegisterStore } from "@/store/registerStore";
 import { useTranslations } from "next-intl";
