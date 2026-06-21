@@ -17,7 +17,8 @@
     "settings": "الإعدادات",
     "logout": "تسجيل الخروج",
     "account": "الحساب",
-    "userAccount": "حساب المستخدم"
+    "userAccount": "حساب المستخدم",
+    "applications": "الطلبات"
   },
   "settings": {
     "familyTitle": "إعدادات العائلة",

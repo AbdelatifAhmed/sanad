@@ -19,7 +19,8 @@ type NavLabelKey =
   | "messages"
   | "wallet"
   | "profile"
-  | "settings";
+  | "settings"
+  | "applications";
 
 type AppLabelKey = "name" | "familyDashboard" | "careDashboard";
 

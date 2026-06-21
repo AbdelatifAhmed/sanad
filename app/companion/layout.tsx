@@ -5,6 +5,7 @@ const navItems: SidebarItem[] = [
   { labelKey: "dashboard", href: "/companion/dashboard", icon: "home" },
   { labelKey: "requests", href: "/companion/requests", icon: "pending_actions" },
   { labelKey: "bookings", href: "/companion/bookings", icon: "event_available" },
+  { labelKey: "applications", href: "/companion/applications", icon: "event_available" },
   { labelKey: "calendar", href: "/companion/schedule", icon: "calendar_today" },
   { labelKey: "messages", href: "/companion/messages", icon: "chat_bubble" },
   { labelKey: "wallet", href: "/companion/wallet", icon: "wallet" },
