@@ -280,7 +280,7 @@ const getVerifiedCompanions = async (req, res) => {
 
     const total = await Companion.countDocuments({ verificationStatus: 'verified' });
     const companions = await Companion.find({ verificationStatus: 'verified' })
-      .populate('userId', 'name email phone')
+      .populate('userId', 'name email phone avatar location')
       .skip(skip)
       .limit(limit);
 
@@ -318,9 +318,18 @@ const getCompanionById = async (req, res) => {
       });
     }
 
-    const companion = await Companion.findById(id)
+    // First try finding by the Companion document's own _id
+    let companion = await Companion.findById(id)
       .populate('userId', 'name email phone avatar location')
       .populate('skills', 'nameAr nameEn category');
+
+    // If not found, the caller may have passed the User's _id
+    // (e.g. when navigating from proposals where companionId is a User ref)
+    if (!companion) {
+      companion = await Companion.findOne({ userId: id })
+        .populate('userId', 'name email phone avatar location')
+        .populate('skills', 'nameAr nameEn category');
+    }
 
     if (!companion) {
       return res.status(404).json({
