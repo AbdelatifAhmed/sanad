@@ -2,7 +2,7 @@
 
 interface FilterState {
   search: string;
-  experience: string;
+  duration: string;
   rate: string;
   rating: string;
   specialization: string;
@@ -31,7 +31,7 @@ export default function CaregiverFilters({
 }: CaregiverFiltersProps) {
   const hasActiveFilters =
     filters.search ||
-    filters.experience ||
+    filters.duration ||
     filters.rate ||
     filters.rating ||
     filters.specialization;
@@ -73,21 +73,21 @@ export default function CaregiverFilters({
 
         {/* Detailed Filters Row */}
         <div className="mt-4 pt-4 border-t border-sand-high/60 flex flex-wrap gap-4 items-center">
-          {/* Experience */}
+          {/* Duration */}
           <div className="flex flex-col gap-1 min-w-[140px]">
             <label className="text-[10px] font-bold uppercase tracking-wider text-stitch-on-surface-variant/60">
-              Experience
+              Duration
             </label>
             <select
-              value={filters.experience}
-              onChange={(e) => onFilterChange("experience", e.target.value)}
+              value={filters.duration}
+              onChange={(e) => onFilterChange("duration", e.target.value)}
               className="bg-transparent border-none font-bold text-stitch-primary text-sm focus:ring-0 p-0 cursor-pointer outline-none"
             >
-              <option value="">Any Experience</option>
-              <option value="1">1+ Years</option>
-              <option value="3">3+ Years</option>
-              <option value="5">5+ Years</option>
-              <option value="10">10+ Years</option>
+              <option value="">Any Duration</option>
+              <option value="100">100+ Hours</option>
+              <option value="500">500+ Hours</option>
+              <option value="1000">1000+ Hours</option>
+              <option value="2000">2000+ Hours</option>
             </select>
           </div>
 
