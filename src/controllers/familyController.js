@@ -203,7 +203,7 @@ exports.updateFamilyProfile = async (req, res) => {
 
 exports.getFamilyDashboardStats = async (req, res) => {
   try {
-    const lang = req.headers["accept-language"] || "en";
+    const lang = req.lang || "en";
 
     if (!req.user || req.user.role !== "family") {
       return res.status(403).json({
@@ -270,18 +270,24 @@ exports.getFamilyDashboardStats = async (req, res) => {
       } else if (diffHours < 24) {
         nextVisitLabel = lang === "en" ? `Next in ${diffHours}h` : `التالي خلال ${diffHours} س`;
       } else if (diffHours < 48) {
-        const timeString = nextSlotDateTime.toLocaleTimeString("en-US", {
+        const timeString = nextSlotDateTime.toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
           hour: "2-digit",
           minute: "2-digit",
           hour12: true,
+          numberingSystem: "latn",
         });
         nextVisitLabel = lang === "en" ? `Tomorrow, ${timeString}` : `غداً، ${timeString}`;
       } else {
-        const dateString = nextSlotDateTime.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-        const timeString = nextSlotDateTime.toLocaleTimeString("en-US", {
+        const dateString = nextSlotDateTime.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
+          month: "short",
+          day: "numeric",
+          numberingSystem: "latn",
+        });
+        const timeString = nextSlotDateTime.toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
           hour: "2-digit",
           minute: "2-digit",
           hour12: true,
+          numberingSystem: "latn",
         });
         nextVisitLabel = lang === "en" ? `${dateString}, ${timeString}` : `${dateString}، ${timeString}`;
       }
@@ -295,15 +301,15 @@ exports.getFamilyDashboardStats = async (req, res) => {
       const role = b.companionId ? "RN" : "";
       
       const subtext = isPending 
-        ? `Requested for ${new Date(b.startDate).toLocaleDateString("en-US", { weekday: "long" })}`
-        : "Elderly Care Specialist";
+        ? (lang === "en" ? "Requested for " : "مطلوب ليوم ") + new Date(b.startDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "long" })
+        : (lang === "en" ? "Elderly Care Specialist" : "أخصائي رعاية كبار السن");
 
       let scheduleText = "";
       if (!isPending && b.schedule && b.schedule.length > 0) {
         const nextSlot = b.schedule.find(s => new Date(s.date) >= today);
         if (nextSlot) {
           const timeString = nextSlot.startTime;
-          const dateString = new Date(nextSlot.date).toLocaleDateString("en-US", { weekday: "long" });
+          const dateString = new Date(nextSlot.date).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "long" });
           
           const tomorrow = new Date(today);
           tomorrow.setDate(today.getDate() + 1);
@@ -312,11 +318,18 @@ exports.getFamilyDashboardStats = async (req, res) => {
           slotDateOnly.setHours(0, 0, 0, 0);
           
           const isTomorrow = slotDateOnly.getTime() === tomorrow.getTime();
-          const dayLabel = isTomorrow ? "Tomorrow" : dateString;
-          scheduleText = `Scheduled for ${dayLabel}, ${timeString}`;
+          if (lang === "en") {
+            const dayLabel = isTomorrow ? "Tomorrow" : dateString;
+            scheduleText = `Scheduled for ${dayLabel}, ${timeString}`;
+          } else {
+            const dayLabel = isTomorrow ? "غداً" : dateString;
+            scheduleText = `مجدول ليوم ${dayLabel}، ${timeString}`;
+          }
         } else {
-          const formattedStart = new Date(b.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-          scheduleText = `Scheduled starting ${formattedStart}`;
+          const formattedStart = new Date(b.startDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric", numberingSystem: "latn" });
+          scheduleText = lang === "en" 
+            ? `Scheduled starting ${formattedStart}`
+            : `مجدول بدءاً من ${formattedStart}`;
         }
       }
 
