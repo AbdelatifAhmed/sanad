@@ -7,7 +7,7 @@ import CaregiverFilters from "@/components/companion/CaregiverFilters";
 
 interface FilterState {
   search: string;
-  experience: string;
+  duration: string;
   rate: string;
   rating: string;
   specialization: string;
@@ -15,7 +15,7 @@ interface FilterState {
 
 const DEFAULT_FILTERS: FilterState = {
   search: "",
-  experience: "",
+  duration: "",
   rate: "",
   rating: "",
   specialization: "",
@@ -32,7 +32,27 @@ function deriveTitle(specialization?: string, companionType?: string): string {
 }
 
 // Skeleton loader card
-function SkeletonCard() {
+function SkeletonCard({ viewMode = "grid" }: { viewMode?: "grid" | "list" }) {
+  if (viewMode === "list") {
+    return (
+      <div className="bg-white rounded-3xl border border-sand-high/60 shadow-soft overflow-hidden animate-pulse flex flex-col md:flex-row">
+        <div className="w-full md:w-64 h-52 md:h-auto bg-sand-high/80 shrink-0 min-h-[208px]" />
+        <div className="flex-1 p-5 md:p-6 space-y-4 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="h-4 bg-sand-high/80 rounded-full w-3/4" />
+            <div className="h-3 bg-sand-high/60 rounded-full w-1/2" />
+            <div className="h-3 bg-sand-high/60 rounded-full w-full mt-4" />
+            <div className="h-3 bg-sand-high/60 rounded-full w-5/6" />
+          </div>
+          <div className="flex gap-3 mt-4 justify-end">
+            <div className="h-10 bg-sand-high/40 rounded-xl w-28" />
+            <div className="h-10 bg-sand-high/40 rounded-xl w-28" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-3xl border border-sand-high/60 shadow-soft overflow-hidden animate-pulse">
       <div className="h-52 bg-sand-high/80" />
@@ -76,16 +96,17 @@ const PAGE_SIZE = 9;
 export default function FamilyCompanionsPage() {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const { data, isLoading, error } = useVerifiedCompanions();
 
   // Reset page on filter change
   useEffect(() => {
     // Only reset page if filters have actually changed
-    if (filters.search || filters.specialization || filters.rating || filters.rate) {
+    if (filters.search || filters.specialization || filters.rating || filters.rate || filters.duration) {
       setPage(1);
     }
-  }, [filters.search, filters.specialization, filters.rating, filters.rate]);
+  }, [filters.search, filters.specialization, filters.rating, filters.rate, filters.duration]);
 
   // Map raw API data to a safe shape
   const allCompanions = useMemo(() => {
@@ -128,11 +149,10 @@ export default function FamilyCompanionsPage() {
         return false;
       }
 
-      // Experience (work hours / 200 ≈ years)
-      if (filters.experience) {
-        const minYears = parseInt(filters.experience);
-        const years = c.totalWorkHours > 0 ? Math.round(c.totalWorkHours / 200) : 0;
-        if (years < minYears) return false;
+      // Duration (total work hours)
+      if (filters.duration) {
+        const minHours = parseInt(filters.duration);
+        if (c.totalWorkHours < minHours) return false;
       }
 
       // Rate
@@ -180,13 +200,27 @@ export default function FamilyCompanionsPage() {
             </p>
           </div>
 
-          {/* View mode toggle (cosmetic, list is default) */}
+          {/* View mode toggle */}
           <div className="flex items-center gap-1.5 bg-white border border-sand-high/60 rounded-xl p-1 shadow-soft self-start sm:self-auto">
-            <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-stitch-primary text-white text-xs font-bold transition-all">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                viewMode === "grid"
+                  ? "bg-stitch-primary text-white"
+                  : "text-stitch-on-surface-variant hover:bg-sand-low"
+              }`}
+            >
               <span className="material-symbols-outlined text-[15px]">grid_view</span>
               Grid
             </button>
-            <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-stitch-on-surface-variant text-xs font-bold hover:bg-sand-low transition-all">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                viewMode === "list"
+                  ? "bg-stitch-primary text-white"
+                  : "text-stitch-on-surface-variant hover:bg-sand-low"
+              }`}
+            >
               <span className="material-symbols-outlined text-[15px]">view_list</span>
               List
             </button>
@@ -210,13 +244,19 @@ export default function FamilyCompanionsPage() {
         </div>
       )}
 
-      {/* Caregiver Grid */}
+      {/* Caregiver Grid/List */}
       <section
         aria-label="Caregiver listings"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        className={
+          viewMode === "grid"
+            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            : "flex flex-col gap-6"
+        }
       >
         {isLoading
-          ? Array.from({ length: PAGE_SIZE }).map((_, i) => <SkeletonCard key={i} />)
+          ? Array.from({ length: PAGE_SIZE }).map((_, i) => (
+              <SkeletonCard key={i} viewMode={viewMode} />
+            ))
           : paginated.length === 0
           ? <EmptyState onClear={handleClearAll} />
           : paginated.map((companion) => (
@@ -233,6 +273,7 @@ export default function FamilyCompanionsPage() {
                 bio={companion.bio}
                 verified={companion.verified}
                 specialization={companion.specialization}
+                viewMode={viewMode}
               />
             ))}
       </section>
