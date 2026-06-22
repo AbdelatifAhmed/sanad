@@ -55,6 +55,7 @@ export interface CareRequestFormData {
     governorate: string;
     readableAddress: string;
     notes: string;
+    coordinates?: [number, number]; // [longitude, latitude]
   };
 }
 

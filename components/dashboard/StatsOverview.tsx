@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 export interface DashboardStats {
   totalRequests: {
@@ -28,20 +29,25 @@ interface StatsProps {
   stats: DashboardStats | null;
 }
 
-export function StatsSection({ stats }: StatsProps) {
+export async function StatsSection({ stats }: StatsProps) {
+  const t = await getTranslations("companionDashboard");
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {/* Total Requests */}
-      <div className="bg-white p-6 rounded-2xl border border-stitch-outline/10 shadow-soft flex flex-col justify-between h-[130px]">
-        <div className="flex justify-between items-center">
+      <div className="bg-white p-6 rounded-2xl border border-stitch-outline/10 shadow-soft flex flex-col justify-between h-[150px]">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-stitch-primary bg-stitch-primary/10 p-1.5 rounded-lg text-lg">
               assignment
             </span>
             <span className="text-[11px] font-bold tracking-wider text-stitch-on-surface-variant/50 uppercase">
-              Total Requests
+              {t("totalRequests")}
             </span>
           </div>
+          <p className="text-[10px] text-stitch-on-surface-variant/40 font-semibold leading-snug ps-9">
+            {t("totalRequestsDesc")}
+          </p>
         </div>
         <div className="flex items-baseline justify-between mt-auto">
           <span className="text-3xl font-bold text-stitch-on-surface">
@@ -56,16 +62,19 @@ export function StatsSection({ stats }: StatsProps) {
       </div>
 
       {/* Active Bookings */}
-      <div className="bg-white p-6 rounded-2xl border border-stitch-outline/10 shadow-soft flex flex-col justify-between h-[130px]">
-        <div className="flex justify-between items-center">
+      <div className="bg-white p-6 rounded-2xl border border-stitch-outline/10 shadow-soft flex flex-col justify-between h-[150px]">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-stitch-primary bg-stitch-primary/10 p-1.5 rounded-lg text-lg">
               verified
             </span>
             <span className="text-[11px] font-bold tracking-wider text-stitch-on-surface-variant/50 uppercase">
-              Active Bookings
+              {t("activeBookings")}
             </span>
           </div>
+          <p className="text-[10px] text-stitch-on-surface-variant/40 font-semibold leading-snug ps-9">
+            {t("activeBookingsDesc")}
+          </p>
         </div>
         <div className="flex items-baseline justify-between mt-auto">
           <span className="text-3xl font-bold text-stitch-on-surface">
@@ -80,16 +89,19 @@ export function StatsSection({ stats }: StatsProps) {
       </div>
 
       {/* Upcoming Visits */}
-      <div className="bg-white p-6 rounded-2xl border border-stitch-outline/10 shadow-soft flex flex-col justify-between h-[130px]">
-        <div className="flex justify-between items-center">
+      <div className="bg-white p-6 rounded-2xl border border-stitch-outline/10 shadow-soft flex flex-col justify-between h-[150px]">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-stitch-primary bg-stitch-primary/10 p-1.5 rounded-lg text-lg">
               medical_services
             </span>
             <span className="text-[11px] font-bold tracking-wider text-stitch-on-surface-variant/50 uppercase">
-              Upcoming Visits
+              {t("upcomingVisits")}
             </span>
           </div>
+          <p className="text-[10px] text-stitch-on-surface-variant/40 font-semibold leading-snug ps-9">
+            {t("upcomingVisitsDesc")}
+          </p>
         </div>
         <div className="flex items-baseline justify-between mt-auto">
           <span className="text-3xl font-bold text-stitch-on-surface">
@@ -104,16 +116,19 @@ export function StatsSection({ stats }: StatsProps) {
       </div>
 
       {/* Average Rating */}
-      <div className="bg-white p-6 rounded-2xl border border-stitch-outline/10 shadow-soft flex flex-col justify-between h-[130px]">
-        <div className="flex justify-between items-center">
+      <div className="bg-white p-6 rounded-2xl border border-stitch-outline/10 shadow-soft flex flex-col justify-between h-[150px]">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-stitch-primary bg-stitch-primary/10 p-1.5 rounded-lg text-lg">
               grade
             </span>
             <span className="text-[11px] font-bold tracking-wider text-stitch-on-surface-variant/50 uppercase">
-              Average Rating
+              {t("averageRating")}
             </span>
           </div>
+          <p className="text-[10px] text-stitch-on-surface-variant/40 font-semibold leading-snug ps-9">
+            {t("averageRatingDesc")}
+          </p>
         </div>
         <div className="flex items-baseline justify-between mt-auto">
           <span className="text-3xl font-bold text-stitch-on-surface">
@@ -129,7 +144,8 @@ export function StatsSection({ stats }: StatsProps) {
   );
 }
 
-export function ProfileCompletion({ stats }: StatsProps) {
+export async function ProfileCompletion({ stats }: StatsProps) {
+  const t = await getTranslations("companionDashboard");
   const radius = 32;
   const strokeWidth = 8;
   const circumference = 2 * Math.PI * radius;
@@ -139,7 +155,7 @@ export function ProfileCompletion({ stats }: StatsProps) {
   return (
     <div className="bg-white p-6 rounded-2xl border border-stitch-outline/10 shadow-soft flex flex-col items-center justify-between text-center min-h-[200px]">
       <h3 className="font-bold text-stitch-on-surface text-base w-full text-left">
-        Profile Completion
+        {t("profileCompletion")}
       </h3>
       
       <div className="flex items-center gap-6 my-4 w-full justify-center text-left">
@@ -175,11 +191,11 @@ export function ProfileCompletion({ stats }: StatsProps) {
 
         <div className="space-y-1 max-w-[170px]">
           <p className="text-xs text-stitch-on-surface-variant/75 leading-relaxed font-medium">
-            {stats?.profileCompletion?.message || "Finish setting up your specialized care certificates."}
+            {stats?.profileCompletion?.message || t("profileCompletionDefault")}
           </p>
           {percentage < 100 && (
             <Link href="/companion/profile" className="text-xs font-bold text-stitch-primary hover:underline block mt-1">
-              Complete Now
+              {t("completeNow")}
             </Link>
           )}
         </div>

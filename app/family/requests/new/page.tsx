@@ -27,6 +27,7 @@ const INITIAL_FORM: CareRequestFormData = {
     governorate: "",
     readableAddress: "",
     notes: "",
+    coordinates: [46.6753, 24.7136], // Default coordinates to Riyadh [longitude, latitude]
   },
 };
 
@@ -108,9 +109,9 @@ export default function NewCareRequestPage() {
         endTime: final.scheduleData.endTime,
         durationInWeeks: Number(final.scheduleData.durationInWeeks),
       },
-      // Location — coordinates default [0,0] if no map interaction
+      // Location — coordinates mapped dynamically from map interaction
       location: {
-        coordinates: [0, 0],
+        coordinates: final.locationData.coordinates || [46.6753, 24.7136],
         readableAddress: final.locationData.readableAddress,
         city: final.locationData.city,
         governorate: final.locationData.governorate,
