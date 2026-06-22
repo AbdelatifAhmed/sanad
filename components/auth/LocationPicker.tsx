@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { MapPin, Navigation, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { useRegisterStore } from "@/store/registerStore";
 import { useTranslations } from "next-intl";
+import SharedMap from "@/components/shared/SharedMap";
 
 interface LocationData {
   geo: { type: 'Point'; coordinates: [number, number] }; // [long, lat]
@@ -34,8 +35,50 @@ export default function LocationPicker({ value, onChange }: LocationPickerProps)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 💡Derived State: نقوم بحساب العنوان مباشرة أثناء الـ Render بدون State إضافي وبدون useEffect
   const address = location?.readableAddress || "";
+
+  // Convert [lon, lat] (Mongoose) to Leaflet [lat, lon]
+  const rawCoords = location?.geo?.coordinates;
+  const mapCenter: [number, number] = rawCoords && rawCoords.length === 2
+    ? [rawCoords[1], rawCoords[0]]
+    : [24.7136, 46.6753]; // Default to Riyadh
+
+  const handleMapChange = async (latLng: [number, number]) => {
+    const [lat, lng] = latLng;
+    
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            "Accept-Language": "en, ar",
+            "User-Agent": "SanadApp/1.0",
+          },
+        }
+      );
+      const data = await response.json();
+      if (data && data.address) {
+        const resGov = data.address.state || data.address.province || data.address.county || "";
+        const resCity = data.address.city || data.address.town || data.address.village || data.address.suburb || resGov || "";
+        const resAddress = data.display_name || "";
+
+        updateLocation({
+          geo: { type: 'Point', coordinates: [lng, lat] },
+          readableAddress: resAddress,
+          city: resCity,
+          governorate: resGov
+        });
+      }
+    } catch (err) {
+      console.error("Reverse Geocoding Error on map click:", err);
+      updateLocation({
+        geo: { type: 'Point', coordinates: [lng, lat] },
+        readableAddress: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+        city: location?.city || "",
+        governorate: location?.governorate || ""
+      });
+    }
+  };
 
   const handleGetLocation = () => {
     setLoading(true);
@@ -50,45 +93,8 @@ export default function LocationPicker({ value, onChange }: LocationPickerProps)
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        
-        try {
-          // Use Nominatim for Reverse Geocoding
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-            {
-              headers: {
-                'Accept-Language': 'ar, en',
-                'User-Agent': 'SanadApp/1.0'
-              }
-            }
-          );
-          const data = await response.json();
-          
-          const city = data.address.city || data.address.town || data.address.village || "";
-          const governorate = data.address.state || data.address.province || "";
-          const readableAddress = data.display_name || "";
-
-          // التحديث هنا في الـ Store سيعيد رندر المكون تلقائيًا بالعنوان الجديد
-          updateLocation({
-            geo: { type: 'Point', coordinates: [longitude, latitude] },
-            readableAddress,
-            city,
-            governorate
-          });
-          
-        } catch (err) {
-          console.error("Reverse Geocoding Error:", err);
-          setError(t("geocodeFailed"));
-          
-          updateLocation({
-            geo: { type: 'Point', coordinates: [longitude, latitude] },
-            readableAddress: t("unknownLocation"),
-            city: t("unknown"),
-            governorate: t("unknown")
-          });
-        } finally {
-          setLoading(false);
-        }
+        await handleMapChange([latitude, longitude]);
+        setLoading(false);
       },
       (err) => {
         console.error("Geolocation Error:", err);
@@ -167,6 +173,11 @@ export default function LocationPicker({ value, onChange }: LocationPickerProps)
           </div>
         )}
 
+        {/* Reusable Interactive OSM Leaflet Map Picker */}
+        <div className="relative w-full h-56 rounded-2xl overflow-hidden border border-[#bdc9c8] shadow-inner">
+          <SharedMap center={mapCenter} readOnly={false} zoom={13} onChange={handleMapChange} />
+        </div>
+
         {error && (
           <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600 text-xs font-semibold animate-fade-in">
             <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
@@ -211,6 +222,11 @@ export default function LocationPicker({ value, onChange }: LocationPickerProps)
           <Navigation className="w-4 h-4 text-[#005c53]" />
           {loading ? t("detecting") : location ? t("updateLocation") : t("detectMy")}
         </button>
+      </div>
+
+      {/* Reusable Interactive OSM Leaflet Map Picker */}
+      <div className="relative w-full h-56 rounded-2xl overflow-hidden border border-[#bdc9c8] shadow-inner">
+        <SharedMap center={mapCenter} readOnly={false} zoom={13} onChange={handleMapChange} />
       </div>
 
       {error && (
