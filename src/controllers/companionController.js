@@ -278,8 +278,60 @@ const getVerifiedCompanions = async (req, res) => {
     const limit = parseInt(req.query.limit, 10) || 10;
     const skip = (page - 1) * limit;
 
-    const total = await Companion.countDocuments({ verificationStatus: 'verified' });
-    const companions = await Companion.find({ verificationStatus: 'verified' })
+    const query = { verificationStatus: 'verified' };
+
+    // Duration filter (totalWorkHours)
+    if (req.query.duration) {
+      const minHours = parseInt(req.query.duration, 10);
+      if (!isNaN(minHours)) {
+        query.totalWorkHours = { $gte: minHours };
+      }
+    }
+
+    // Specialization filter
+    if (req.query.specialization) {
+      query.specialization = req.query.specialization;
+    }
+
+    // Hourly Rate filter
+    if (req.query.rate) {
+      if (req.query.rate === "0-100") {
+        query.hourlyRate = { $lt: 100 };
+      } else if (req.query.rate === "100-150") {
+        query.hourlyRate = { $gte: 100, $lte: 150 };
+      } else if (req.query.rate === "150+") {
+        query.hourlyRate = { $gte: 150 };
+      }
+    }
+
+    // Rating filter
+    if (req.query.rating) {
+      const minRating = parseFloat(req.query.rating);
+      if (!isNaN(minRating)) {
+        query.rating = { $gte: minRating };
+      }
+    }
+
+    // Search filter (name, bio)
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i');
+      
+      const matchingUsers = await User.find({
+        $or: [
+          { name: searchRegex },
+          { email: searchRegex }
+        ]
+      }).select('_id');
+      
+      const userIds = matchingUsers.map(u => u._id);
+      query.$or = [
+        { userId: { $in: userIds } },
+        { bio: searchRegex }
+      ];
+    }
+
+    const total = await Companion.countDocuments(query);
+    const companions = await Companion.find(query)
       .populate('userId', 'name email phone avatar location')
       .skip(skip)
       .limit(limit);
