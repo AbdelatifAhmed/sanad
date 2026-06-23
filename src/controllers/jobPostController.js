@@ -155,6 +155,8 @@ const getJobPostsForCompanions = async (req, res) => {
       coordinates,
       maxDistanceInKm,
       date,
+      startDate,
+      endDate,
       page,
       limit
     } = queryOrBody(req);
@@ -208,7 +210,26 @@ const getJobPostsForCompanions = async (req, res) => {
       };
     }
 
-    if (date && date !== "all") {
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        if (!isNaN(start.getTime())) {
+          start.setHours(0, 0, 0, 0);
+          filter.createdAt.$gte = start;
+        }
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        if (!isNaN(end.getTime())) {
+          end.setHours(23, 59, 59, 999);
+          filter.createdAt.$lte = end;
+        }
+      }
+      if (Object.keys(filter.createdAt).length === 0) {
+        delete filter.createdAt;
+      }
+    } else if (date && date !== "all") {
       const now = new Date();
       if (date === "today") {
         const startOfToday = new Date(now.setHours(0, 0, 0, 0));
