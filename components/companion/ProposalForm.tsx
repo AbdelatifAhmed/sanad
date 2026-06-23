@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { sendProposal } from "@/lib/API";
 
@@ -30,6 +30,28 @@ export default function ProposalForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showLocalAppliedState, setShowLocalAppliedState] = useState(false);
+  const [countdown, setCountdown] = useState(10);
+
+  useEffect(() => {
+    if (!isSuccess) return;
+
+    setCountdown(10);
+
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setIsSuccess(false);
+          setShowLocalAppliedState(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isSuccess]);
 
   // Role guard check
   if (isAuthenticated && user && user.role !== "companion") {
@@ -49,8 +71,8 @@ export default function ProposalForm({
   }
 
   // Already Applied guard check
-  if (hasApplied) {
-    const status = appliedProposalStatus || "pending";
+  if (hasApplied || showLocalAppliedState) {
+    const status = (showLocalAppliedState ? "pending" : appliedProposalStatus) || "pending";
     
     // Define styles and icons based on proposal status
     let cardBg = "bg-amber-50/70 border-amber-100/80";
@@ -165,7 +187,11 @@ export default function ProposalForm({
       setIsSuccess(true);
     } catch (err: any) {
       console.error("Failed to submit proposal:", err);
-      const backendMessage = err.response?.data?.message;
+      const backendMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        (typeof err.response?.data === "string" && err.response.data.length < 200 ? err.response.data : null) ||
+        err.message;
       setErrors({
         apiError: backendMessage || (locale === "ar" ? "حدث خطأ غير متوقع أثناء تقديم العرض. يرجى المحاولة لاحقاً." : "An unexpected error occurred while submitting. Please try again later.")
       });
@@ -188,6 +214,17 @@ export default function ProposalForm({
             {t("proposalSuccessDesc")}
           </p>
         </div>
+        
+        {/* Countdown Visual Badge */}
+        <div className="flex items-center gap-2 bg-[#005f56]/5 text-[#005f56] px-4 py-2 rounded-full text-xs font-bold animate-pulse">
+          <span className="w-2 h-2 rounded-full bg-[#005f56] animate-ping" />
+          <span>
+            {locale === "ar"
+              ? `سيتم تحويلك تلقائياً خلال ${countdown} ثوانٍ...`
+              : `Redirecting automatically in ${countdown} seconds...`}
+          </span>
+        </div>
+
         <Link
           href="/companion/bookings"
           className="w-full bg-[#005f56] hover:bg-[#004e46] text-white font-extrabold py-3.5 px-6 rounded-2xl shadow-sm transition-colors text-sm text-center block cursor-pointer"

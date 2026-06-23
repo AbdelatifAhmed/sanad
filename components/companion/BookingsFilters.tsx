@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
-import { getTranslations, getLocale } from "next-intl/server";
-import { serverFetch } from "@/lib/serverAuth";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter, usePathname } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
 import CustomSelect from "./CustomSelect";
+import DateRangePicker from "./DateRangePicker";
 
 interface BookingsFiltersProps {
   filters: {
@@ -10,31 +14,42 @@ interface BookingsFiltersProps {
     careType: string;
     date: string;
     maxDistanceInKm: string;
+    startDate?: string;
+    endDate?: string;
   };
+  serviceTypes: string[];
 }
 
-export default async function BookingsFilters({ filters }: BookingsFiltersProps) {
-  const t = await getTranslations("companionBookings");
-  const locale = await getLocale();
+export default function BookingsFilters({ filters, serviceTypes }: BookingsFiltersProps) {
+  const t = useTranslations("companionBookings");
+  const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
 
-  // Load service types dynamically from the backend Mongoose schema path enums
-  let serviceTypes: string[] = [];
-  try {
-    const data = await serverFetch("/job-posts/service-types");
-    if (data && data.serviceTypes) {
-      serviceTypes = data.serviceTypes;
+  const [nearMeEnabled, setNearMeEnabled] = useState(filters.nearMe);
+  const [selectedDistance, setSelectedDistance] = useState(filters.maxDistanceInKm);
+  const [distanceDropdownOpen, setDistanceDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close distance dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDistanceDropdownOpen(false);
+      }
     }
-  } catch (error) {
-    console.error("Failed to load service types from backend:", error);
-    // Dynamic fallback options matching current mongoose enums
-    serviceTypes = [
-      "elderly_care",
-      "child_care",
-      "home_nursing",
-      "physical_therapy",
-      "companionship",
-    ];
-  }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Update states when filters prop changes
+  useEffect(() => {
+    setNearMeEnabled(filters.nearMe);
+  }, [filters.nearMe]);
+
+  useEffect(() => {
+    setSelectedDistance(filters.maxDistanceInKm);
+  }, [filters.maxDistanceInKm]);
 
   const locationOptions = [
     { label: locale === "ar" ? "كل المواقع" : "All Locations", value: "all" },
@@ -49,31 +64,60 @@ export default async function BookingsFilters({ filters }: BookingsFiltersProps)
       try {
         label = t(type as any);
       } catch {
-        // Fallback title casing for any missing locales
         label = type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
       }
       return { label, value: type };
     }),
   ];
 
-  const dateOptions = [
-    { label: t("anytime"), value: "all" },
-    { label: locale === "ar" ? "اليوم" : "Today", value: "today" },
-    { label: locale === "ar" ? "غداً" : "Tomorrow", value: "tomorrow" },
-  ];
+
 
   const distanceOptions = [
-    { label: locale === "ar" ? "20 كم (افتراضي)" : "20 km (Default)", value: "20" },
+    { label: locale === "ar" ? "20 كم" : "20 km", value: "20" },
     { label: locale === "ar" ? "40 كم" : "40 km", value: "40" },
     { label: locale === "ar" ? "60 كم" : "60 km", value: "60" },
     { label: locale === "ar" ? "80 كم" : "80 km", value: "80" },
   ];
 
+  const activeDistanceOption = distanceOptions.find((o) => o.value === selectedDistance) || distanceOptions[0];
+
+  const handleNearMeCardClick = () => {
+    if (!nearMeEnabled) {
+      setNearMeEnabled(true);
+    } else {
+      setDistanceDropdownOpen(!distanceDropdownOpen);
+    }
+  };
+
+  const handleToggleSwitch = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextState = !nearMeEnabled;
+    setNearMeEnabled(nextState);
+    if (!nextState) {
+      setDistanceDropdownOpen(false);
+    }
+  };
+
+  const isRtl = locale === "ar";
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const params = new URLSearchParams();
+
+    formData.forEach((value, key) => {
+      if (value) {
+        params.set(key, value.toString());
+      }
+    });
+
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   return (
     <form
-      action="/companion/bookings"
-      method="GET"
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-center"
+      onSubmit={handleSubmit}
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-center"
     >
       {/* Location Filter */}
       <CustomSelect
@@ -93,49 +137,110 @@ export default async function BookingsFilters({ filters }: BookingsFiltersProps)
         options={careTypeOptions}
       />
 
-      {/* Date Filter */}
-      <CustomSelect
-        name="date"
+      {/* Date Filter (Calendar Date Range Picker) */}
+      <DateRangePicker
         label={t("date")}
-        icon="calendar_today"
-        defaultValue={filters.date}
-        options={dateOptions}
+        defaultStartDate={filters.startDate || ""}
+        defaultEndDate={filters.endDate || ""}
+        locale={locale}
+        anytimeLabel={t("anytime")}
       />
 
-      {/* Near Me Filter Label containing hidden checkbox and peer-checked visual switch */}
-      <label className="group bg-white p-3.5 rounded-2xl border border-gray-100 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex items-center gap-2 cursor-pointer hover:bg-gray-50/50 hover:border-stitch-outline/20 hover:shadow-[0_4px_20px_rgba(0,0,0,0.05)] transition-all select-none has-[:checked]:bg-[#005f56] has-[:checked]:border-[#005f56] has-[:checked]:text-white min-h-[72px]">
-        <input
-          type="checkbox"
-          name="nearMe"
-          value="true"
-          defaultChecked={filters.nearMe}
-          className="sr-only"
-        />
-        <span className="material-symbols-outlined text-[#005f56] text-xl transition-colors group-has-[:checked]:text-white">near_me</span>
-        <div className="flex-1 min-w-0">
-          <span className="block text-[9px] font-bold text-stitch-on-surface-variant/40 tracking-wider uppercase transition-colors group-has-[:checked]:text-white/60">
-            {t("nearMe")}
+      {/* Near Me + Distance Filter */}
+      <div
+        ref={dropdownRef}
+        className={`p-3.5 rounded-2xl border shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex items-center justify-between relative cursor-pointer select-none min-h-[72px] transition-all duration-200 ${
+          nearMeEnabled
+            ? "bg-white border-[#005f56]/30 shadow-[0_4px_20px_rgba(0,95,86,0.05)]"
+            : "bg-white border-gray-100 hover:border-stitch-outline/20 hover:shadow-[0_4px_20px_rgba(0,0,0,0.05)]"
+        }`}
+        onClick={handleNearMeCardClick}
+      >
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span
+            className={`material-symbols-outlined text-xl shrink-0 transition-colors duration-200 ${
+              nearMeEnabled ? "text-[#005f56]" : "text-stitch-on-surface-variant/40"
+            }`}
+          >
+            near_me
           </span>
-          <span className="block text-xs font-extrabold text-stitch-on-surface mt-0.5 group-has-[:checked]:hidden">
-            {t("nearMeInactive")}
-          </span>
-          <span className="hidden text-xs font-extrabold text-white mt-0.5 group-has-[:checked]:block">
-            {t("nearMeActive")}
-          </span>
+          <div className="flex-1 min-w-0">
+            <span className="block text-[9px] font-bold text-stitch-on-surface-variant/40 tracking-wider uppercase">
+              {t("nearMe")}
+            </span>
+            <span
+              className={`block text-xs font-extrabold transition-colors duration-200 mt-0.5 ${
+                nearMeEnabled ? "text-[#005f56]" : "text-stitch-on-surface truncate"
+              }`}
+            >
+              {nearMeEnabled ? activeDistanceOption.label : t("nearMeInactive")}
+            </span>
+          </div>
         </div>
-        <div className="w-8 h-5 rounded-full relative flex items-center px-0.5 bg-gray-200 group-has-[:checked]:bg-white/25 transition-colors duration-200">
-          <div className="w-4 h-4 rounded-full bg-gray-400 group-has-[:checked]:bg-white transition-transform duration-200 transform translate-x-0 group-has-[:checked]:translate-x-3 rtl:group-has-[:checked]:-translate-x-3"></div>
-        </div>
-      </label>
 
-      {/* Distance Filter */}
-      <CustomSelect
-        name="maxDistanceInKm"
-        label={t("distanceLimit")}
-        icon="explore"
-        defaultValue={filters.maxDistanceInKm}
-        options={distanceOptions}
-      />
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Toggle Switch */}
+          <div
+            onClick={handleToggleSwitch}
+            className={`w-8 h-5 rounded-full relative flex items-center px-0.5 transition-colors duration-200 cursor-pointer ${
+              nearMeEnabled ? "bg-[#005f56]" : "bg-gray-200"
+            }`}
+          >
+            <div
+              className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 transform ${
+                nearMeEnabled
+                  ? isRtl
+                    ? "-translate-x-3"
+                    : "translate-x-3"
+                  : "translate-x-0"
+              }`}
+            ></div>
+          </div>
+
+          {/* Dropdown Indicator (only when active) */}
+          {nearMeEnabled && (
+            <span
+              className={`material-symbols-outlined text-stitch-on-surface-variant/40 transition-transform shrink-0 ${
+                distanceDropdownOpen ? "rotate-180" : ""
+              }`}
+            >
+              expand_more
+            </span>
+          )}
+        </div>
+
+        {/* Hidden inputs for form submit */}
+        {nearMeEnabled && (
+          <>
+            <input type="hidden" name="nearMe" value="true" />
+            <input type="hidden" name="maxDistanceInKm" value={selectedDistance} />
+          </>
+        )}
+
+        {/* Distance Dropdown Menu */}
+        {distanceDropdownOpen && nearMeEnabled && (
+          <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.15)] z-50 py-1.5 max-h-60 overflow-y-auto animate-fade-in">
+            {distanceOptions.map((option) => {
+              const isSelected = option.value === selectedDistance;
+              return (
+                <div
+                  key={option.value}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedDistance(option.value);
+                    setDistanceDropdownOpen(false);
+                  }}
+                  className={`px-4 py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors ${
+                    isSelected ? "text-[#005f56] bg-[#005f56]/5" : "text-stitch-on-surface"
+                  }`}
+                >
+                  {option.label}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Actions */}
       <div className="flex items-center gap-3 h-full lg:col-span-1 sm:col-span-2">

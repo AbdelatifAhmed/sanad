@@ -55,6 +55,12 @@ export default async function BookingCard({ job }: BookingCardProps) {
   const title = job.title || (job.titleKey ? tAny(job.titleKey) : "");
   const description = job.description || (job.descKey ? tAny(job.descKey) : "");
 
+  // Truncation threshold for description (roughly 1.5 lines)
+  const isLongDescription = description.length > 90;
+  const displayDescription = isLongDescription
+    ? `${description.slice(0, 90).trim()}...`
+    : description;
+
   // Unify Service / Care Type
   const categoryType = job.serviceType || job.categoryType || "";
   let categoryLabel = categoryType;
@@ -133,14 +139,16 @@ export default async function BookingCard({ job }: BookingCardProps) {
       {/* Middle Row: Title and Rate */}
       <div className="flex justify-between items-start gap-4">
         <div className="space-y-2">
-          <h2 className="text-lg font-extrabold text-stitch-on-surface leading-snug">
+          <h2 className="text-lg font-extrabold text-stitch-on-surface leading-snug break-words">
             {title}
           </h2>
-          <p className="text-sm text-stitch-on-surface-variant/75 leading-relaxed">
-            {description}{" "}
-            <Link href={`/companion/bookings/${jobId}`} className="text-stitch-primary hover:text-stitch-primary/85 underline font-bold">
-              {t("viewDetails")}
-            </Link>
+          <p className="text-sm text-stitch-on-surface-variant/75 leading-relaxed break-words">
+            {displayDescription}{" "}
+            {isLongDescription && (
+              <Link href={`/companion/bookings/${jobId}`} className="text-stitch-primary hover:text-stitch-primary/85 underline font-bold whitespace-nowrap">
+                {t("viewDetails")}
+              </Link>
+            )}
           </p>
         </div>
 

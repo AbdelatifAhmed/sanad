@@ -10,6 +10,7 @@
     "myPosts": "طلباتي",
     "requests": "الطلبات",
     "bookings": "الحجوزات",
+    "availablePost": "الطلبات المتاحة",
     "calendar": "التقويم",
     "messages": "الرسائل",
     "wallet": "المحفظة",
@@ -368,7 +369,7 @@
     "viewFullSchedule": "عرض الجدول الكامل"
   },
   "companionBookings": {
-    "title": "طلبات الرعاية المتاحة",
+    "title": "الطلبات المتاحة",
     "location": "الموقع",
     "careType": "نوع الرعاية",
     "date": "التاريخ",
@@ -436,7 +437,7 @@
     "submitting": "جاري التقديم...",
     "proposalSuccessTitle": "تم تقديم العرض بنجاح!",
     "proposalSuccessDesc": "تم إرسال عرضك بنجاح. ستقوم العائلة بمراجعته والتواصل معك قريباً.",
-    "backToBookings": "العودة إلى الطلبات",
+    "backToBookings": "العودة للطلبات المتاحة",
     "approxDistance": "حوالي {distance} كم منك",
     "serviceSchedule": "جدول الخدمة",
     "ongoingRecurring": "جدول متكرر مستمر",

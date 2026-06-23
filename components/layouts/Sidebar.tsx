@@ -15,6 +15,7 @@ type NavLabelKey =
   | "myPosts"
   | "requests"
   | "bookings"
+  | "availablePost"
   | "calendar"
   | "messages"
   | "wallet"
