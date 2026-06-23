@@ -383,9 +383,42 @@ const getJobPostById = async (req, res) => {
   }
 };
 
-updateJobPost = async (req, res) => {
-  
-}
+const deleteJobPost = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    const { id } = req.params;
+
+    const job = await JobPost.findById(id);
+    if (!job) {
+      return res.status(404).json({
+        status: "fail",
+        message: messages.jobPost.notFound[lang]
+      });
+    }
+
+    // Only creator (familyId) or admin can delete
+    if (job.familyId.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+      return res.status(403).json({
+        status: "fail",
+        message: messages.common.forbidden[lang]
+      });
+    }
+
+    // Perform deletion
+    await JobPost.findByIdAndDelete(id);
+
+    // Cascade deletion of proposals
+    await Proposal.deleteMany({ jobPostId: id });
+
+    return res.status(200).json({
+      status: "success",
+      message: messages.jobPost.successDeleted[lang]
+    });
+  } catch (error) {
+    console.error("Error deleting job post:", error);
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+};
 
 const queryOrBody = (req) => {
   return req.method === "GET" ? req.query : req.body;
@@ -395,5 +428,6 @@ module.exports = {
   createJobPost,
   getJobPostsForCompanions,
   getJobPostById,
-  getServiceTypes
+  getServiceTypes,
+  deleteJobPost
 };
