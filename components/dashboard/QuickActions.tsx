@@ -7,7 +7,7 @@ export default function QuickActions() {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Create Care Request Card */}
       <Link 
-        href="/family/requests" 
+        href="/family/requests/new" 
         className="group relative bg-[#015347] hover:bg-[#00473c] p-6 rounded-3xl shadow-soft transition-all duration-300 transform hover:translate-y-[-2px] flex items-center gap-5 text-white overflow-hidden cursor-pointer"
       >
         <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

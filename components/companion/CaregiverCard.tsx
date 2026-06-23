@@ -2,18 +2,18 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { getAvatarUrl } from "@/lib/avatar";
 
 interface CaregiverCardProps {
   id: string;
   name: string;
-  avatar: string;
+  avatar: any;
   title: string;
   rating: number;
   reviewsCount: number;
   location: string;
   hourlyRate: number;
   bio: string;
-  verified: boolean;
   specialization?: string;
   viewMode?: "grid" | "list";
 }
@@ -28,7 +28,6 @@ export default function CaregiverCard({
   location,
   hourlyRate,
   bio,
-  verified,
   viewMode = "grid",
 }: CaregiverCardProps) {
   if (viewMode === "list") {
@@ -37,7 +36,7 @@ export default function CaregiverCard({
         {/* Card Image */}
         <div className="relative w-full md:w-64 h-52 md:h-auto overflow-hidden bg-sand-low shrink-0 min-h-[208px]">
           <Image
-            src={avatar || "/avatar_1.jpg"}
+            src={getAvatarUrl(avatar, "/avatar_1.jpg") || "/avatar_1.jpg"}
             alt={name}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-500 grayscale-[15%] group-hover:grayscale-0"
@@ -47,19 +46,9 @@ export default function CaregiverCard({
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent md:hidden" />
 
-          {/* Verified Badge */}
-          {verified && (
-            <div className="absolute top-3 right-3 bg-stitch-primary text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md">
-              <span className="material-symbols-outlined text-[13px] [font-variation-settings:'FILL'_1]">
-                verified
-              </span>
-              Verified
-            </div>
-          )}
-
           {/* Rate Badge on mobile */}
           <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm text-stitch-primary text-xs font-bold px-3 py-1.5 rounded-full shadow-md border border-stitch-outline/20 md:hidden">
-            AED {hourlyRate}/hr
+            ${hourlyRate}/hr
           </div>
         </div>
 
@@ -98,7 +87,7 @@ export default function CaregiverCard({
                 <span className="truncate">{location}</span>
               </div>
               <div className="hidden md:flex items-center gap-1.5 bg-sand-low text-stitch-primary px-2.5 py-1 rounded-md font-bold text-xs border border-sand-high/30">
-                AED {hourlyRate}/hr
+                ${hourlyRate}/hr
               </div>
             </div>
 
@@ -133,7 +122,7 @@ export default function CaregiverCard({
       {/* Card Image */}
       <div className="relative h-52 overflow-hidden bg-sand-low shrink-0">
         <Image
-          src={avatar || "/avatar_1.jpg"}
+          src={getAvatarUrl(avatar, "/avatar_1.jpg") || "/avatar_1.jpg"}
           alt={name}
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-500 grayscale-[15%] group-hover:grayscale-0"
@@ -143,19 +132,9 @@ export default function CaregiverCard({
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
 
-        {/* Verified Badge */}
-        {verified && (
-          <div className="absolute top-3 right-3 bg-stitch-primary text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md">
-            <span className="material-symbols-outlined text-[13px] [font-variation-settings:'FILL'_1]">
-              verified
-            </span>
-            Verified
-          </div>
-        )}
-
         {/* Rate Badge */}
         <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm text-stitch-primary text-xs font-bold px-3 py-1.5 rounded-full shadow-md border border-stitch-outline/20">
-          AED {hourlyRate}/hr
+          ${hourlyRate}/hr
         </div>
       </div>
 

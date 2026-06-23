@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
+import { getAvatarUrl } from "@/lib/avatar";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/services/api";
 import { useFamilyCareRequests } from "@/lib/hooks";
@@ -430,9 +432,14 @@ export default function FamilyProfile() {
             <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
               {/* Avatar with Camera Icon Overlay */}
               <div className="relative group cursor-pointer">
-                <div className="w-24 h-24 bg-[#1f8a8a]/10 border-2 border-[#1f8a8a]/20 rounded-full flex items-center justify-center text-[#1f8a8a] text-3xl font-extrabold shadow-sm overflow-hidden">
-                  {user?.avatar ? (
-                    <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                <div className="w-24 h-24 bg-[#1f8a8a]/10 border-2 border-[#1f8a8a]/20 rounded-full flex items-center justify-center text-[#1f8a8a] text-3xl font-extrabold shadow-sm overflow-hidden relative">
+                  {getAvatarUrl(user?.avatar) ? (
+                    <Image 
+                      src={getAvatarUrl(user?.avatar) || "/avatar_1.jpg"} 
+                      alt="Profile" 
+                      fill 
+                      className="w-full h-full object-cover" 
+                    />
                   ) : (
                     (profileName || "F").charAt(0).toUpperCase()
                   )}

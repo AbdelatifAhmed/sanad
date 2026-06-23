@@ -29,7 +29,6 @@ export default function StepLocation({ defaultValues, onSubmit, onBack, isSubmit
   const [city, setCity] = useState(loc.city);
   const [governorate, setGovernorate] = useState(loc.governorate);
   const [readableAddress, setReadableAddress] = useState(loc.readableAddress);
-  const [notes, setNotes] = useState(loc.notes);
   const [coordinates, setCoordinates] = useState<[number, number]>(
     loc.coordinates || [46.6753, 24.7136] // [longitude, latitude] (Riyadh default)
   );
@@ -140,7 +139,7 @@ export default function StepLocation({ defaultValues, onSubmit, onBack, isSubmit
         city,
         governorate,
         readableAddress,
-        notes,
+        notes: "",
         coordinates, // Pass chosen map coordinates
       },
     });
@@ -254,21 +253,6 @@ export default function StepLocation({ defaultValues, onSubmit, onBack, isSubmit
         <p className="text-[10px] text-gray-400 font-semibold leading-normal">
           * Drag the map marker or click anywhere on the map to pinpoint your exact coordinates. Inputs will auto-fill.
         </p>
-      </div>
-
-      {/* Additional notes */}
-      <div className="space-y-2">
-        <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="notes">
-          Additional Instructions <span className="text-[#3e4949]/60 font-normal">(Optional)</span>
-        </label>
-        <textarea
-          id="notes"
-          rows={3}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Gate code, landmarks, or specific entrance instructions..."
-          className="w-full bg-white border border-[#bdc9c8] rounded-xl p-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all resize-none"
-        />
       </div>
 
       {/* Trust note */}

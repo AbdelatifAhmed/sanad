@@ -355,7 +355,7 @@ export default function CompanionRequests() {
                   </div>
                   {/* Rate and Time */}
                   <div className="text-right shrink-0">
-                    <p className="font-bold text-[#1f8a8a] text-base font-stitch-display">AED {req.rate}/hr</p>
+                    <p className="font-bold text-[#1f8a8a] text-base font-stitch-display">${req.rate}/hr</p>
                     <p className="text-stitch-on-surface-variant/60 text-[10px] mt-0.5">{req.postedAgo}</p>
                   </div>
                 </div>

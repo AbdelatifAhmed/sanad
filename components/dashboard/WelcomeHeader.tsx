@@ -1,11 +1,15 @@
 import React from "react";
+import Image from "next/image";
+import { getAvatarUrl } from "@/lib/avatar";
 
 interface WelcomeHeaderProps {
   userName: string;
-  userAvatar: string;
+  userAvatar: any;
 }
 
 export default function WelcomeHeader({ userName, userAvatar }: WelcomeHeaderProps) {
+  const resolvedAvatar = getAvatarUrl(userAvatar, "/avatar_1.jpg");
+
   return (
     <div className="flex justify-between items-center bg-white p-6 md:p-8 rounded-3xl border border-sand-high/60 shadow-soft">
       <div className="space-y-1">
@@ -17,10 +21,11 @@ export default function WelcomeHeader({ userName, userAvatar }: WelcomeHeaderPro
         </p>
       </div>
       <div className="relative group cursor-pointer">
-        <div className="w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden border-2 border-primary/10 shadow-md transition-all duration-300 group-hover:scale-105 group-hover:border-primary/30">
-          <img 
-            src={userAvatar} 
+        <div className="w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden border-2 border-primary/10 shadow-md transition-all duration-300 group-hover:scale-105 group-hover:border-primary/30 relative">
+          <Image 
+            src={resolvedAvatar || "/avatar_1.jpg"} 
             alt={userName} 
+            fill
             className="w-full h-full object-cover" 
           />
         </div>

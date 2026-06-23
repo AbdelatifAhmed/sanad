@@ -6,6 +6,7 @@ import CompanionSkills from "@/components/companion/CompanionSkills";
 import CompanionHobbies from "@/components/companion/CompanionHobbies";
 import CompanionAvailability from "@/components/companion/CompanionAvailability";
 import { serverFetch } from "@/lib/serverAuth";
+import { getAvatarUrl } from "@/lib/avatar";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -29,7 +30,7 @@ export default async function CompanionProfilePage({ params }: PageProps) {
 
     // Dynamic mapping from database schema , to page/components format
     const name = companion.userId?.name || "Caregiver";
-    const avatar = companion.userId?.avatar || "/avatar_3.jpg";
+    const avatar = getAvatarUrl(companion.userId?.avatar, "/avatar_3.jpg");
     const verified = companion.verificationStatus === "verified";
     
     // Map title dynamically based on specialization

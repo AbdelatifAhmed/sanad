@@ -73,7 +73,7 @@ export default async function RootLayout({
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
       </head>
-      <body className="min-h-full flex flex-col bg-sand text-stitch-on-surface font-body">
+      <body className="min-h-full flex flex-col bg-sand text-stitch-on-surface font-body" suppressHydrationWarning>
         <NextIntlClientProvider>
           <ThemeProvider initialTheme={theme}>
             <AuthInit />

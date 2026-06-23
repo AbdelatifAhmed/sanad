@@ -25,7 +25,7 @@ export default function CompanionBookingCard({
         </span>
         <div className="flex items-baseline gap-1">
           <span className="text-4xl font-extrabold text-[#005c53]">
-            AED {hourlyRate}
+            ${hourlyRate}
           </span>
           <span className="text-xs text-gray-500 font-bold">
             / hr
