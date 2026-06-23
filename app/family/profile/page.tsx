@@ -66,6 +66,17 @@ export default function FamilyProfile() {
   // Address/Profile editing states
   const [savingAddress, setSavingAddress] = useState<boolean>(false);
 
+  // Edit Profile Modal state
+  const [editProfileModalOpen, setEditProfileModalOpen] = useState<boolean>(false);
+  const [tempProfileName, setTempProfileName] = useState<string>("");
+  const [tempProfileEmail, setTempProfileEmail] = useState<string>("");
+  const [tempProfilePhone, setTempProfilePhone] = useState<string>("");
+  const [tempAddress, setTempAddress] = useState({
+    city: "",
+    area: "",
+    fullAddress: ""
+  });
+
   // Modal state
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editingMember, setEditingMember] = useState<Beneficiary | null>(null);
@@ -82,6 +93,7 @@ export default function FamilyProfile() {
   // Deletion confirmation state
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
 
   // Toast notification state
   const [toast, setToast] = useState<{
@@ -198,10 +210,22 @@ export default function FamilyProfile() {
     fetchProfile();
   }, [user]);
 
+  const handleOpenEditProfileModal = () => {
+    setTempProfileName(profileName);
+    setTempProfileEmail(profileEmail);
+    setTempProfilePhone(profilePhone);
+    setTempAddress({
+      city: address.city,
+      area: address.area,
+      fullAddress: address.fullAddress
+    });
+    setEditProfileModalOpen(true);
+  };
+
   // Handle saving address & personal details
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!address.city.trim() || !address.area.trim() || !address.fullAddress.trim()) {
+    if (!tempAddress.city.trim() || !tempAddress.area.trim() || !tempAddress.fullAddress.trim()) {
       setToast({
         message: "Please fill out all address fields.",
         type: "error"
@@ -213,9 +237,9 @@ export default function FamilyProfile() {
       setSavingAddress(true);
       const res = await api.put("/family/profile", {
         address: {
-          city: address.city.trim(),
-          area: address.area.trim(),
-          fullAddress: address.fullAddress.trim()
+          city: tempAddress.city.trim(),
+          area: tempAddress.area.trim(),
+          fullAddress: tempAddress.fullAddress.trim()
         }
       });
       
@@ -229,18 +253,24 @@ export default function FamilyProfile() {
         });
         setBeneficiaries(res.data.profile.beneficiaries || []);
         
+        // Update main user details locally
+        setProfileName(tempProfileName.trim());
+        setProfileEmail(tempProfileEmail.trim());
+        setProfilePhone(tempProfilePhone.trim());
+        
         // Also update local store parameters if they were edited
         if (user) {
           useAuthStore.setState({
             user: {
               ...user,
-              name: profileName.trim(),
-              email: profileEmail.trim(),
-              phone: profilePhone.trim()
+              name: tempProfileName.trim(),
+              email: tempProfileEmail.trim(),
+              phone: tempProfilePhone.trim()
             }
           });
         }
 
+        setEditProfileModalOpen(false);
         setToast({
           message: "Profile and address updated successfully!",
           type: "success"
@@ -385,6 +415,28 @@ export default function FamilyProfile() {
     }
   };
 
+  // Handle completing an active booking
+  const handleCompleteBooking = async (bookingId: string) => {
+    try {
+      setCompletingId(bookingId);
+      const res = await api.put(`/bookings/${bookingId}/status`, { status: "completed" });
+      if (res.data) {
+        setToast({
+          message: "Service marked as completed successfully!",
+          type: "success"
+        });
+        // Refresh profile stats and bookings data
+        await fetchProfile();
+      }
+    } catch (err: any) {
+      console.error("Failed to complete booking:", err);
+      const msg = err.response?.data?.error || "Failed to mark service as completed.";
+      setToast({ message: msg, type: "error" });
+    } finally {
+      setCompletingId(null);
+    }
+  };
+
   return (
     <div className="max-w-6xl w-full mx-auto space-y-6 pb-12 select-none text-[#2b2b2b] font-stitch-body">
       {/* Breadcrumbs and Page Header */}
@@ -476,10 +528,7 @@ export default function FamilyProfile() {
                 Change Photo
               </button>
               <button 
-                onClick={() => {
-                  const element = document.getElementById("personal-form-name");
-                  if (element) element.focus();
-                }}
+                onClick={handleOpenEditProfileModal}
                 className="h-[56px] px-6 bg-[#1f8a8a] hover:bg-[#166f6f] text-white font-bold rounded-xl text-sm shadow-soft transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <Edit2 className="w-4 h-4" />
@@ -559,118 +608,71 @@ export default function FamilyProfile() {
               
               {/* Personal Information */}
               <div className="bg-white rounded-2xl p-6 md:p-8 border border-[#eae7e7] shadow-soft">
-                <div className="flex items-center gap-2.5 mb-6 pb-2 border-b border-[#eae7e7]/60">
-                  <User className="w-5 h-5 text-[#1f8a8a]" />
-                  <h3 className="font-stitch-display text-lg font-bold text-[#1b1c1c]">
-                    Personal Information
-                  </h3>
+                <div className="flex justify-between items-center mb-6 pb-2 border-b border-[#eae7e7]/60">
+                  <div className="flex items-center gap-2.5">
+                    <User className="w-5 h-5 text-[#1f8a8a]" />
+                    <h3 className="font-stitch-display text-lg font-bold text-[#1b1c1c]">
+                      Personal Information
+                    </h3>
+                  </div>
+                  <button
+                    onClick={handleOpenEditProfileModal}
+                    className="flex items-center gap-1.5 text-xs font-bold text-[#1f8a8a] hover:text-[#166f6f] transition-colors cursor-pointer"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    Edit
+                  </button>
                 </div>
 
-                <form onSubmit={handleSaveProfile} className="space-y-5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-slate-50/50 p-4 rounded-xl border border-[#eae7e7]/60 flex items-start gap-3">
+                    <User className="w-5 h-5 text-[#1f8a8a] mt-0.5" />
                     <div>
-                      <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                        Full Name
-                      </label>
-                      <input
-                        id="personal-form-name"
-                        type="text"
-                        value={profileName}
-                        onChange={(e) => setProfileName(e.target.value)}
-                        placeholder="Sarah Jenkins"
-                        className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                        Email Address
-                      </label>
-                      <input
-                        type="email"
-                        value={profileEmail}
-                        onChange={(e) => setProfileEmail(e.target.value)}
-                        placeholder="s.jenkins@familycare.com"
-                        className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                        Phone Number
-                      </label>
-                      <input
-                        type="text"
-                        value={profilePhone}
-                        onChange={(e) => setProfilePhone(e.target.value)}
-                        placeholder="+44 20 7946 0123"
-                        className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                        City
-                      </label>
-                      <input
-                        type="text"
-                        value={address.city}
-                        onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                        placeholder="London"
-                        className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
-                        required
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                        Area / District
-                      </label>
-                      <input
-                        type="text"
-                        value={address.area}
-                        onChange={(e) => setAddress({ ...address, area: e.target.value })}
-                        placeholder="Kensington"
-                        className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
-                        required
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                        Residential Address
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={address.fullAddress}
-                        onChange={(e) => setAddress({ ...address, fullAddress: e.target.value })}
-                        placeholder="24 Kensington Court Gardens, Kensington High St, London W8 5QF, UK"
-                        className="w-full p-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30 resize-none leading-relaxed"
-                        required
-                      />
+                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">Full Name</span>
+                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1">{profileName || "Not Provided"}</span>
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={savingAddress}
-                    className="w-full h-14 bg-[#1f8a8a] hover:bg-[#166f6f] disabled:bg-[#1f8a8a]/60 text-white font-bold rounded-xl text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-soft hover:shadow-premium"
-                  >
-                    {savingAddress ? (
-                      <>
-                        <div className="w-4.5 h-4.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Saving Details...
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4" />
-                        Save Details
-                      </>
-                    )}
-                  </button>
-                </form>
+                  <div className="bg-slate-50/50 p-4 rounded-xl border border-[#eae7e7]/60 flex items-start gap-3">
+                    <Mail className="w-5 h-5 text-[#1f8a8a] mt-0.5" />
+                    <div>
+                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">Email Address</span>
+                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1 break-all">{profileEmail || "Not Provided"}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50/50 p-4 rounded-xl border border-[#eae7e7]/60 flex items-start gap-3">
+                    <Phone className="w-5 h-5 text-[#1f8a8a] mt-0.5" />
+                    <div>
+                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">Phone Number</span>
+                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1">{profilePhone || "Not Provided"}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50/50 p-4 rounded-xl border border-[#eae7e7]/60 flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-[#1f8a8a] mt-0.5" />
+                    <div>
+                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">City</span>
+                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1">{address.city || "Not Provided"}</span>
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2 bg-slate-50/50 p-4 rounded-xl border border-[#eae7e7]/60 flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-[#1f8a8a] mt-0.5" />
+                    <div>
+                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">Area / District</span>
+                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1">{address.area || "Not Provided"}</span>
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2 bg-slate-50/50 p-4 rounded-xl border border-[#eae7e7]/60 flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-[#1f8a8a] mt-0.5" />
+                    <div>
+                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">Residential Address</span>
+                      <span className="block text-sm font-medium text-[#2b2b2b] mt-1 leading-relaxed">{address.fullAddress || "Not Provided"}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Family Members Receiving Care Card Box - MODIFIED TO BE LARGER */}
@@ -792,6 +794,139 @@ export default function FamilyProfile() {
                     })}
                   </div>
                 )}
+              </div>
+
+              {/* Service & Booking History */}
+              <div className="bg-white rounded-2xl p-6 md:p-8 border border-[#eae7e7] shadow-soft space-y-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-[#eae7e7]/60">
+                  <History className="w-6 h-6 text-[#1f8a8a]" />
+                  <div>
+                    <h3 className="font-stitch-display text-xl font-bold text-[#1b1c1c]">
+                      Service & Booking History
+                    </h3>
+                    <p className="text-xs text-[#3e4949] font-semibold mt-0.5">
+                      Monitor ongoing care visits and complete active bookings.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Ongoing/Active Bookings */}
+                {bookingsData?.upcoming?.filter((b: any) => b.status === "active").length > 0 && (
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Active Ongoing Services
+                    </h4>
+                    <div className="grid grid-cols-1 gap-4">
+                      {bookingsData.upcoming
+                        .filter((b: any) => b.status === "active")
+                        .map((booking: any) => (
+                          <div
+                            key={booking._id}
+                            className="bg-emerald-50/30 p-5 rounded-2xl border border-emerald-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-soft transition-all duration-200"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-emerald-600/10 border border-emerald-200 text-emerald-700 rounded-xl flex items-center justify-center font-bold text-lg overflow-hidden shrink-0">
+                                {booking.companionId?.avatar ? (
+                                  <img src={booking.companionId.avatar} alt={booking.companionId?.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  (booking.companionId?.name || "C").charAt(0).toUpperCase()
+                                )}
+                              </div>
+                              <div>
+                                <h5 className="text-sm font-bold text-[#1b1c1c]">
+                                  Companion: {booking.companionId?.name || "Assigned Companion"}
+                                </h5>
+                                <p className="text-xs text-[#3e4949] font-semibold mt-1">
+                                  Period: {new Date(booking.startDate).toLocaleDateString()} - {new Date(booking.endDate).toLocaleDateString()}
+                                </p>
+                                <p className="text-xs text-[#3e4949] font-semibold mt-0.5">
+                                  Hours: {booking.totalHours} hrs • Rate: £{booking.hourlyRateAtBooking || booking.hourlyRate}/hr
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              disabled={completingId === booking._id}
+                              onClick={() => handleCompleteBooking(booking._id)}
+                              className="w-full md:w-auto h-11 px-5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/60 text-white font-bold rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98]"
+                            >
+                              {completingId === booking._id ? (
+                                <>
+                                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  Completing...
+                                </>
+                              ) : (
+                                <>
+                                  <Check className="w-3.5 h-3.5" />
+                                  Complete Service
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Past / Completed Services */}
+                <div className="space-y-4 pt-2">
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#3e4949]">
+                    Completed & Past Services History
+                  </h4>
+                  
+                  {(!bookingsData?.past || bookingsData.past.length === 0) ? (
+                    <div className="border-2 border-dashed border-[#bdc9c8]/30 p-10 rounded-[16px] flex flex-col items-center justify-center text-center bg-[#fcf9f8]/20">
+                      <p className="text-[#3e4949] text-xs font-semibold">
+                        No past completed services found.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin">
+                      {bookingsData.past.map((booking: any) => {
+                        const isCompleted = booking.status === "completed";
+                        return (
+                          <div
+                            key={booking._id}
+                            className="bg-[#fcf9f8] p-4 rounded-xl border border-[#eae7e7] flex items-center justify-between gap-4 hover:border-[#bdc9c8] transition-all"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-slate-200 text-[#3e4949] rounded-lg flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
+                                {booking.companionId?.avatar ? (
+                                  <img src={booking.companionId.avatar} alt={booking.companionId?.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  (booking.companionId?.name || "C").charAt(0).toUpperCase()
+                                )}
+                              </div>
+                              <div>
+                                <h5 className="text-xs font-bold text-[#1b1c1c]">
+                                  {booking.companionId?.name || "Companion"}
+                                </h5>
+                                <p className="text-[10px] text-[#3e4949] font-medium mt-0.5">
+                                  {new Date(booking.startDate).toLocaleDateString()} - {new Date(booking.endDate).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <span
+                                className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
+                                  isCompleted
+                                    ? "bg-[#aeedd5] text-[#316d5b] border-[#aeedd5]"
+                                    : "bg-red-50 text-red-700 border-red-100"
+                                }`}
+                              >
+                                {booking.status || "completed"}
+                              </span>
+                              <p className="text-xs font-bold text-[#1b1c1c] mt-1.5">
+                                £{booking.totalPrice || (booking.hourlyRateAtBooking * booking.totalHours) || 0}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1040,6 +1175,159 @@ export default function FamilyProfile() {
                     </>
                   ) : (
                     "Save Member Profile"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Profile Modal */}
+      {editProfileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            onClick={() => !savingAddress && setEditProfileModalOpen(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+          />
+
+          <div className="bg-white rounded-[24px] shadow-premium border border-[#eae7e7] max-w-lg w-full relative z-10 overflow-hidden transform transition-all max-h-[90vh] flex flex-col font-stitch-body">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-[#eae7e7] flex justify-between items-center bg-[#fcf9f8]">
+              <div>
+                <h3 className="font-stitch-display text-base font-bold text-[#1b1c1c]">
+                  Edit Profile Details
+                </h3>
+                <p className="text-[11px] text-[#3e4949] mt-0.5 font-medium">
+                  Update your personal information and residential address.
+                </p>
+              </div>
+              <button
+                disabled={savingAddress}
+                onClick={() => setEditProfileModalOpen(false)}
+                className="p-1.5 hover:bg-slate-100 rounded-full text-[#6e7979] hover:text-[#2b2b2b] transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSaveProfile} className="overflow-y-auto flex-1 p-6 space-y-4 scrollbar-none">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Full Name */}
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-[#3e4949] mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={tempProfileName}
+                    onChange={(e) => setTempProfileName(e.target.value)}
+                    placeholder="Sarah Jenkins"
+                    className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
+                    required
+                  />
+                </div>
+
+                {/* Email Address */}
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-[#3e4949] mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={tempProfileEmail}
+                    onChange={(e) => setTempProfileEmail(e.target.value)}
+                    placeholder="s.jenkins@familycare.com"
+                    className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
+                    required
+                  />
+                </div>
+
+                {/* Phone Number */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#3e4949] mb-2">
+                    Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    value={tempProfilePhone}
+                    onChange={(e) => setTempProfilePhone(e.target.value)}
+                    placeholder="+44 20 7946 0123"
+                    className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
+                  />
+                </div>
+
+                {/* City */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#3e4949] mb-2">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    value={tempAddress.city}
+                    onChange={(e) => setTempAddress({ ...tempAddress, city: e.target.value })}
+                    placeholder="London"
+                    className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
+                    required
+                  />
+                </div>
+
+                {/* Area / District */}
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-[#3e4949] mb-2">
+                    Area / District
+                  </label>
+                  <input
+                    type="text"
+                    value={tempAddress.area}
+                    onChange={(e) => setTempAddress({ ...tempAddress, area: e.target.value })}
+                    placeholder="Kensington"
+                    className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
+                    required
+                  />
+                </div>
+
+                {/* Residential Address */}
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-[#3e4949] mb-2">
+                    Residential Address
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={tempAddress.fullAddress}
+                    onChange={(e) => setTempAddress({ ...tempAddress, fullAddress: e.target.value })}
+                    placeholder="24 Kensington Court Gardens, Kensington High St, London W8 5QF, UK"
+                    className="w-full p-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30 resize-none leading-relaxed"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex gap-3 pt-4 border-t border-[#eae7e7] mt-6">
+                <button
+                  type="button"
+                  disabled={savingAddress}
+                  onClick={() => setEditProfileModalOpen(false)}
+                  className="flex-1 h-14 bg-white hover:bg-slate-50 text-[#3e4949] border border-[#eae7e7] rounded-xl text-sm font-bold transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingAddress}
+                  className="flex-1 h-14 bg-[#1f8a8a] hover:bg-[#166f6f] text-white rounded-xl text-sm font-bold shadow-soft transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {savingAddress ? (
+                    <>
+                      <div className="w-4.5 h-4.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Details"
                   )}
                 </button>
               </div>
