@@ -10,6 +10,7 @@
     "myPosts": "My Posts",
     "requests": "Requests",
     "bookings": "Bookings",
+    "availablePost": "Available Post",
     "calendar": "Calendar",
     "messages": "Messages",
     "wallet": "Wallet",
@@ -368,7 +369,7 @@
     "viewFullSchedule": "View Full Schedule"
   },
   "companionBookings": {
-    "title": "Available Care Requests",
+    "title": "Available Post",
     "location": "LOCATION",
     "careType": "CARE TYPE",
     "date": "DATE",
@@ -436,7 +437,7 @@
     "submitting": "Submitting...",
     "proposalSuccessTitle": "Proposal Submitted Successfully!",
     "proposalSuccessDesc": "Your proposal has been successfully sent. The family will review it and get in touch with you.",
-    "backToBookings": "Back to Bookings",
+    "backToBookings": "Back to Available Post",
     "approxDistance": "Approx. {distance} km from you",
     "serviceSchedule": "Service Schedule",
     "ongoingRecurring": "Ongoing recurring schedule",

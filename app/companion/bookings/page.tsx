@@ -18,6 +18,8 @@ export default async function CompanionBookings({
   const nearMe = params.nearMe === "true";
   const careType = (params.careType as string) || "all";
   const date = (params.date as string) || "all";
+  const startDate = (params.startDate as string) || "";
+  const endDate = (params.endDate as string) || "";
   const page = parseInt(params.page as string) || 1;
   const maxDistanceInKm = (params.maxDistanceInKm as string) || "20";
 
@@ -26,7 +28,9 @@ export default async function CompanionBookings({
   if (location !== "all") queryParams.set("location", location);
   if (nearMe) queryParams.set("nearMe", "true");
   if (careType !== "all") queryParams.set("serviceType", careType);
-  if (date !== "all") queryParams.set("date", date);
+  if (startDate) queryParams.set("startDate", startDate);
+  if (endDate) queryParams.set("endDate", endDate);
+  else if (date !== "all") queryParams.set("date", date);
   queryParams.set("maxDistanceInKm", maxDistanceInKm);
   queryParams.set("page", page.toString());
   queryParams.set("limit", "10"); // Fetch 10 items per page
@@ -35,6 +39,23 @@ export default async function CompanionBookings({
   let totalJobs = 0;
   let totalPages = 1;
   let currentPage = page;
+
+  let serviceTypes: string[] = [];
+  try {
+    const data = await serverFetch("/job-posts/service-types");
+    if (data && data.serviceTypes) {
+      serviceTypes = data.serviceTypes;
+    }
+  } catch (error) {
+    console.error("Failed to load service types from backend:", error);
+    serviceTypes = [
+      "elderly_care",
+      "child_care",
+      "home_nursing",
+      "physical_therapy",
+      "companionship",
+    ];
+  }
 
   try {
     const apiData = await serverFetch(`/job-posts?${queryParams.toString()}`);
@@ -57,8 +78,11 @@ export default async function CompanionBookings({
         {t("title")}
       </h1>
 
-      {/* Filters Bar Server Component */}
-      <BookingsFilters filters={{ location, nearMe, careType, date, maxDistanceInKm }} />
+      {/* Filters Bar Component */}
+      <BookingsFilters 
+        filters={{ location, nearMe, careType, date, maxDistanceInKm, startDate, endDate }} 
+        serviceTypes={serviceTypes}
+      />
 
       {/* Jobs List */}
       <div className="space-y-6 animate-fade-in">
