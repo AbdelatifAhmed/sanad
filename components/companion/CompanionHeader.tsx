@@ -1,9 +1,10 @@
 import React from "react";
 import { Star, MapPin, Briefcase, CheckCircle } from "lucide-react";
+import { getAvatarUrl } from "@/lib/avatar";
 
 interface CompanionHeaderProps {
   name: string;
-  avatar: string;
+  avatar: any;
   verified: boolean;
   title: string;
   rating: number;
@@ -28,7 +29,7 @@ export default function CompanionHeader({
       <div className="relative shrink-0">
         <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-2 border-[#005c53]/10 shadow-md">
           <img 
-            src={avatar} 
+            src={getAvatarUrl(avatar, "/avatar_3.jpg") || "/avatar_3.jpg"} 
             alt={name} 
             className="w-full h-full object-cover" 
           />

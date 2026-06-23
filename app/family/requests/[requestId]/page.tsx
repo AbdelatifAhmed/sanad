@@ -2,8 +2,9 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
+import { getAvatarUrl } from "@/lib/avatar";
 import { useParams, useRouter } from "next/navigation";
-import { useJobPostById, useProposalsForJob, useUpdateProposalStatus, useFamilyElderlyProfiles } from "@/lib/hooks";
+import { useJobPostById, useProposalsForJob, useUpdateProposalStatus, useFamilyElderlyProfiles, useDeleteJobPost } from "@/lib/hooks";
 import type { JobPost, Proposal } from "@/types";
 
 function getEndDate(startIso?: string | Date | null, weeks?: number) {
@@ -191,61 +192,114 @@ function PageSkeleton() {
 
 // ─── Timeline ─────────────────────────────────────────────────────────────────
 
-const TIMELINE_STAGES = [
-  { key: "created",   label: "Request Created",        icon: "assignment" },
-  { key: "applied",   label: "Applications Received",  icon: "group" },
-  { key: "assigned",  label: "Caregiver Assigned",      icon: "verified" },
-  { key: "started",   label: "Service Started",         icon: "play_circle" },
-  { key: "completed", label: "Completed",               icon: "task_alt" },
-];
+// ─── Progress helper ─────────────────────────────────────────────────────────
 
-function getTimelineStage(jobStatus: string, hasApplications: boolean): number {
-  if (jobStatus === "closed") return 4;
-  if (jobStatus === "filled") return 2;
-  if (hasApplications) return 1;
-  return 0;
+interface ProgressStep {
+  key: string;
+  label: string;
+  icon: string;
+  completed: boolean;
+  active: boolean;
 }
 
-function Timeline({ jobStatus, hasApplications }: { jobStatus: string; hasApplications: boolean }) {
-  const activeIndex = getTimelineStage(jobStatus, hasApplications);
+function getRequestProgress(
+  jobStatus: string,
+  proposalsCount: number,
+  hasAssignedCaregiver: boolean
+): ProgressStep[] {
+  const isCompleted  = jobStatus === "completed";
+  const isInProgress = jobStatus === "in_progress";
+  const isAssigned   = hasAssignedCaregiver || jobStatus === "filled" || jobStatus === "closed" || isInProgress || isCompleted;
+  const hasApps      = proposalsCount > 0 || isAssigned || isCompleted;
+
+  // Build boolean array
+  const flags = [
+    true,           // Step 1: Request Created — always true
+    hasApps,        // Step 2: Applications Received
+    isAssigned,     // Step 3: Caregiver Assigned
+    isInProgress || isCompleted, // Step 4: Service Started
+    isCompleted,    // Step 5: Completed
+  ];
+
+  const defs = [
+    { key: "created",   label: "Request Created",       icon: "assignment" },
+    { key: "applied",   label: "Applications Received", icon: "group" },
+    { key: "assigned",  label: "Caregiver Assigned",     icon: "verified" },
+    { key: "started",   label: "Service Started",        icon: "play_circle" },
+    { key: "completed", label: "Completed",              icon: "task_alt" },
+  ];
+
+  // Last true index = current active step
+  let lastTrue = 0;
+  flags.forEach((f, i) => { if (f) lastTrue = i; });
+
+  return defs.map((d, i) => ({
+    ...d,
+    completed: flags[i],
+    active: i === lastTrue,
+  }));
+}
+
+function Timeline({
+  jobStatus,
+  proposalsCount,
+  hasAssignedCaregiver,
+}: {
+  jobStatus: string;
+  proposalsCount: number;
+  hasAssignedCaregiver: boolean;
+}) {
+  const steps = getRequestProgress(jobStatus, proposalsCount, hasAssignedCaregiver);
+  const activeIndex = steps.findIndex((s) => s.active);
+
   return (
     <div className="bg-white rounded-2xl border border-[#eae7e7] p-6">
       <h3 className="font-bold text-[#1b1c1c] text-base mb-6">Request Progress</h3>
       <div className="relative">
-        {/* connector line */}
+        {/* Grey connector */}
         <div className="absolute top-5 left-5 right-5 h-0.5 bg-[#f0eded]" style={{ zIndex: 0 }} />
+        {/* Teal progress fill */}
         <div
           className="absolute top-5 left-5 h-0.5 bg-[#1f8a8a] transition-all duration-700"
-          style={{ width: `${(activeIndex / (TIMELINE_STAGES.length - 1)) * (100 - 8)}%`, zIndex: 1 }}
+          style={{
+            width: `${(activeIndex / (steps.length - 1)) * (100 - 8)}%`,
+            zIndex: 1,
+          }}
         />
         <div className="flex justify-between relative" style={{ zIndex: 2 }}>
-          {TIMELINE_STAGES.map((stage, idx) => {
-            const done = idx <= activeIndex;
-            const current = idx === activeIndex;
-            return (
-              <div key={stage.key} className="flex flex-col items-center gap-2 w-1/5">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
-                    done
-                      ? current
-                        ? "bg-[#1f8a8a] border-[#1f8a8a] ring-4 ring-[#1f8a8a]/20"
-                        : "bg-[#1f8a8a] border-[#1f8a8a]"
-                      : "bg-white border-[#bdc9c8]"
+          {steps.map((step) => (
+            <div key={step.key} className="flex flex-col items-center gap-2 w-1/5">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                  step.completed
+                    ? step.active
+                      ? "bg-[#1f8a8a] border-[#1f8a8a] ring-4 ring-[#1f8a8a]/20"
+                      : "bg-[#1f8a8a] border-[#1f8a8a]"
+                    : "bg-white border-[#bdc9c8]"
+                }`}
+              >
+                <span
+                  className={`material-symbols-outlined text-sm ${
+                    step.completed ? "text-white" : "text-[#bdc9c8]"
                   }`}
+                  style={{ fontVariationSettings: step.completed ? "'FILL' 1" : "'FILL' 0" }}
                 >
-                  <span
-                    className={`material-symbols-outlined text-sm ${done ? "text-white" : "text-[#bdc9c8]"}`}
-                    style={{ fontVariationSettings: done ? "'FILL' 1" : "'FILL' 0" }}
-                  >
-                    {stage.icon}
-                  </span>
-                </div>
-                <p className={`text-[10px] font-semibold text-center leading-tight ${done ? "text-[#1f8a8a]" : "text-[#bdc9c8]"}`}>
-                  {stage.label}
-                </p>
+                  {step.completed && !step.active ? "task_alt" : step.icon}
+                </span>
               </div>
-            );
-          })}
+              <p
+                className={`text-[10px] font-semibold text-center leading-tight ${
+                  step.active
+                    ? "text-[#1f8a8a] font-bold"
+                    : step.completed
+                    ? "text-[#1f8a8a]"
+                    : "text-[#bdc9c8]"
+                }`}
+              >
+                {step.label}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -265,7 +319,7 @@ function AssignedCaregiverBanner({
 }) {
   const companion = typeof proposal.companionId === "object" ? proposal.companionId : null;
   const name: string = companion ? (companion as any).name ?? "Caregiver" : "Caregiver";
-  const avatar: string | null = companion ? (companion as any).avatar ?? null : null;
+  const avatar: string | null = companion ? getAvatarUrl((companion as any).avatar) : null;
   const initials = name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 
   return (
@@ -320,7 +374,7 @@ function AssignedCaregiverBanner({
               </span>
             )}
             <span className="text-[#3e4949] text-sm">
-              Rate: {proposal.proposedRate} SAR/hr
+              Rate: ${proposal.proposedRate}/hr
             </span>
           </div>
         </div>
@@ -351,16 +405,17 @@ function AssignedCaregiverBanner({
 
 interface ProposalCardProps {
   proposal: Proposal;
+  hasAccepted: boolean;
   onAccept: (p: Proposal) => void;
   onReject: (p: Proposal) => void;
   onViewProfile: (p: Proposal) => void;
   onMessage: (p: Proposal) => void;
 }
 
-function ProposalCard({ proposal, onAccept, onReject, onViewProfile, onMessage }: ProposalCardProps) {
+function ProposalCard({ proposal, hasAccepted, onAccept, onReject, onViewProfile, onMessage }: ProposalCardProps) {
   const companion = typeof proposal.companionId === "object" ? (proposal.companionId as any) : null;
   const name: string = companion?.name ?? (proposal.companionId as string) ?? "Caregiver";
-  const avatar: string | null = companion?.avatar ?? null;
+  const avatar: string | null = companion ? getAvatarUrl(companion.avatar) : null;
   // The proposal controller enriches companionId with `averageRating`; fall back to `rating` for safety
   const rating: number = companion?.averageRating ?? companion?.rating ?? 0;
   const initials = name.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2);
@@ -417,8 +472,8 @@ function ProposalCard({ proposal, onAccept, onReject, onViewProfile, onMessage }
             <div className="mt-3 p-2.5 bg-[#d1eeee]/30 rounded-xl border border-[#1f8a8a]/20">
               <p className="text-[10px] text-[#1f8a8a] font-bold uppercase tracking-wider">Proposed Rate</p>
               <p className="text-[#1f8a8a] font-bold text-xl">
-                {proposal.proposedRate}
-                <span className="text-sm font-medium"> SAR/hr</span>
+                ${proposal.proposedRate}
+                <span className="text-sm font-medium">/hr</span>
               </p>
             </div>
           </div>
@@ -463,7 +518,8 @@ function ProposalCard({ proposal, onAccept, onReject, onViewProfile, onMessage }
             {!isAccepted && (
               <button
                 onClick={() => onAccept(proposal)}
-                className="w-full bg-[#1f8a8a] text-white py-2.5 rounded-xl font-bold shadow-md hover:bg-[#0d8282] active:scale-95 transition-all"
+                disabled={hasAccepted}
+                className="w-full bg-[#1f8a8a] text-white py-2.5 rounded-xl font-bold shadow-md hover:bg-[#0d8282] active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#1f8a8a] disabled:active:scale-100"
               >
                 Accept Application
               </button>
@@ -532,11 +588,13 @@ export default function FamilyRequestDetailsPage() {
   const { data: jobPost, isLoading: jobLoading, error: jobError, refetch: refetchJob } = useJobPostById(requestId);
   const { data: proposalsData, isLoading: proposalsLoading, error: proposalsError, refetch: refetchProposals } = useProposalsForJob(requestId);
   const { execute: updateStatus, isLoading: updating } = useUpdateProposalStatus();
+  const { execute: deleteJob, isLoading: deleting } = useDeleteJobPost();
   const { data: profilesData } = useFamilyElderlyProfiles();
 
   // Modal state
   const [acceptTarget, setAcceptTarget] = useState<Proposal | null>(null);
   const [rejectTarget, setRejectTarget] = useState<Proposal | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error"; visible: boolean }>({
@@ -549,6 +607,31 @@ export default function FamilyRequestDetailsPage() {
     setToast({ message, type, visible: true });
     setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3500);
   }, []);
+
+  const handleConfirmDelete = async () => {
+    if (!requestId) return;
+    try {
+      await deleteJob(requestId);
+      showToast("Request deleted successfully!", "success");
+      setIsDeleteModalOpen(false);
+      setTimeout(() => {
+        router.push("/family/requests");
+      }, 1200);
+    } catch (err: any) {
+      console.error(err);
+      const statusCode = err?.response?.status;
+      let msg: string;
+      if (statusCode === 404) {
+        msg = "This request no longer exists. It may have already been deleted.";
+      } else if (statusCode === 403) {
+        msg = "You do not have permission to delete this request.";
+      } else {
+        msg = err.response?.data?.message || "Failed to delete request. Please try again.";
+      }
+      showToast(msg, "error");
+      setIsDeleteModalOpen(false);
+    }
+  };
 
   // Derived data
   const job: JobPost | null = jobPost ?? null;
@@ -676,6 +759,12 @@ export default function FamilyRequestDetailsPage() {
             >
               Edit Request
             </Link>
+            <button
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-red-700 active:scale-95 transition-all cursor-pointer"
+            >
+              Delete Request
+            </button>
           </div>
         </section>
 
@@ -691,11 +780,6 @@ export default function FamilyRequestDetailsPage() {
             </div>
             
             <div className="space-y-4">
-              <div>
-                <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest mb-1">Request ID</p>
-                <code className="text-xs font-mono bg-[#f6f3f2] px-2 py-1 rounded text-[#1f8a8a] font-semibold">{job._id}</code>
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest mb-1">Care Type</p>
@@ -748,11 +832,6 @@ export default function FamilyRequestDetailsPage() {
 
             {beneficiary ? (
               <div className="space-y-4">
-                <div>
-                  <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest mb-1">Elderly Profile ID</p>
-                  <code className="text-xs font-mono bg-[#f6f3f2] px-2 py-1 rounded text-[#2c6956] font-semibold">{beneficiary._id}</code>
-                </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest mb-1">Name</p>
@@ -869,7 +948,7 @@ export default function FamilyRequestDetailsPage() {
               <div className="p-4 bg-white rounded-xl border border-[#1f8a8a]/10 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest">Hourly Rate</p>
-                  <p className="text-lg font-bold text-[#1f8a8a]">{job.budgetPerHour} SAR</p>
+                  <p className="text-lg font-bold text-[#1f8a8a]">${job.budgetPerHour}/hr</p>
                 </div>
                 <span className="material-symbols-outlined text-[#1f8a8a] opacity-80">sell</span>
               </div>
@@ -896,7 +975,7 @@ export default function FamilyRequestDetailsPage() {
                   <div className="p-4 bg-[#1f8a8a] rounded-xl text-white flex items-center justify-between shadow-md">
                     <div>
                       <p className="text-[10px] uppercase font-bold tracking-widest opacity-80">Estimated Cost</p>
-                      <p className="text-lg font-bold">{totalBudget > 0 ? `${totalBudget.toLocaleString()} SAR` : "Flexible"}</p>
+                      <p className="text-lg font-bold">{totalBudget > 0 ? `$${totalBudget.toLocaleString()}` : "Flexible"}</p>
                     </div>
                     <span className="material-symbols-outlined text-white opacity-90">calculate</span>
                   </div>
@@ -907,7 +986,11 @@ export default function FamilyRequestDetailsPage() {
         </section>
 
         {/* ── Timeline ── */}
-        <Timeline jobStatus={job.status} hasApplications={proposals.length > 0} />
+        <Timeline
+          jobStatus={job.status}
+          proposalsCount={proposals.length}
+          hasAssignedCaregiver={!!acceptedProposal}
+        />
 
         {/* ── Applications Section ── */}
         <section className="space-y-4">
@@ -961,6 +1044,7 @@ export default function FamilyRequestDetailsPage() {
                 <ProposalCard
                   key={proposal._id}
                   proposal={proposal}
+                  hasAccepted={!!acceptedProposal}
                   onAccept={setAcceptTarget}
                   onReject={setRejectTarget}
                   onViewProfile={handleViewProfile}
@@ -993,6 +1077,17 @@ export default function FamilyRequestDetailsPage() {
         isLoading={updating}
         onConfirm={handleConfirmReject}
         onCancel={() => setRejectTarget(null)}
+      />
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        title="Delete Request"
+        message="Are you sure you want to permanently delete this care request? This action cannot be undone."
+        confirmLabel="Delete Request"
+        confirmClassName="bg-red-600 text-white hover:bg-red-700"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
       />
 
       {/* ── Toast ── */}

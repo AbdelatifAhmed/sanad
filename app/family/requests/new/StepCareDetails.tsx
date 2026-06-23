@@ -31,6 +31,8 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
 
   const validate = () => {
     const errs: Record<string, string> = {};
+    if (beneficiaries.length === 0)
+      errs.beneficiary = "Please add at least one beneficiary before proceeding. Go to your Profile to add a family member.";
     if (!serviceType) errs.serviceType = "Please select a care type.";
     if (!description.trim()) errs.description = "Please describe the care needs.";
     if (budgetPerHour === "" || Number(budgetPerHour) < 1)
@@ -65,7 +67,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
               <button
                 key={b._id}
                 type="button"
-                onClick={() => setBeneficiaryId(b._id)}
+                onClick={() => { setBeneficiaryId(b._id); setErrors((e) => ({ ...e, beneficiary: "" })); }}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all duration-200 ${
                   beneficiaryId === b._id
                     ? "border-[#1f8a8a] bg-[#1f8a8a]/5 text-[#1f8a8a]"
@@ -80,17 +82,22 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
               </button>
             ))}
           </div>
+          {errors.beneficiary && <p className="text-xs text-red-500">{errors.beneficiary}</p>}
         </div>
       ) : (
-        <div className="flex gap-3 p-4 bg-amber-50 rounded-xl border border-amber-200">
-          <span className="material-symbols-outlined text-amber-600 shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
-            info
+        <div className="flex gap-3 p-4 bg-red-50 rounded-xl border border-red-200">
+          <span className="material-symbols-outlined text-red-500 shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
+            warning
           </span>
-          <p className="text-sm text-amber-700">
-            No beneficiaries found. Please add a family member in your{" "}
-            <a href="/family/profile" className="font-bold underline">Profile</a>{" "}
-            first, then return here.
-          </p>
+          <div>
+            <p className="text-sm font-semibold text-red-700">No beneficiaries found</p>
+            <p className="text-sm text-red-600 mt-0.5">
+              Please add a family member in your{" "}
+              <a href="/family/profile" className="font-bold underline">Profile</a>{" "}
+              first, then return here.
+            </p>
+            {errors.beneficiary && <p className="text-xs text-red-600 mt-1 font-medium">{errors.beneficiary}</p>}
+          </div>
         </div>
       )}
 
@@ -152,7 +159,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
       {/* Budget per hour */}
       <div className="space-y-2">
         <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="budget">
-          Budget per Hour (SAR) <span className="text-red-500">*</span>
+          Budget per Hour (USD) <span className="text-red-500">*</span>
         </label>
         <div className="relative">
           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#3e4949] pointer-events-none">
@@ -189,7 +196,8 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
         <button
           type="button"
           onClick={handleNext}
-          className="flex items-center gap-2 px-8 h-14 rounded-xl bg-[#1f8a8a] text-white font-bold text-sm hover:bg-[#0d8282] transition-all shadow-md active:scale-95"
+          disabled={!profilesLoading && beneficiaries.length === 0}
+          className="flex items-center gap-2 px-8 h-14 rounded-xl bg-[#1f8a8a] text-white font-bold text-sm hover:bg-[#0d8282] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Next
           <span className="material-symbols-outlined">arrow_forward</span>

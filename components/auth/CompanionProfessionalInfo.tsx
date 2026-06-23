@@ -103,7 +103,7 @@ export default function CompanionProfessionalInfo() {
 
         {/* Hourly Rate */}
         <div className="space-y-1.5">
-          <label className="block text-sm font-bold text-gray-700">Hourly Rate (EGP)</label>
+          <label className="block text-sm font-bold text-gray-700">Hourly Rate ($)</label>
           <div className="relative">
             <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input

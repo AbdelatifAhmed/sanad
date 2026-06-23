@@ -102,7 +102,7 @@ export default function ApplicationCard({ proposal, onMessage, onViewRequest }: 
               {locale === "ar" ? "السعر" : "RATE"}
             </span>
             <span className="text-xs md:text-sm font-bold text-gray-700 mt-1 truncate">
-              {proposedRate} {locale === "ar" ? "ج.م/س" : "EGP/hr"}
+              {locale === "ar" ? `$${proposedRate}/س` : `$${proposedRate}/hr`}
             </span>
           </div>
           <div className="flex flex-col text-left pl-2">

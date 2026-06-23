@@ -56,6 +56,7 @@ import {
   getFamilyCareRequests,
   getFamilyElderlyProfiles,
   getJobPostById,
+  deleteJobPost,
 } from "./API";
 
 // ==========================================
@@ -1324,6 +1325,27 @@ export const useJobPostById = (id: string) => {
   }, [fetch]);
 
   return { data, isLoading, error, refetch: fetch };
+};
+
+export const useDeleteJobPost = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<any>(null);
+
+  const execute = async (id: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const res = await deleteJobPost(id);
+      return res;
+    } catch (err: any) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { execute, isLoading, error };
 };
 
 

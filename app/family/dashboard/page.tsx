@@ -4,6 +4,7 @@ import WelcomeHeader from "@/components/dashboard/WelcomeHeader";
 import QuickActions from "@/components/dashboard/QuickActions";
 import OverviewSection from "@/components/dashboard/OverviewSection";
 import CurrentCaregivers from "@/components/dashboard/CurrentCaregivers";
+import { getAvatarUrl } from "@/lib/avatar";
 
 async function getStats() {
   return serverFetch("/family/me/dashboard-stats");
@@ -39,7 +40,7 @@ export default async function FamilyDashboard() {
   }
 
   const userName = stats?.user?.name ? stats.user.name.split(" ")[0] : "Sarah";
-  const userAvatar = stats?.user?.avatar || "/avatar_1.jpg";
+  const userAvatar = getAvatarUrl(stats?.user?.avatar, "/avatar_1.jpg");
 
   return (
     <div className="max-w-6xl w-full mx-auto space-y-8 pb-12 animate-fade-in select-none">
