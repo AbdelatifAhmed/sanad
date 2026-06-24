@@ -36,7 +36,8 @@ const createJobPost = async (req, res) => {
       budgetPerHour, 
       location,
       schedule,
-      beneficiaryId
+      beneficiaryId,
+      preferredCaregiverGender
     } = req.body;
 
     if (!title || !description || !serviceType || !budgetPerHour || !location || !schedule || !beneficiaryId) {
@@ -88,6 +89,7 @@ const createJobPost = async (req, res) => {
       serviceType,
       requiredSkills, 
       budgetPerHour,
+      ...(preferredCaregiverGender ? { preferredCaregiverGender } : {}),
       schedule: {
         workingDays,
         startTime,
