@@ -739,7 +739,7 @@ export default function FamilyRequestDetailsPage() {
         {/* ── Header ── */}
         <section className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div className="space-y-2">
-            <h1 className="text-2xl md:text-3xl font-bold text-[#1b1c1c]">{job.title}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-[#1b1c1c]">{job.title || `${serviceLabel} Request`}</h1>
             <div className="flex flex-wrap items-center gap-3">
               <JobStatusBadge status={job.status} />
               <span className="text-[#3e4949] text-sm flex items-center gap-1 border-l border-[#bdc9c8] pl-3">
@@ -780,21 +780,17 @@ export default function FamilyRequestDetailsPage() {
             </div>
             
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest mb-1">Care Type</p>
-                  <p className="font-semibold text-[#1f8a8a] text-sm">{serviceLabel}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest mb-1">Preferred Gender</p>
-                  <p className="font-semibold text-[#1b1c1c] text-sm capitalize">{(job as any).preferredCaregiverGender || "No Preference"}</p>
-                </div>
+              <div>
+                <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest mb-1">Care Type</p>
+                <p className="font-semibold text-[#1f8a8a] text-sm">{serviceLabel}</p>
               </div>
 
-              <div>
-                <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest mb-1">Preferred Experience Level</p>
-                <p className="font-semibold text-[#1b1c1c] text-sm capitalize">{(job as any).preferredExperienceLevel || "Any Experience Level"}</p>
-              </div>
+              {job.preferredCaregiverGender && (
+                <div>
+                  <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest mb-1">Preferred Gender</p>
+                  <p className="font-semibold text-[#1b1c1c] text-sm capitalize">{job.preferredCaregiverGender}</p>
+                </div>
+              )}
 
               {job.requiredSkills?.length > 0 && (
                 <div>

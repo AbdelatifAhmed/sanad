@@ -12,10 +12,12 @@ import StepLocation from "./StepLocation";
 import SuccessScreen from "./SuccessScreen";
 
 const INITIAL_FORM: CareRequestFormData = {
+  title: "",
   beneficiaryId: "",
   serviceType: "elderly_care",
   description: "",
   budgetPerHour: "",
+  preferredCaregiverGender: undefined,
   scheduleData: {
     workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
     startTime: "08:00",
@@ -74,7 +76,7 @@ export default function NewCareRequestPage() {
 
   /* ---------- Step handlers ---------- */
   const handleStep1Next = (
-    data: Pick<CareRequestFormData, "beneficiaryId" | "serviceType" | "description" | "budgetPerHour">
+    data: Pick<CareRequestFormData, "title" | "beneficiaryId" | "serviceType" | "description" | "budgetPerHour" | "preferredCaregiverGender">
   ) => {
     setFormData((prev) => ({ ...prev, ...data }));
     setStep(2);
@@ -95,11 +97,13 @@ export default function NewCareRequestPage() {
     // Build the exact payload the backend expects
     const payload = {
       // Required by backend
-      title: `${SERVICE_TYPE_LABELS[final.serviceType] || "Care"} Request`,
+      title: final.title || `${SERVICE_TYPE_LABELS[final.serviceType] || "Care"} Request`,
       description: final.description,
       serviceType: final.serviceType,
       budgetPerHour: Number(final.budgetPerHour),
       beneficiaryId: final.beneficiaryId || undefined,
+      // Optional gender preference
+      ...(final.preferredCaregiverGender ? { preferredCaregiverGender: final.preferredCaregiverGender } : {}),
       // Skills: empty array (no ObjectId lookup in wizard)
       requiredSkills: [],
       // Schedule
@@ -202,10 +206,12 @@ export default function NewCareRequestPage() {
             {step === 1 && (
               <StepCareDetails
                 defaultValues={{
+                  title: formData.title,
                   beneficiaryId: formData.beneficiaryId,
                   serviceType: formData.serviceType,
                   description: formData.description,
                   budgetPerHour: formData.budgetPerHour,
+                  preferredCaregiverGender: formData.preferredCaregiverGender,
                 }}
                 onNext={handleStep1Next}
               />
