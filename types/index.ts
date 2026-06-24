@@ -137,6 +137,7 @@ export interface JobPost {
   serviceType: ServiceType;
   requiredSkills: string[];
   budgetPerHour: number;
+  preferredCaregiverGender?: "male" | "female";
   schedule: JobPostSchedule;
   location: LocationDetails;
   status: JobPostStatus;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CareRequestFormData, ServiceType, Beneficiary } from "@/lib/types/care-request";
 import { useFamilyElderlyProfiles } from "@/lib/hooks";
 
-type Step1Data = Pick<CareRequestFormData, "beneficiaryId" | "serviceType" | "description" | "budgetPerHour">;
+type Step1Data = Pick<CareRequestFormData, "title" | "beneficiaryId" | "serviceType" | "description" | "budgetPerHour" | "preferredCaregiverGender">;
 
 interface StepCareDetailsProps {
   defaultValues: Step1Data;
@@ -23,14 +23,17 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
   const { data: profileData, isLoading: profilesLoading } = useFamilyElderlyProfiles();
   const beneficiaries: Beneficiary[] = profileData?.beneficiaries ?? [];
 
+  const [title, setTitle] = useState(defaultValues.title ?? "");
   const [beneficiaryId, setBeneficiaryId] = useState(defaultValues.beneficiaryId);
   const [serviceType, setServiceType] = useState<ServiceType>(defaultValues.serviceType);
   const [description, setDescription] = useState(defaultValues.description);
   const [budgetPerHour, setBudgetPerHour] = useState<number | "">(defaultValues.budgetPerHour);
+  const [preferredCaregiverGender, setPreferredCaregiverGender] = useState<"male" | "female" | undefined>(defaultValues.preferredCaregiverGender);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
     const errs: Record<string, string> = {};
+    if (!title.trim()) errs.title = "Please enter a title for your request.";
     if (beneficiaries.length === 0)
       errs.beneficiary = "Please add at least one beneficiary before proceeding. Go to your Profile to add a family member.";
     if (!serviceType) errs.serviceType = "Please select a care type.";
@@ -43,11 +46,36 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
   const handleNext = () => {
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
-    onNext({ beneficiaryId, serviceType, description, budgetPerHour });
+    onNext({ title, beneficiaryId, serviceType, description, budgetPerHour, preferredCaregiverGender });
   };
 
   return (
     <div className="space-y-8">
+      {/* Request Title */}
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="request_title">
+          Request Title <span className="text-red-500">*</span>
+        </label>
+        <p className="text-xs text-[#3e4949]/70">
+          A clear title helps caregivers quickly understand your needs.
+        </p>
+        <input
+          id="request_title"
+          type="text"
+          value={title}
+          onChange={(e) => { setTitle(e.target.value); setErrors((er) => ({ ...er, title: "" })); }}
+          placeholder="e.g. Need a caregiver for elderly parent"
+          className={`w-full h-14 bg-white border rounded-xl px-4 text-sm outline-none transition-all ${
+            errors.title
+              ? "border-red-400 focus:ring-2 focus:ring-red-200"
+              : "border-[#bdc9c8] focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a]"
+          }`}
+        />
+        {errors.title && <p className="text-xs text-red-500">{errors.title}</p>}
+      </div>
+
+      <div className="border-t border-[#bdc9c8]/30" />
+
       {/* Section header */}
       <div>
         <h3 className="text-xl font-bold text-[#1f8a8a] mb-1">Recipient Information</h3>
@@ -135,6 +163,35 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
           })}
         </div>
         {errors.serviceType && <p className="text-xs text-red-500">{errors.serviceType}</p>}
+      </div>
+
+      {/* Preferred Caregiver Gender */}
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-[#1b1c1c]">
+          Preferred Caregiver Gender
+        </label>
+        <p className="text-xs text-[#3e4949]/70">
+          Optional. Select if you prefer a specific gender for your caregiver.
+        </p>
+        <div className="flex gap-3">
+          {(["male", "female"] as const).map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setPreferredCaregiverGender(preferredCaregiverGender === g ? undefined : g)}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 text-sm font-medium transition-all duration-200 ${
+                preferredCaregiverGender === g
+                  ? "border-[#1f8a8a] bg-[#1f8a8a]/5 text-[#1f8a8a]"
+                  : "border-[#bdc9c8]/60 text-[#3e4949] hover:border-[#1f8a8a]/40"
+              }`}
+            >
+              <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>
+                {g === "male" ? "man" : "woman"}
+              </span>
+              <span className="capitalize">{g}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Description */}
