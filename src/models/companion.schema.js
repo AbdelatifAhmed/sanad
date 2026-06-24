@@ -15,7 +15,7 @@ const companionSchema = new mongoose.Schema(
     },
     specialization: {
       type: String,
-      enum: ["none", "nursing", "physiotherapy", "companionship_companion"],
+      enum: ["none", "nursing", "physiotherapy", "companionship_companion", "dementia"],
       default: "none",
     },
     bio: {

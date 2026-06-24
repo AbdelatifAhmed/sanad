@@ -202,7 +202,7 @@ const getCompanionSchedule = async (req, res) => {
     }
 
     const confirmedBookings = await Booking.find({
-      companionId: companionProfile._id,
+      companionId: req.user.id,
       status: { $in: ['approved', 'active'] } 
     })
     .populate({
@@ -278,9 +278,61 @@ const getVerifiedCompanions = async (req, res) => {
     const limit = parseInt(req.query.limit, 10) || 10;
     const skip = (page - 1) * limit;
 
-    const total = await Companion.countDocuments({ verificationStatus: 'verified' });
-    const companions = await Companion.find({ verificationStatus: 'verified' })
-      .populate('userId', 'name email phone')
+    const query = { verificationStatus: 'verified' };
+
+    // Duration filter (totalWorkHours)
+    if (req.query.duration) {
+      const minHours = parseInt(req.query.duration, 10);
+      if (!isNaN(minHours)) {
+        query.totalWorkHours = { $gte: minHours };
+      }
+    }
+
+    // Specialization filter
+    if (req.query.specialization) {
+      query.specialization = req.query.specialization;
+    }
+
+    // Hourly Rate filter
+    if (req.query.rate) {
+      if (req.query.rate === "0-100") {
+        query.hourlyRate = { $lt: 100 };
+      } else if (req.query.rate === "100-150") {
+        query.hourlyRate = { $gte: 100, $lte: 150 };
+      } else if (req.query.rate === "150+") {
+        query.hourlyRate = { $gte: 150 };
+      }
+    }
+
+    // Rating filter
+    if (req.query.rating) {
+      const minRating = parseFloat(req.query.rating);
+      if (!isNaN(minRating)) {
+        query.rating = { $gte: minRating };
+      }
+    }
+
+    // Search filter (name, bio)
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i');
+      
+      const matchingUsers = await User.find({
+        $or: [
+          { name: searchRegex },
+          { email: searchRegex }
+        ]
+      }).select('_id');
+      
+      const userIds = matchingUsers.map(u => u._id);
+      query.$or = [
+        { userId: { $in: userIds } },
+        { bio: searchRegex }
+      ];
+    }
+
+    const total = await Companion.countDocuments(query);
+    const companions = await Companion.find(query)
+      .populate('userId', 'name email phone avatar location')
       .skip(skip)
       .limit(limit);
 
@@ -318,9 +370,18 @@ const getCompanionById = async (req, res) => {
       });
     }
 
-    const companion = await Companion.findById(id)
+    // First try finding by the Companion document's own _id
+    let companion = await Companion.findById(id)
       .populate('userId', 'name email phone avatar location')
       .populate('skills', 'nameAr nameEn category');
+
+    // If not found, the caller may have passed the User's _id
+    // (e.g. when navigating from proposals where companionId is a User ref)
+    if (!companion) {
+      companion = await Companion.findOne({ userId: id })
+        .populate('userId', 'name email phone avatar location')
+        .populate('skills', 'nameAr nameEn category');
+    }
 
     if (!companion) {
       return res.status(404).json({
@@ -413,7 +474,7 @@ const updateMyLocation = async (req, res) => {
 
 const getCompanionDashboardStats = async (req, res) => {
   try {
-    const lang = req.headers["accept-language"] || "en";
+    const lang = req.lang || "en";
 
     if (!req.user || req.user.role !== "companion") {
       return res.status(403).json({
@@ -527,22 +588,25 @@ const getCompanionDashboardStats = async (req, res) => {
             ? `Next in ${diffHours}h`
             : `التالي خلال ${diffHours} س`;
       } else if (diffHours < 48) {
-        const timeString = nextSlotDateTime.toLocaleTimeString("en-US", {
+        const timeString = nextSlotDateTime.toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
           hour: "2-digit",
           minute: "2-digit",
           hour12: true,
+          numberingSystem: "latn",
         });
         nextVisitLabel =
           lang === "en" ? `Tomorrow, ${timeString}` : `غداً، ${timeString}`;
       } else {
-        const dateString = nextSlotDateTime.toLocaleDateString("en-US", {
+        const dateString = nextSlotDateTime.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
           month: "short",
           day: "numeric",
+          numberingSystem: "latn",
         });
-        const timeString = nextSlotDateTime.toLocaleTimeString("en-US", {
+        const timeString = nextSlotDateTime.toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
           hour: "2-digit",
           minute: "2-digit",
           hour12: true,
+          numberingSystem: "latn",
         });
         nextVisitLabel =
           lang === "en"

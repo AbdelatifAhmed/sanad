@@ -90,6 +90,10 @@ const jobPostSchema = new mongoose.Schema(
       city: { type: String, required: true, trim: true },
       governorate: { type: String, required: true, trim: true },
     },
+    preferredCaregiverGender: {
+      type: String,
+      enum: ["male", "female"],
+    },
     status: {
       type: String,
       enum: ["open", "filled", "closed"],
