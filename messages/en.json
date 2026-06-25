@@ -19,7 +19,8 @@
     "logout": "Logout",
     "account": "Account",
     "userAccount": "User Account",
-    "applications": "Applications"
+    "applications": "Applications",
+    "activeShift": "Active Shift"
   },
   "settings": {
     "familyTitle": "Family settings",

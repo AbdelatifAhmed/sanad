@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/store/authStore";
 
 import { logoutUser } from "@/lib/API";
+import { api } from "@/lib/services/api";
 
 type NavLabelKey =
   | "dashboard"
@@ -21,7 +22,8 @@ type NavLabelKey =
   | "wallet"
   | "profile"
   | "settings"
-  | "applications";
+  | "applications"
+  | "activeShift";
 
 type AppLabelKey = "name" | "familyDashboard" | "careDashboard";
 
@@ -52,8 +54,31 @@ export default function Sidebar({
   const tNav = useTranslations("nav");
   const tApp = useTranslations("app");
   const clearAuth = useAuthStore((state: AuthState) => state.clearAuth);
+  const user = useAuthStore((state: any) => state.user);
   
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user && user.role === "companion") {
+      api.get("/bookings/my?status=active&limit=1")
+        .then((res) => {
+          if (res.data && res.data.data && res.data.data.bookings && res.data.data.bookings.length > 0) {
+            setActiveBookingId(res.data.data.bookings[0]._id);
+          } else {
+            return api.get("/bookings/my?status=approved&limit=1");
+          }
+        })
+        .then((res) => {
+          if (res && res.data && res.data.data && res.data.data.bookings && res.data.data.bookings.length > 0) {
+            setActiveBookingId(res.data.data.bookings[0]._id);
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching active bookings for sidebar:", err);
+        });
+    }
+  }, [user, pathname]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -84,6 +109,23 @@ export default function Sidebar({
   const isCompanion = pathname.startsWith("/companion");
   const rolePrefix = isCompanion ? "/companion" : "/family";
 
+  const resolveNavItem = (item: SidebarItem) => {
+    let resolvedHref = item.href;
+    let isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
+
+    if (item.labelKey === "activeShift") {
+      if (activeBookingId) {
+        resolvedHref = `/companion/shift/${activeBookingId}`;
+        isActive = pathname.startsWith(`/companion/shift/${activeBookingId}`);
+      } else {
+        resolvedHref = "/companion/wallet?noActiveShift=true";
+        isActive = pathname === "/companion/shift" || pathname.startsWith("/companion/shift/");
+      }
+    }
+
+    return { href: resolvedHref, isActive };
+  };
+
   const resolvedTitle = titleKey ? tApp(titleKey) : title;
   const resolvedSubtitle = subtitleKey ? tApp(subtitleKey) : subtitle;
 
@@ -101,14 +143,12 @@ export default function Sidebar({
 
         <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = 
-              pathname === item.href || 
-              (item.href !== "/" && pathname.startsWith(item.href + "/"));
+            const { href, isActive } = resolveNavItem(item);
 
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={href}
                 className={`flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 font-medium group ${
                   isActive
                     ? "bg-stitch-secondary-container text-stitch-on-secondary-container font-semibold"
@@ -175,14 +215,12 @@ export default function Sidebar({
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-stitch-surface border-t border-stitch-outline/20 flex items-center z-40 px-2 font-stitch-body select-none">
         <div className="flex-1 flex justify-around h-full items-center py-1.5">
           {navItems.slice(0, 4).map((item) => {
-            const isActive = 
-              pathname === item.href || 
-              (item.href !== "/" && pathname.startsWith(item.href + "/"));
+            const { href, isActive } = resolveNavItem(item);
 
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={href}
                 className={`flex flex-col items-center justify-center min-w-[64px] h-full gap-0.5 transition-colors shrink-0 ${
                   isActive 
                     ? "text-stitch-primary" 
@@ -208,14 +246,12 @@ export default function Sidebar({
             >
               {/* Extra nav items (shown only in the mobile popover) */}
               {navItems.slice(4).map((item) => {
-                const isActive = 
-                  pathname === item.href || 
-                  (item.href !== "/" && pathname.startsWith(item.href + "/"));
+                const { href, isActive } = resolveNavItem(item);
 
                 return (
                   <Link 
                     key={item.href}
-                    href={item.href}
+                    href={href}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm font-medium ${
                       isActive 
                         ? "bg-stitch-secondary-container text-stitch-on-secondary-container font-semibold" 

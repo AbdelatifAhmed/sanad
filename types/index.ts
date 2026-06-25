@@ -73,11 +73,13 @@ export interface AuthState {
 }
 
 export interface ScheduleTaskEntry {
+  _id?: string;
   taskDescription: string;
   isCompleted: boolean;
 }
 
 export interface BookingScheduleEntry {
+  _id?: string;
   date: string | Date;
   startTime: string;
   endTime: string;
@@ -105,6 +107,14 @@ export interface Booking {
   workingDays?: Weekday[];
   schedule?: BookingScheduleEntry[];
   notes?: string;
+  location?: LocationDetails;
+  beneficiary?: {
+    name: string;
+    age: number;
+    gender: string;
+    category: string;
+    conditionDetails: string;
+  };
 }
 
 export interface CompanionProfile {

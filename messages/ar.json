@@ -19,7 +19,8 @@
     "logout": "تسجيل الخروج",
     "account": "الحساب",
     "userAccount": "حساب المستخدم",
-    "applications": "الطلبات"
+    "applications": "الطلبات",
+    "activeShift": "المناوبة النشطة"
   },
   "settings": {
     "familyTitle": "إعدادات العائلة",
