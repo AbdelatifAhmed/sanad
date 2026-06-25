@@ -64,13 +64,11 @@ const checkOut = async (bookingId, scheduleId, companionId) => {
 
     scheduleItem.checkOutTime = new Date();
 
-    
     if (scheduleItem.tasksList && scheduleItem.tasksList.length > 0) {
-        scheduleItem.tasksList.forEach(task => {
-            if (task.isCompleted === undefined) {
-                task.isCompleted = false;
-            }
-        });
+        const uncompletedTasks = scheduleItem.tasksList.filter(task => !task.isCompleted);
+        if (uncompletedTasks.length > 0) {
+            throw new Error("Cannot check-out. All tasks in the checklist must be completed first.");
+        }
     }
 
     const allCheckedOut = booking.schedule.every(item => item.checkOutTime);

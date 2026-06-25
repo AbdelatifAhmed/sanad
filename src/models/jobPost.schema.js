@@ -35,10 +35,19 @@ const jobPostSchema = new mongoose.Schema(
     },
     requiredSkills: [
       {
-        type: ObjectId,
-        ref: "Skill",
+        type: String,
       },
     ],
+    taskList: [
+      {
+        type: String,
+      },
+    ],
+    preferredGender: {
+      type: String,
+      enum: ["any gender", "male", "female"],
+      default: "any gender",
+    },
     budgetPerHour: {
       type: Number,
       required: [true, "سعر الساعة المقترح مطلوب"],

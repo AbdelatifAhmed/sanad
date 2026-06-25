@@ -112,10 +112,11 @@ const createBooking = async (req, res) => {
           return {
             ...item,
             tasksList: taskList.map(t => {
-              if (typeof t === 'string') return { taskDescription: t, isCompleted: false };
+              if (typeof t === 'string') return { title: t, taskDescription: t, isCompleted: false };
               if (typeof t === 'object' && t !== null) {
                 return {
-                  taskDescription: t.taskDescription || t.description || '',
+                  title: t.title || t.taskDescription || t.description || '',
+                  taskDescription: t.taskDescription || t.description || t.title || '',
                   isCompleted: !!t.isCompleted
                 };
               }

@@ -400,7 +400,6 @@ exports.getFamilyJobPosts = async (req, res) => {
       return res.status(403).json({ status: 'fail', message: 'Access denied.' });
     }
     const jobs = await JobPost.find({ familyId: req.user._id })
-      .populate('requiredSkills', 'nameAr nameEn')
       .sort({ createdAt: -1 });
 
     return res.status(200).json({

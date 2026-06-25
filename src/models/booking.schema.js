@@ -72,7 +72,8 @@ const bookingSchema = new mongoose.Schema(
         endTime: { type: String, required: true }, // صيغة HH:MM
         tasksList: [
           {
-            taskDescription: { type: String, required: true },
+            title: { type: String },
+            taskDescription: { type: String },
             isCompleted: { type: Boolean, default: false },
           },
         ],

@@ -50,6 +50,7 @@ const sendProposal = async (req, res) => {
       companionId: req.user._id,
       proposedRate,
       coverLetter,
+      taskList: jobPost.taskList || []
     });
 
     // Notify job owner (family) about new proposal
@@ -176,8 +177,8 @@ const generateScheduleDates = (workingDays, startTime, endTime, durationInWeeks,
   const totalDaysToScan = durationInWeeks * 7;
   
   const formattedTasks = tasksFromJob && tasksFromJob.length > 0 
-    ? tasksFromJob.map(task => ({ taskDescription: task, isCompleted: false }))
-    : [{ taskDescription: "رعاية الحالة العامة ومتابعة المواعيد", isCompleted: false }];
+    ? tasksFromJob.map(task => ({ title: task, taskDescription: task, isCompleted: false }))
+    : [{ title: "رعاية الحالة العامة ومتابعة المواعيد", taskDescription: "رعاية الحالة العامة ومتابعة المواعيد", isCompleted: false }];
 
   for (let i = 0; i < totalDaysToScan; i++) {
     const currentCheckDate = new Date(start);
@@ -268,7 +269,7 @@ const updateProposalStatus = async (req, res) => {
 
       const { workingDays, startTime, endTime, durationInWeeks } = jobPost.schedule;
       
-      const tasksFromJob = jobPost.tasksList || req.body.tasksList; 
+      const tasksFromJob = jobPost.taskList || proposal.taskList || []; 
 
       const generatedSchedule = generateScheduleDates(workingDays, startTime, endTime, durationInWeeks, tasksFromJob);
 
