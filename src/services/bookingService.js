@@ -1,4 +1,6 @@
 const Booking = require("../models/booking.schema");
+const Payment = require("../models/payment.schema");
+const CompanionDebt = require("../models/companionDebt.schema");
 
 const checkIn = async (bookingId, scheduleId, companionId) => {
     const booking = await Booking.findById(bookingId);
@@ -74,10 +76,68 @@ const checkOut = async (bookingId, scheduleId, companionId) => {
     const allCheckedOut = booking.schedule.every(item => item.checkOutTime);
     if (allCheckedOut) {
         booking.status = 'completed';
+
+        // Release payout for card or wallet payments
+        if ((booking.paymentMethod === 'card' || booking.paymentMethod === 'wallet') && booking.paymentStatus === 'paid') {
+            const payment = await Payment.findOne({ bookingId: booking._id });
+            if (payment && payment.status === 'paid' && !payment.payoutReleased) {
+                payment.payoutReleased = true;
+                payment.payoutTransactionId = 'payout_' + Math.random().toString(36).substr(2, 9).toUpperCase();
+                payment.payoutDate = new Date();
+                await payment.save();
+            }
+        }
+        // Handle cash payments and record admin fee platform debt
+        else if (booking.paymentMethod === 'cash') {
+            let payment = await Payment.findOne({ bookingId: booking._id });
+            const basePrice = booking.totalHours * booking.hourlyRateAtBooking;
+            const adminFee = booking.adminFee || (basePrice * 0.10);
+
+            if (!payment) {
+                const transactionId = "txn_" + Math.random().toString(36).substr(2, 9).toUpperCase();
+                payment = new Payment({
+                    bookingId: booking._id,
+                    familyId: booking.familyId,
+                    companionId: booking.companionId,
+                    amount: basePrice,
+                    adminFee: adminFee,
+                    totalAmount: basePrice + adminFee,
+                    paymentMethod: 'cash',
+                    status: 'paid',
+                    transactionId,
+                });
+            } else {
+                payment.status = 'paid';
+            }
+
+            booking.paymentStatus = 'paid';
+
+            if (!payment.debtRecorded) {
+                let companionDebt = await CompanionDebt.findOne({ companionId: booking.companionId });
+                if (!companionDebt) {
+                    companionDebt = new CompanionDebt({
+                        companionId: booking.companionId,
+                        totalDebt: 0,
+                        debtHistory: [],
+                    });
+                }
+                companionDebt.totalDebt += adminFee;
+                companionDebt.debtHistory.push({
+                    bookingId: booking._id,
+                    paymentId: payment._id,
+                    amount: adminFee,
+                    reason: "cash_payment_admin_fee",
+                    recordedAt: new Date(),
+                });
+                await companionDebt.save();
+                payment.debtRecorded = true;
+            }
+            await payment.save();
+        }
     }
 
     await booking.save();
-    return { booking, familyId: booking.familyId };
+    return { booking, familyId: booking.familyId, status: booking.status };
 };
 
 module.exports = {

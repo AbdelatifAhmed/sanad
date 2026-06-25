@@ -2,6 +2,7 @@ const Proposal = require("../models/proposal.schema");
 const JobPost = require("../models/jobPost.schema");
 const Booking = require("../models/booking.schema"); 
 const Companion = require("../models/companion.schema");
+const mongoose = require("mongoose");
 const { hasBookingConflict } = require("../utils/checkConflict"); 
 const messages = require("../utils/messages"); 
 const { sendNotification } = require('../services/notificationService');
@@ -195,36 +196,51 @@ const generateScheduleDates = (workingDays, startTime, endTime, durationInWeeks,
 };
 
 const updateProposalStatus = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
     const lang = req.lang || "en";
     const { proposalId } = req.params;
     const { status } = req.body; 
 
     if (!["accepted", "rejected"].includes(status)) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ status: "fail", message: messages.proposal.invalidAction[lang] });
     }
 
-    const proposal = await Proposal.findById(proposalId);
+    const proposal = await Proposal.findById(proposalId).session(session);
     if (!proposal) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ status: "fail", message: messages.common.notFound[lang] });
     }
 
-    const jobPost = await JobPost.findById(proposal.jobPostId);
+    const jobPost = await JobPost.findById(proposal.jobPostId).session(session);
     if (!jobPost) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ status: "fail", message: messages.proposal.jobNotFound[lang] });
     }
 
     if (jobPost.familyId.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(403).json({ status: "fail", message: messages.proposal.unauthorizedProposalView[lang] });
     }
 
     if (proposal.status !== "pending") {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ status: "fail", message: messages.proposal.proposalProcessed[lang] });
     }
 
     if (status === "rejected") {
       proposal.status = "rejected";
-      await proposal.save();
+      await proposal.save({ session });
+      await session.commitTransaction();
+      session.endSession();
+
       // Notify companion about rejection
       try {
         await sendNotification(
@@ -245,6 +261,8 @@ const updateProposalStatus = async (req, res) => {
 
     if (status === "accepted") {
       if (jobPost.status !== "open") {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(400).json({ status: "fail", message: messages.proposal.jobNotOpen[lang] });
       }
 
@@ -263,12 +281,12 @@ const updateProposalStatus = async (req, res) => {
       const endDate = new Date();
       endDate.setDate(startDate.getDate() + (durationInWeeks * 7));
 
-      const newBooking = await Booking.create({
+      const [newBooking] = await Booking.create([{
         familyId: jobPost.familyId,
         companionId: proposal.companionId,
         jobPostId: jobPost._id,
         beneficiaryId: jobPost.beneficiaryId, 
-        status: "approved",
+        status: "pending_payment", // Flow B expects payment next
         hourlyRateAtBooking: proposal.proposedRate,
         totalHours: Math.round(totalHours),
         totalPrice: 0, 
@@ -277,19 +295,23 @@ const updateProposalStatus = async (req, res) => {
         workingDays,
         schedule: generatedSchedule,
         notes: jobPost.description
-      });
+      }], { session });
 
       proposal.status = "accepted";
-      await proposal.save();
+      await proposal.save({ session });
 
       jobPost.status = "filled";
-      await jobPost.save();
+      await jobPost.save({ session });
 
       // Reject all other pending proposals and notify those companions
       await Proposal.updateMany(
         { jobPostId: jobPost._id, _id: { $ne: proposal._id }, status: "pending" },
-        { status: "rejected" }
+        { status: "rejected" },
+        { session }
       );
+
+      await session.commitTransaction();
+      session.endSession();
 
       try {
         const rejected = await Proposal.find({ jobPostId: jobPost._id, status: 'rejected' }).lean();
@@ -337,6 +359,8 @@ const updateProposalStatus = async (req, res) => {
     }
 
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error("Error updating proposal status:", error);
     return res.status(500).json({ status: "error", message: error.message });
   }

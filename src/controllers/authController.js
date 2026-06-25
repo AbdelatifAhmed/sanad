@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
+const crypto = require("crypto");
 const User = require("../models/user.schema");
 const Companion = require("../models/companion.schema");
 const Family = require("../models/family.schema");
@@ -43,6 +44,21 @@ exports.register = async (req, res) => {
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({ message: messages.auth.requiredFields[lang] });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: messages.auth.invalidEmail[lang] });
+    }
+
+    // Password must be at least 8 chars, 1 uppercase, 1 lowercase, 1 number
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: messages.auth.weakPassword[lang] });
     }
 
     if (!location || !location.geo || !location.geo.coordinates) {
@@ -226,4 +242,109 @@ exports.logout = (req, res) => {
   });
 
   return res.status(200).json({ message: messages.auth.logoutSuccess[lang] });
+};
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: messages.auth.requiredFields[lang] });
+    }
+
+    const emailNormalized = email.trim().toLowerCase();
+    const user = await User.findOne({ email: emailNormalized });
+    if (!user) {
+      return res.status(200).json({ message: messages.auth.passwordResetCodeSent[lang] });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
+
+    user.resetPasswordOtp = otpHash;
+    user.resetPasswordOtpExpires = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+
+    console.log(`[PASS_RESET_OTP] Email: ${emailNormalized} | Code: ${otp}`);
+
+    return res.status(200).json({
+      message: messages.auth.passwordResetCodeSent[lang],
+      ...(process.env.NODE_ENV !== "production" && { devOtp: otp })
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    return res.status(500).json({ message: messages.common.serverError[req.lang || "en"] });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: messages.auth.requiredFields[lang] });
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({ message: messages.auth.weakPassword[lang] });
+    }
+
+    const emailNormalized = email.trim().toLowerCase();
+    const user = await User.findOne({ email: emailNormalized });
+    if (!user || !user.resetPasswordOtp) {
+      return res.status(400).json({ message: messages.auth.invalidOtp[lang] });
+    }
+
+    const otpHash = crypto.createHash("sha256").update(otp.trim()).digest("hex");
+    if (user.resetPasswordOtp !== otpHash || user.resetPasswordOtpExpires < new Date()) {
+      return res.status(400).json({ message: messages.auth.invalidOtp[lang] });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 12);
+    user.resetPasswordOtp = undefined;
+    user.resetPasswordOtpExpires = undefined;
+    await user.save();
+
+    return res.status(200).json({ message: messages.auth.passwordResetSuccess[lang] });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return res.status(500).json({ message: messages.common.serverError[req.lang || "en"] });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: messages.auth.requiredFields[lang] });
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({ message: messages.auth.weakPassword[lang] });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: messages.common.notFound[lang] });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      return res.status(400).json({ message: messages.auth.incorrectCurrentPassword[lang] });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 12);
+    await user.save();
+
+    return res.status(200).json({ message: messages.auth.passwordChangedSuccess[lang] });
+  } catch (error) {
+    console.error("Change password error:", error);
+    return res.status(500).json({ message: messages.common.serverError[req.lang || "en"] });
+  }
 };
