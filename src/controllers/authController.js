@@ -227,3 +227,51 @@ exports.logout = (req, res) => {
 
   return res.status(200).json({ message: messages.auth.logoutSuccess[lang] });
 };
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    const { name, email, phone, avatar } = req.body;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: messages.common.notFound[lang] || "User not found." });
+    }
+
+    if (name !== undefined) user.name = name.trim();
+    
+    if (email !== undefined) {
+      const emailNormalized = email.trim().toLowerCase();
+      if (emailNormalized !== user.email) {
+        // Check if email already exists
+        const existing = await User.findOne({ email: emailNormalized });
+        if (existing) {
+          return res.status(409).json({ message: messages.auth.emailRegistered[lang] });
+        }
+        user.email = emailNormalized;
+      }
+    }
+    
+    if (phone !== undefined) user.phone = phone.trim();
+    if (avatar !== undefined) user.avatar = avatar;
+
+    const updatedUser = await user.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: "Profile updated successfully.",
+      user: {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        role: updatedUser.role,
+        avatar: updatedUser.avatar,
+        location: updatedUser.location
+      }
+    });
+  } catch (err) {
+    console.error("Update Profile Error:", err);
+    return res.status(500).json({ message: messages.common.serverError[req.lang || "en"] });
+  }
+};
