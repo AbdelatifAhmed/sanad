@@ -150,6 +150,7 @@ export interface JobPost {
   taskList?: string[];
   preferredGender?: "any gender" | "male" | "female";
   budgetPerHour: number;
+  preferredCaregiverGender?: "male" | "female";
   schedule: JobPostSchedule;
   location: LocationDetails;
   status: JobPostStatus;

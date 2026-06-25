@@ -109,7 +109,7 @@ export default function ReviewStep() {
               </div>
               <div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase">Rate</p>
-                <p className="text-sm font-medium text-gray-700">{state.companionData.hourlyRate} EGP/hr</p>
+                <p className="text-sm font-medium text-gray-700">${state.companionData.hourlyRate}/hr</p>
               </div>
             </div>
           </div>

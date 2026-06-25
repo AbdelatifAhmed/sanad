@@ -325,7 +325,7 @@ export default function MyApplicationsList() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-xs text-gray-400 block">{t.originalBudget}</span>
-                  <span className="font-bold text-gray-700 text-sm">{selectedProposal.jobPostId?.budgetPerHour} {locale === "ar" ? "ج.م / ساعة" : "EGP / hour"}</span>
+                  <span className="font-bold text-gray-700 text-sm">{locale === "ar" ? `$${selectedProposal.jobPostId?.budgetPerHour}/ساعة` : `$${selectedProposal.jobPostId?.budgetPerHour}/hour`}</span>
                 </div>
                 <div className="space-y-1 md:col-span-2">
                   <span className="text-xs text-gray-400 block">{t.location}</span>
@@ -382,7 +382,7 @@ export default function MyApplicationsList() {
                 <div className="space-y-1">
                   <span className="text-xs text-gray-400 block">{t.proposedRate}</span>
                   <span className="font-extrabold text-stitch-primary text-lg">
-                    {selectedProposal.proposedRate} {locale === "ar" ? "ج.م / ساعة" : "EGP / hr"}
+                    {locale === "ar" ? `$${selectedProposal.proposedRate}/ساعة` : `$${selectedProposal.proposedRate}/hr`}
                   </span>
                 </div>
                 <div className="space-y-1">

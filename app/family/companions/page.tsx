@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useVerifiedCompanions } from "@/lib/hooks";
 import CaregiverCard from "@/components/companion/CaregiverCard";
 import CaregiverFilters from "@/components/companion/CaregiverFilters";
@@ -20,6 +20,8 @@ const DEFAULT_FILTERS: FilterState = {
   rating: "",
   specialization: "",
 };
+
+const PAGE_SIZE = 9;
 
 // Helper to derive a display title from specialization
 function deriveTitle(specialization?: string, companionType?: string): string {
@@ -91,26 +93,117 @@ function EmptyState({ onClear }: { onClear: () => void }) {
   );
 }
 
-const PAGE_SIZE = 9;
+// Pagination bar
+function PaginationBar({
+  page,
+  totalPages,
+  onPrev,
+  onNext,
+  onGoTo,
+}: {
+  page: number;
+  totalPages: number;
+  onPrev: () => void;
+  onNext: () => void;
+  onGoTo: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  // Build page number list with ellipsis
+  const getPages = (): (number | "...")[] => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages: (number | "...")[] = [1];
+    if (page > 3) pages.push("...");
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+      pages.push(i);
+    }
+    if (page < totalPages - 2) pages.push("...");
+    pages.push(totalPages);
+    return pages;
+  };
+
+  return (
+    <div className="flex items-center justify-center gap-2 pt-6">
+      <button
+        onClick={onPrev}
+        disabled={page === 1}
+        className="flex items-center gap-1 px-4 py-2 rounded-xl border border-sand-high/60 text-xs font-bold text-stitch-primary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-low transition-all"
+      >
+        <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+        Prev
+      </button>
+
+      {getPages().map((p, i) =>
+        p === "..." ? (
+          <span key={`ellipsis-${i}`} className="px-2 text-stitch-on-surface-variant text-xs">
+            …
+          </span>
+        ) : (
+          <button
+            key={p}
+            onClick={() => onGoTo(p as number)}
+            className={`w-9 h-9 rounded-xl text-xs font-bold transition-all ${
+              p === page
+                ? "bg-stitch-primary text-white shadow-soft"
+                : "border border-sand-high/60 text-stitch-on-surface-variant hover:bg-sand-low"
+            }`}
+          >
+            {p}
+          </button>
+        )
+      )}
+
+      <button
+        onClick={onNext}
+        disabled={page === totalPages}
+        className="flex items-center gap-1 px-4 py-2 rounded-xl border border-sand-high/60 text-xs font-bold text-stitch-primary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-low transition-all"
+      >
+        Next
+        <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+      </button>
+    </div>
+  );
+}
 
 export default function FamilyCompanionsPage() {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  const { data, isLoading, error } = useVerifiedCompanions();
+  // Debounce the search term so we don't hit the backend on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Reset page on filter change
   useEffect(() => {
-    // Only reset page if filters have actually changed
-    if (filters.search || filters.specialization || filters.rating || filters.rate || filters.duration) {
-      setPage(1);
-    }
-  }, [filters.search, filters.specialization, filters.rating, filters.rate, filters.duration]);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedSearch(filters.search);
+      setPage(1); // reset page when search settles
+    }, 400);
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [filters.search]);
 
-  // Map raw API data to a safe shape
-  const allCompanions = useMemo(() => {
-    const raw: Record<string, unknown>[] = (data as Record<string, unknown> | undefined)?.companions as Record<string, unknown>[] ?? (data as Record<string, unknown>[] | undefined) ?? [];
+  // Build query params for the backend — all filtering is server-side
+  const queryParams = useMemo(() => {
+    const p: Record<string, unknown> = { page, limit: PAGE_SIZE };
+    if (debouncedSearch) p.search = debouncedSearch;
+    if (filters.duration) p.duration = filters.duration;
+    if (filters.specialization) p.specialization = filters.specialization;
+    if (filters.rating) p.rating = filters.rating;
+    if (filters.rate) p.rate = filters.rate;
+    return p;
+  }, [debouncedSearch, filters.duration, filters.specialization, filters.rating, filters.rate, page]);
+
+  const { data, isLoading, error } = useVerifiedCompanions(queryParams);
+
+  // Parse backend response
+  const companions = useMemo(() => {
+    const raw: Record<string, unknown>[] =
+      (data as any)?.data?.companions ??
+      (data as any)?.companions ??
+      [];
     return raw.map((c: any) => ({
       id: c._id ?? c.id,
       name: c.userId?.name ?? "Caregiver",
@@ -124,65 +217,24 @@ export default function FamilyCompanionsPage() {
         "Dubai, UAE",
       hourlyRate: c.hourlyRate ?? 0,
       bio: c.bio ?? "",
-      verified: c.verificationStatus === "verified",
       specialization: c.specialization ?? "",
-      totalWorkHours: c.totalWorkHours ?? 0,
     }));
   }, [data]);
 
-  // Client-side filtering
-  const filtered = useMemo(() => {
-    return allCompanions.filter((c) => {
-      // Search
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        const match =
-          c.name.toLowerCase().includes(q) ||
-          c.title.toLowerCase().includes(q) ||
-          c.bio.toLowerCase().includes(q) ||
-          c.location.toLowerCase().includes(q);
-        if (!match) return false;
-      }
+  const pagination = (data as any)?.pagination;
+  const total: number = pagination?.total ?? companions.length;
+  const totalPages: number = pagination?.pages ?? Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-      // Specialization chip
-      if (filters.specialization && c.specialization !== filters.specialization) {
-        return false;
-      }
-
-      // Duration (total work hours)
-      if (filters.duration) {
-        const minHours = parseInt(filters.duration);
-        if (c.totalWorkHours < minHours) return false;
-      }
-
-      // Rate
-      if (filters.rate) {
-        const rate = c.hourlyRate;
-        if (filters.rate === "0-100" && rate >= 100) return false;
-        if (filters.rate === "100-150" && (rate < 100 || rate > 150)) return false;
-        if (filters.rate === "150+" && rate < 150) return false;
-      }
-
-      // Rating
-      if (filters.rating) {
-        const minRating = parseFloat(filters.rating);
-        if (c.rating < minRating) return false;
-      }
-
-      return true;
-    });
-  }, [allCompanions, filters]);
-
-  const paginated = filtered.slice(0, page * PAGE_SIZE);
-  const hasMore = paginated.length < filtered.length;
-
-  const handleFilterChange = (key: keyof FilterState, value: string) => {
+  const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
-  };
+    // For non-search filters, reset page immediately
+    if (key !== "search") setPage(1);
+  }, []);
 
-  const handleClearAll = () => {
+  const handleClearAll = useCallback(() => {
     setFilters(DEFAULT_FILTERS);
-  };
+    setPage(1);
+  }, []);
 
   return (
     <div className="max-w-6xl w-full mx-auto space-y-8 pb-16 animate-fade-in select-none">
@@ -231,7 +283,7 @@ export default function FamilyCompanionsPage() {
       {/* Filters */}
       <CaregiverFilters
         filters={filters}
-        totalCount={filtered.length}
+        totalCount={total}
         onFilterChange={handleFilterChange}
         onClearAll={handleClearAll}
       />
@@ -257,9 +309,9 @@ export default function FamilyCompanionsPage() {
           ? Array.from({ length: PAGE_SIZE }).map((_, i) => (
               <SkeletonCard key={i} viewMode={viewMode} />
             ))
-          : paginated.length === 0
+          : companions.length === 0
           ? <EmptyState onClear={handleClearAll} />
-          : paginated.map((companion) => (
+          : companions.map((companion) => (
               <CaregiverCard
                 key={companion.id}
                 id={companion.id}
@@ -271,42 +323,27 @@ export default function FamilyCompanionsPage() {
                 location={companion.location}
                 hourlyRate={companion.hourlyRate}
                 bio={companion.bio}
-                verified={companion.verified}
                 specialization={companion.specialization}
                 viewMode={viewMode}
               />
             ))}
       </section>
 
-      {/* Load More */}
-      {!isLoading && hasMore && (
-        <div className="flex flex-col items-center gap-4 pt-4">
-          <button
-            onClick={() => setPage((p) => p + 1)}
-            className="px-10 py-3.5 border-2 border-stitch-primary text-stitch-primary font-bold text-sm rounded-2xl hover:bg-stitch-primary hover:text-white transition-all active:scale-95 shadow-soft"
-          >
-            Load More Caregivers
-          </button>
-          {/* Pagination dots */}
-          <div className="flex items-center gap-2">
-            {Array.from({ length: Math.ceil(filtered.length / PAGE_SIZE) }).map((_, i) => (
-              <span
-                key={i}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  i < page
-                    ? "bg-stitch-primary"
-                    : "bg-sand-highest"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
+      {/* Pagination */}
+      {!isLoading && companions.length > 0 && (
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+          onGoTo={(p) => setPage(p)}
+        />
       )}
 
-      {/* End of results indicator */}
-      {!isLoading && !hasMore && paginated.length > 0 && (
-        <p className="text-center text-xs text-stitch-on-surface-variant font-medium pt-2">
-          Showing all {filtered.length} caregivers
+      {/* Results summary */}
+      {!isLoading && companions.length > 0 && (
+        <p className="text-center text-xs text-stitch-on-surface-variant font-medium">
+          Showing page {page} of {totalPages} — {total} caregiver{total !== 1 ? "s" : ""} total
         </p>
       )}
     </div>

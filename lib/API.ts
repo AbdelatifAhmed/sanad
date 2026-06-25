@@ -88,9 +88,9 @@ export const bookingCheckOut = async (id: string, data: Record<string, unknown>)
 };
 
 // --- COMPANION ROUTER (/companion) ---
-export const getVerifiedCompanions = async (params?: Record<string, unknown>): Promise<CompanionProfile[]> => {
-  const res = await api.get<ApiResponse<CompanionProfile[]>>("/companion", { params });
-  return res.data.data as CompanionProfile[];
+export const getVerifiedCompanions = async (params?: Record<string, unknown>) => {
+  const res = await api.get("/companion", { params });
+  return res.data; // returns { status, results, pagination, data: { companions } }
 };
 
 export const getCompanionById = async (id: string): Promise<CompanionProfile> => {
@@ -185,6 +185,10 @@ export const getJobPostById = async (id: string): Promise<JobPost> => {
 export const updateJobPost = async (id: string, data: Record<string, unknown>): Promise<JobPost> => {
   const res = await api.patch<ApiResponse<JobPost>>(`/job-posts/${id}`, data);
   return res.data.data as JobPost;
+};
+export const deleteJobPost = async (id: string): Promise<any> => {
+  const res = await api.delete(`/job-posts/${id}`);
+  return res.data;
 };
 
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
+import { getAvatarUrl } from "@/lib/avatar";
 
 export interface TaskItem {
   taskDescription: string;
@@ -22,7 +23,7 @@ export interface Booking {
     name: string;
     phoneNumber?: string;
     email?: string;
-    avatar?: string | null;
+    avatar?: any;
   } | null;
   status: string;
   startDate: string;
@@ -37,7 +38,7 @@ interface FlatScheduleItem {
     name: string;
     phoneNumber: string;
     email: string;
-    avatar: string | null;
+    avatar: any;
   };
   date: Date;
   startTime: string;
@@ -251,9 +252,9 @@ export async function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewP
                       
                       {/* Patient Info */}
                       <div className="flex items-center gap-3">
-                        {item.family.avatar ? (
+                        {getAvatarUrl(item.family.avatar) ? (
                           <img 
-                            src={item.family.avatar} 
+                            src={getAvatarUrl(item.family.avatar) || "/avatar_1.jpg"} 
                             alt={item.family.name}
                             className="w-10 h-10 rounded-full object-cover border border-stitch-outline/10 shrink-0"
                           />
@@ -325,9 +326,9 @@ export async function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewP
                       
                       {/* Patient Info */}
                       <div className="flex items-center gap-3">
-                        {item.family.avatar ? (
+                        {getAvatarUrl(item.family.avatar) ? (
                           <img 
-                            src={item.family.avatar} 
+                            src={getAvatarUrl(item.family.avatar) || "/avatar_1.jpg"} 
                             alt={item.family.name}
                             className="w-10 h-10 rounded-full object-cover border border-stitch-outline/10 shrink-0"
                           />
@@ -403,9 +404,9 @@ export async function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewP
 
                     {/* 4. Circular Badge (with initials or avatar) */}
                     <div className="relative -mt-1 z-10 shrink-0">
-                      {item.family.avatar ? (
+                      {getAvatarUrl(item.family.avatar) ? (
                         <img 
-                          src={item.family.avatar} 
+                          src={getAvatarUrl(item.family.avatar) || "/avatar_1.jpg"} 
                           alt={item.family.name}
                           className="w-12 h-12 rounded-full object-cover border-4 border-white shadow-soft transition-transform group-hover:scale-110 duration-200"
                         />

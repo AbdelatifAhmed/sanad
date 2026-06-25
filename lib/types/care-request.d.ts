@@ -37,6 +37,7 @@ export interface FamilyProfile {
 
 export interface CareRequestFormData {
   // Step 1 – Care Details
+  title: string;
   beneficiaryId: string;
   serviceType: ServiceType;
   description: string;
@@ -73,6 +74,7 @@ export interface JobPost {
   taskList?: string[];
   preferredGender?: "any gender" | "male" | "female";
   budgetPerHour: number;
+  preferredCaregiverGender?: "male" | "female";
   schedule: {
     workingDays: WorkingDay[];
     startTime: string;

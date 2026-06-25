@@ -56,7 +56,8 @@ import {
   getFamilyCareRequests,
   getFamilyElderlyProfiles,
   getJobPostById,
-  updateJobPost
+  updateJobPost,
+  deleteJobPost
 } from "./API";
 
 // ==========================================
@@ -1336,6 +1337,27 @@ export const useUpdateJobPost = () => {
       setIsLoading(true);
       setError(null);
       const res = await updateJobPost(id, data);
+      return res;
+    } catch (err: any) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { execute, isLoading, error };
+};
+
+export const useDeleteJobPost = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<any>(null);
+
+  const execute = async (id: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const res = await deleteJobPost(id);
       return res;
     } catch (err: any) {
       setError(err);

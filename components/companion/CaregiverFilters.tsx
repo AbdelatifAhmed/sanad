@@ -96,7 +96,7 @@ export default function CaregiverFilters({
           {/* Hourly Rate */}
           <div className="flex flex-col gap-1 min-w-[140px]">
             <label className="text-[10px] font-bold uppercase tracking-wider text-stitch-on-surface-variant/60">
-              Hourly Rate (AED)
+              Hourly Rate (USD)
             </label>
             <select
               value={filters.rate}

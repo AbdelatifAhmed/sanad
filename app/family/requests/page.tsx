@@ -51,7 +51,7 @@ function RequestCard({ job }: { job: JobPost }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="font-bold text-[#1b1c1c] text-base leading-tight">{job.title}</h3>
+              <h3 className="font-bold text-[#1b1c1c] text-base leading-tight">{job.title || `${label} Request`}</h3>
               <p className="text-xs text-[#3e4949] mt-0.5">{label}</p>
             </div>
             <span
@@ -87,7 +87,7 @@ function RequestCard({ job }: { job: JobPost }) {
             )}
             <span className="flex items-center gap-1 font-semibold text-[#1f8a8a]">
               <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>payments</span>
-              {job.budgetPerHour} SAR/h
+              ${job.budgetPerHour}/hr
             </span>
           </div>
         </div>
@@ -172,9 +172,9 @@ export default function FamilyRequestsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#1b1c1c]">My Care Requests</h1>
-          <p className="text-sm text-[#3e4949] mt-1">
+          {/* <p className="text-sm text-[#3e4949] mt-1">
             {isLoading ? "Loading..." : `${jobs.length} request${jobs.length !== 1 ? "s" : ""} posted`}
-          </p>
+          </p> */}
         </div>
         <Link
           href="/family/requests/new"

@@ -315,7 +315,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
             </div>
             <div className="w-px h-4 bg-gray-300"></div>
             <div className="flex items-center gap-1">
-              <span className="text-gray-900 font-bold">{profile.hourlyRate || 0} EGP</span>
+              <span className="text-gray-900 font-bold">${profile.hourlyRate || 0}</span>
               <span className="text-gray-500 font-normal">/ hour</span>
             </div>
           </div>
@@ -383,7 +383,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                 </div>
               </div>
               <div className="space-y-2 col-span-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">Hourly Rate (EGP/hr)</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">Hourly Rate ($/hr)</label>
                 {editMode.info ? (
                   <input 
                     type="number"
@@ -395,7 +395,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                   />
                 ) : (
                   <div className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 leading-relaxed font-bold">
-                    {profile.hourlyRate || 0} EGP/hr
+                    ${profile.hourlyRate || 0}/hr
                   </div>
                 )}
               </div>
