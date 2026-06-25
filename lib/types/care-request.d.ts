@@ -38,10 +38,12 @@ export interface FamilyProfile {
 // The multi-step wizard accumulates this shape
 export interface CareRequestFormData {
   // Step 1 – Care Details
+  title: string;
   beneficiaryId: string;
   serviceType: ServiceType;
   description: string;
   budgetPerHour: number | "";
+  preferredCaregiverGender?: "male" | "female";
   // Step 2 – Scheduling
   scheduleData: {
     workingDays: WorkingDay[];
@@ -55,6 +57,7 @@ export interface CareRequestFormData {
     governorate: string;
     readableAddress: string;
     notes: string;
+    coordinates?: [number, number]; // [longitude, latitude]
   };
 }
 
@@ -68,6 +71,7 @@ export interface JobPost {
   serviceType: ServiceType;
   requiredSkills: any[];
   budgetPerHour: number;
+  preferredCaregiverGender?: "male" | "female";
   schedule: {
     workingDays: WorkingDay[];
     startTime: string;

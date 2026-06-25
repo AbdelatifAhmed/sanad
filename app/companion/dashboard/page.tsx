@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations, getLocale } from "next-intl/server";
 import type { BookingScheduleEntry, UserData } from "@/types";
 import { getServerAuthToken } from "@/lib/serverAuth";
 import {
@@ -24,11 +25,15 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
   let errorStatus: number | null = null;
   let errorMessage = "";
 
+  const t = await getTranslations("companionDashboard");
+  const locale = await getLocale();
+
   try {
     const accessToken = await getServerAuthToken();
     const config = {
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        "Accept-Language": locale,
       },
     };
 
@@ -58,17 +63,17 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-stitch-display font-bold text-stitch-on-surface">
-              Complete Your Profile
+              {t("completeProfile")}
             </h2>
             <p className="text-stitch-on-surface-variant/75 text-sm leading-relaxed">
-              {errorMessage || "Finish setting up your profile details as a companion to start receiving bookings and viewing dashboard stats."}
+               {errorMessage || t("completeProfileDesc")}
             </p>
           </div>
           <Link
             href="/companion/profile"
             className="block w-full py-3 px-4 bg-stitch-primary text-white font-bold rounded-xl hover:bg-stitch-primary/95 transition-colors text-center text-sm shadow-sm"
           >
-            Complete Now
+             {t("completeNow")}
           </Link>
         </div>
       </div>
@@ -85,7 +90,7 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
           </div>
           <div className="space-y-2">
             <h2 className="text-xl font-bold text-stitch-on-surface">
-              An error occurred
+               {t("errorTitle")}
             </h2>
             <p className="text-stitch-on-surface-variant/75 text-sm leading-relaxed">
               {errorMessage}
@@ -95,7 +100,7 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
             href="/companion/dashboard"
             className="block w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-stitch-on-surface font-semibold rounded-xl transition-colors text-sm text-center"
           >
-            Retry
+             {t("retry")}
           </Link>
         </div>
       </div>
@@ -109,10 +114,10 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-stitch-display font-bold text-stitch-on-surface tracking-tight">
-            Welcome back, {profile?.userId?.name || "Dr. Amina"}
+             {t("welcomeBack", { name: profile?.userId?.name || "Dr. Amina" })}
           </h1>
           <p className="text-stitch-on-surface-variant/70 text-sm mt-1">
-            Here's what's happening with your patients today.
+             {t("subtitle")}
           </p>
         </div>
         

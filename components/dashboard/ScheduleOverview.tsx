@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getTranslations, getLocale } from "next-intl/server";
+import { getAvatarUrl } from "@/lib/avatar";
 
 export interface TaskItem {
   taskDescription: string;
@@ -21,7 +23,7 @@ export interface Booking {
     name: string;
     phoneNumber?: string;
     email?: string;
-    avatar?: string | null;
+    avatar?: any;
   } | null;
   status: string;
   startDate: string;
@@ -36,7 +38,7 @@ interface FlatScheduleItem {
     name: string;
     phoneNumber: string;
     email: string;
-    avatar: string | null;
+    avatar: any;
   };
   date: Date;
   startTime: string;
@@ -69,6 +71,16 @@ const getLocalDateString = (date: Date): string => {
   const mm = String(date.getMonth() + 1).padStart(2, "0");
   const dd = String(date.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+};
+
+const getRelativeDayLabel = (date: Date, t: any, locale: string): string => {
+  const todayStr = getLocalDateString(new Date());
+  const tomorrowStr = getLocalDateString(new Date(Date.now() + 86400000));
+  const dateStr = getLocalDateString(date);
+
+  if (dateStr === todayStr) return t("today");
+  if (dateStr === tomorrowStr) return t("tomorrow");
+  return date.toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US", { weekday: "short" });
 };
 
 const getInitials = (name: string): string => {
@@ -107,7 +119,10 @@ const getBadgeStyles = (task: string): string => {
   return "bg-stitch-primary/10 text-stitch-primary";
 };
 
-export function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewProps) {
+export async function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewProps) {
+  const t = await getTranslations("companionDashboard");
+  const locale = await getLocale();
+
   // Flatten and process the schedule slots
   const flattenSchedule = (bookings: Booking[]): FlatScheduleItem[] => {
     const flatItems: FlatScheduleItem[] = [];
@@ -163,6 +178,10 @@ export function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewProps) 
 
   const todayVisits = flatSchedule.filter((item) => getLocalDateString(item.date) === todayStr);
   const tomorrowVisits = flatSchedule.filter((item) => getLocalDateString(item.date) === tomorrowStr);
+  const next48HoursVisits = flatSchedule.filter((item) => {
+    const dateStr = getLocalDateString(item.date);
+    return dateStr === todayStr || dateStr === tomorrowStr;
+  });
 
   const nextVisitAfterTomorrow = flatSchedule.find((item) => getLocalDateString(item.date) > tomorrowStr);
 
@@ -171,7 +190,7 @@ export function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewProps) 
       
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <h2 className="text-xl font-bold text-stitch-on-surface">
-          Schedule Overview (Next 48 Hours)
+          {t("scheduleTitle")}
         </h2>
         
         {/* Toggle links (Pure Server Component View Toggle) */}
@@ -184,7 +203,7 @@ export function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewProps) 
                 : "text-stitch-on-surface-variant/60 hover:text-stitch-on-surface"
             }`}
           >
-            List View
+            {t("listView")}
           </Link>
           <Link
             href="/companion/dashboard?view=timeline"
@@ -194,151 +213,265 @@ export function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewProps) 
                 : "text-stitch-on-surface-variant/60 hover:text-stitch-on-surface"
             }`}
           >
-            Timeline
+            {t("timelineView")}
           </Link>
         </div>
       </div>
 
-      {/* Appointments List */}
-      <div className="space-y-8">
-        
-        {/* Today Block */}
-        <div className="space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-stitch-on-surface-variant/50">
-            Today, {todayObj.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-          </h3>
-          
-          {todayVisits.length === 0 ? (
-            <div className="flex items-center justify-center p-6 border border-dashed border-stitch-outline/30 rounded-2xl bg-gray-50/40 text-sm text-stitch-on-surface-variant/60 font-medium">
-              No bookings scheduled for today
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {todayVisits.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-stitch-outline/15 rounded-2xl hover:bg-stitch-secondary-container/5 transition-colors gap-4"
-                >
-                  <div className="flex items-center gap-6">
-                    {/* Time indicator */}
-                    <div className="flex items-center gap-3 min-w-[80px]">
-                      <div className="w-1.5 h-10 bg-stitch-primary rounded-full shrink-0"></div>
-                      <div>
-                        <p className="text-base font-bold text-stitch-on-surface">{item.startTime}</p>
-                        <p className="text-[11px] text-stitch-on-surface-variant/50 font-medium">
-                          {item.durationMin} min
-                        </p>
+      {/* Appointments List / Timeline */}
+      {viewMode === "list" ? (
+        <div className="space-y-8">
+          {/* Today Block */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-stitch-on-surface-variant/50">
+              {t("today")}, {todayObj.toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric", numberingSystem: "latn" })}
+            </h3>
+            
+            {todayVisits.length === 0 ? (
+              <div className="flex items-center justify-center p-6 border border-dashed border-stitch-outline/30 rounded-2xl bg-gray-50/40 text-sm text-stitch-on-surface-variant/60 font-medium">
+                {t("noBookingsToday")}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {todayVisits.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-stitch-outline/15 rounded-2xl hover:bg-stitch-secondary-container/5 transition-colors gap-4"
+                  >
+                    <div className="flex items-center gap-6">
+                      {/* Time indicator */}
+                      <div className="flex items-center gap-3 min-w-[80px]">
+                        <div className="w-1.5 h-10 bg-stitch-primary rounded-full shrink-0"></div>
+                        <div>
+                          <p className="text-base font-bold text-stitch-on-surface">{item.startTime}</p>
+                          <p className="text-[11px] text-stitch-on-surface-variant/50 font-medium">
+                            {t("minutes", { count: item.durationMin })}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Patient Info */}
+                      <div className="flex items-center gap-3">
+                        {getAvatarUrl(item.family.avatar) ? (
+                          <img 
+                            src={getAvatarUrl(item.family.avatar) || "/avatar_1.jpg"} 
+                            alt={item.family.name}
+                            className="w-10 h-10 rounded-full object-cover border border-stitch-outline/10 shrink-0"
+                          />
+                        ) : (
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${getBgColorForName(item.family.name)}`}>
+                            {getInitials(item.family.name)}
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-bold text-stitch-on-surface">{item.family.name}</p>
+                          {item.family.phoneNumber && (
+                            <p className="text-xs text-stitch-on-surface-variant/60 flex items-center gap-0.5 mt-0.5">
+                              <span className="material-symbols-outlined text-sm">phone</span>
+                              {item.family.phoneNumber}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    <div className="sm:self-center">
+                      <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${getBadgeStyles(item.tasks[0]?.taskDescription || t("generalCare"))}`}>
+                        {item.tasks[0]?.taskDescription || t("generalCare")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Tomorrow Block */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-stitch-on-surface-variant/50">
+              {t("tomorrow")}, {tomorrowObj.toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric", numberingSystem: "latn" })}
+            </h3>
+            
+            {tomorrowVisits.length === 0 ? (
+              <div className="flex items-center justify-center p-6 border border-dashed border-stitch-outline/30 rounded-2xl bg-gray-50/40 text-sm text-stitch-on-surface-variant/60 font-medium">
+                {nextVisitAfterTomorrow ? (
+                  <span>
+                    {t("noBookingsUntil", {
+                      date: nextVisitAfterTomorrow.date.toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric", numberingSystem: "latn" }),
+                      time: nextVisitAfterTomorrow.startTime
+                    })}
+                  </span>
+                ) : (
+                  <span>{t("noBookingsTomorrow")}</span>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {tomorrowVisits.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-stitch-outline/15 rounded-2xl hover:bg-stitch-secondary-container/5 transition-colors gap-4"
+                  >
+                    <div className="flex items-center gap-6">
+                      {/* Time indicator */}
+                      <div className="flex items-center gap-3 min-w-[80px]">
+                        <div className="w-1.5 h-10 bg-stitch-primary rounded-full shrink-0"></div>
+                        <div>
+                          <p className="text-base font-bold text-stitch-on-surface">{item.startTime}</p>
+                          <p className="text-[11px] text-stitch-on-surface-variant/50 font-medium">
+                            {t("minutes", { count: item.durationMin })}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Patient Info */}
+                      <div className="flex items-center gap-3">
+                        {getAvatarUrl(item.family.avatar) ? (
+                          <img 
+                            src={getAvatarUrl(item.family.avatar) || "/avatar_1.jpg"} 
+                            alt={item.family.name}
+                            className="w-10 h-10 rounded-full object-cover border border-stitch-outline/10 shrink-0"
+                          />
+                        ) : (
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${getBgColorForName(item.family.name)}`}>
+                            {getInitials(item.family.name)}
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-bold text-stitch-on-surface">{item.family.name}</p>
+                          {item.family.phoneNumber && (
+                            <p className="text-xs text-stitch-on-surface-variant/60 flex items-center gap-0.5 mt-0.5">
+                              <span className="material-symbols-outlined text-sm">phone</span>
+                              {item.family.phoneNumber}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="sm:self-center">
+                      <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${getBadgeStyles(item.tasks[0]?.taskDescription || t("generalCare"))}`}>
+                        {item.tasks[0]?.taskDescription || t("generalCare")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+      ) : (
+        /* Timeline View */
+        next48HoursVisits.length === 0 ? (
+          <div className="flex items-center justify-center p-12 border border-dashed border-stitch-outline/30 rounded-2xl bg-gray-50/40 text-sm text-stitch-on-surface-variant/60 font-medium">
+            {t("noBookingsScheduled")}
+          </div>
+        ) : (
+          <div className="relative w-full overflow-x-auto py-6 px-2 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            <div className={`relative flex gap-12 items-start pb-6 pt-2 mx-auto ${next48HoursVisits.length < 4 ? "justify-center w-full" : "min-w-max"}`}>
+              
+              {/* Main horizontal track line */}
+              <div className="absolute left-4 right-4 h-0.5 bg-gradient-to-r from-stitch-primary/10 via-stitch-primary/40 to-stitch-primary/10 top-[70px] z-0"></div>
+              
+              {next48HoursVisits.map((item, index) => {
+                const isEven = index % 2 === 0;
+                const verticalLineHeightClass = isEven ? "h-10" : "h-24";
+                
+                return (
+                  <div key={item.id} className="relative flex flex-col items-center w-60 flex-shrink-0 group">
                     
-                    {/* Patient Info */}
-                    <div className="flex items-center gap-3">
-                      {item.family.avatar ? (
+                    {/* 1. Date & Time Label (Above the main horizontal line) */}
+                    <div className="h-14 flex flex-col items-center justify-end pb-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-stitch-on-surface-variant/40">
+                        {getRelativeDayLabel(item.date, t, locale)}
+                      </span>
+                      <span className="text-xs font-extrabold text-stitch-primary mt-0.5">
+                        {item.startTime}
+                      </span>
+                    </div>
+
+                    {/* 2. Main Line Connector Node */}
+                    <div className="relative flex items-center justify-center h-4 w-4 my-1 z-10 shrink-0">
+                      {/* The small circle on the line */}
+                      <div className="w-3.5 h-3.5 rounded-full bg-white border-2 border-stitch-primary shadow-sm flex items-center justify-center transition-all group-hover:scale-125 duration-200">
+                        <div className="w-1.5 h-1.5 rounded-full bg-stitch-primary"></div>
+                      </div>
+                    </div>
+
+                    {/* 3. Hanging Vertical Connector Line */}
+                    <div className={`w-0.5 bg-gradient-to-b from-stitch-primary to-stitch-primary/5 ${verticalLineHeightClass} shrink-0`}></div>
+
+                    {/* 4. Circular Badge (with initials or avatar) */}
+                    <div className="relative -mt-1 z-10 shrink-0">
+                      {getAvatarUrl(item.family.avatar) ? (
                         <img 
-                          src={item.family.avatar} 
+                          src={getAvatarUrl(item.family.avatar) || "/avatar_1.jpg"} 
                           alt={item.family.name}
-                          className="w-10 h-10 rounded-full object-cover border border-stitch-outline/10 shrink-0"
+                          className="w-12 h-12 rounded-full object-cover border-4 border-white shadow-soft transition-transform group-hover:scale-110 duration-200"
                         />
                       ) : (
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${getBgColorForName(item.family.name)}`}>
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xs font-bold border-4 border-white shadow-soft transition-transform group-hover:scale-110 duration-200 ${getBgColorForName(item.family.name)}`}>
                           {getInitials(item.family.name)}
                         </div>
                       )}
-                      <div>
-                        <p className="text-sm font-bold text-stitch-on-surface">{item.family.name}</p>
+                    </div>
+
+                    {/* 5. Patient Card (Directly under the circle) */}
+                    <div className="mt-3 bg-white p-4 rounded-2xl border border-stitch-outline/10 shadow-soft w-full hover:shadow-medium hover:border-stitch-outline/25 transition-all duration-200 hover:-translate-y-0.5 flex flex-col gap-3">
+
+                      {/* Body: Patient Name & Phone */}
+                      <div className="text-center">
+                        <p className="text-sm font-extrabold text-stitch-on-surface leading-tight truncate">
+                          {item.family.name}
+                        </p>
                         {item.family.phoneNumber && (
-                          <p className="text-xs text-stitch-on-surface-variant/60 flex items-center gap-0.5 mt-0.5">
-                            <span className="material-symbols-outlined text-sm">phone</span>
+                          <p className="text-[11px] text-stitch-on-surface-variant/50 flex items-center justify-center gap-1 mt-1.5 font-medium">
+                            <span className="material-symbols-outlined text-[13px] leading-none">phone</span>
                             {item.family.phoneNumber}
                           </p>
                         )}
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="sm:self-center">
-                    <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${getBadgeStyles(item.tasks[0]?.taskDescription || "General Care")}`}>
-                      {item.tasks[0]?.taskDescription || "General Care"}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Tomorrow Block */}
-        <div className="space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-stitch-on-surface-variant/50">
-            Tomorrow, {tomorrowObj.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-          </h3>
-          
-          {tomorrowVisits.length === 0 ? (
-            <div className="flex items-center justify-center p-6 border border-dashed border-stitch-outline/30 rounded-2xl bg-gray-50/40 text-sm text-stitch-on-surface-variant/60 font-medium">
-              {nextVisitAfterTomorrow ? (
-                <span>
-                  No bookings until {nextVisitAfterTomorrow.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at {nextVisitAfterTomorrow.startTime}
-                </span>
-              ) : (
-                <span>No bookings scheduled</span>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {tomorrowVisits.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-stitch-outline/15 rounded-2xl hover:bg-stitch-secondary-container/5 transition-colors gap-4"
-                >
-                  <div className="flex items-center gap-6">
-                    {/* Time indicator */}
-                    <div className="flex items-center gap-3 min-w-[80px]">
-                      <div className="w-1.5 h-10 bg-stitch-primary rounded-full shrink-0"></div>
-                      <div>
-                        <p className="text-base font-bold text-stitch-on-surface">{item.startTime}</p>
-                        <p className="text-[11px] text-stitch-on-surface-variant/50 font-medium">
-                          {item.durationMin} min
-                        </p>
+                      {/* Divider / Tasks Badge */}
+                      <div className="flex flex-col items-center gap-2 pt-1 border-t border-gray-50">
+                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full text-center ${getBadgeStyles(item.tasks[0]?.taskDescription || t("generalCare"))}`}>
+                          {item.tasks[0]?.taskDescription || t("generalCare")}
+                        </span>
+                        <span className="text-[10px] text-stitch-on-surface-variant/40 font-semibold flex items-center gap-0.5 mt-0.5">
+                          <span className="material-symbols-outlined text-xs leading-none">schedule</span>
+                          {t("minutes", { count: item.durationMin })}
+                        </span>
                       </div>
                     </div>
-                    
-                    {/* Patient Info */}
-                    <div className="flex items-center gap-3">
-                      {item.family.avatar ? (
-                        <img 
-                          src={item.family.avatar} 
-                          alt={item.family.name}
-                          className="w-10 h-10 rounded-full object-cover border border-stitch-outline/10 shrink-0"
-                        />
-                      ) : (
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${getBgColorForName(item.family.name)}`}>
-                          {getInitials(item.family.name)}
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-sm font-bold text-stitch-on-surface">{item.family.name}</p>
-                        {item.family.phoneNumber && (
-                          <p className="text-xs text-stitch-on-surface-variant/60 flex items-center gap-0.5 mt-0.5">
-                            <span className="material-symbols-outlined text-sm">phone</span>
-                            {item.family.phoneNumber}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="sm:self-center">
-                    <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${getBadgeStyles(item.tasks[0]?.taskDescription || "General Care")}`}>
-                      {item.tasks[0]?.taskDescription || "General Care"}
-                    </span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          )}
+          </div>
+        )
+      )}
+      {/* Next Appointment Outside 48h Info Banner */}
+      {nextVisitAfterTomorrow && (
+        <div className="mt-6 pt-4 border-t border-stitch-outline/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-stitch-on-surface-variant/75 bg-stitch-secondary-container/5 p-4 rounded-2xl border border-dashed border-stitch-primary/10">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-stitch-primary text-lg">
+              event_upcoming
+            </span>
+            <span>
+              {t("nextVisitAfter48h", {
+                name: nextVisitAfterTomorrow.family.name,
+                date: nextVisitAfterTomorrow.date.toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US", { weekday: "long", month: "short", day: "numeric", numberingSystem: "latn" }),
+                time: nextVisitAfterTomorrow.startTime
+              })}
+            </span>
+          </div>
+          <Link href="/companion/schedule" className="font-bold text-stitch-primary hover:underline shrink-0">
+            {t("viewFullSchedule")}
+          </Link>
         </div>
-
-      </div>
+      )}
 
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CareRequestFormData } from "@/lib/types/care-request";
+import SharedMap from "@/components/shared/SharedMap";
 
 type Step3Data = Pick<CareRequestFormData, "locationData">;
 
@@ -28,10 +29,96 @@ export default function StepLocation({ defaultValues, onSubmit, onBack, isSubmit
   const [city, setCity] = useState(loc.city);
   const [governorate, setGovernorate] = useState(loc.governorate);
   const [readableAddress, setReadableAddress] = useState(loc.readableAddress);
-  const [notes, setNotes] = useState(loc.notes);
+  const [coordinates, setCoordinates] = useState<[number, number]>(
+    loc.coordinates || [46.6753, 24.7136] // [longitude, latitude] (Riyadh default)
+  );
+  const [loadingLoc, setLoadingLoc] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const availableCities = governorate ? (CITIES_BY_REGION[governorate] ?? []) : [];
+  // Dynamically include custom governorates/regions if detected via GPS/Map
+  const governorateList = governorate && !GOVERNORATES.includes(governorate)
+    ? [...GOVERNORATES, governorate]
+    : GOVERNORATES;
+
+  const citiesFromRegion = governorate ? (CITIES_BY_REGION[governorate] ?? []) : [];
+  const availableCities = city && !citiesFromRegion.includes(city)
+    ? [...citiesFromRegion, city]
+    : citiesFromRegion;
+
+  // Convert [lon, lat] to Leaflet [lat, lon]
+  const leafletCenter: [number, number] = [coordinates[1], coordinates[0]];
+
+  const handleMapChange = async (latLng: [number, number]) => {
+    const [lat, lng] = latLng;
+    setCoordinates([lng, lat]); // Mongoose expects [longitude, latitude]
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            "Accept-Language": "en, ar",
+            "User-Agent": "SanadApp/1.0",
+          },
+        }
+      );
+      const data = await response.json();
+      if (data && data.address) {
+        // Detect state/province first so we can fall back to it
+        const resGov = data.address.state || data.address.province || data.address.county || "";
+        // Detect city with county and state fallbacks so it is never blank
+        const resCity = data.address.city || data.address.town || data.address.village || data.address.suburb || data.address.city_district || resGov || "";
+        const resAddress = data.display_name || "";
+
+        if (resCity) {
+          setCity(resCity);
+          setErrors((er) => ({ ...er, city: "" }));
+        }
+        
+        // Find best match for Governorate
+        if (resGov) {
+          const matchedGov = GOVERNORATES.find((g) => 
+            g.toLowerCase().includes(resGov.toLowerCase()) || 
+            resGov.toLowerCase().includes(g.toLowerCase())
+          );
+          if (matchedGov) {
+            setGovernorate(matchedGov);
+            setErrors((er) => ({ ...er, governorate: "" }));
+          } else {
+            setGovernorate(resGov);
+            setErrors((er) => ({ ...er, governorate: "" }));
+          }
+        }
+        if (resAddress) {
+          setReadableAddress(resAddress);
+          setErrors((er) => ({ ...er, readableAddress: "" }));
+        }
+      }
+    } catch (err) {
+      console.error("Reverse geocoding error on map click:", err);
+    }
+  };
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setLoadingLoc(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        await handleMapChange([latitude, longitude]);
+        setLoadingLoc(false);
+      },
+      (error) => {
+        console.error("GPS detection error:", error);
+        alert("Failed to get your coordinates. Please grant location permissions.");
+        setLoadingLoc(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -43,12 +130,23 @@ export default function StepLocation({ defaultValues, onSubmit, onBack, isSubmit
 
   const handleSubmit = () => {
     const errs = validate();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
-    onSubmit({ locationData: { city, governorate, readableAddress, notes } });
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
+    onSubmit({
+      locationData: {
+        city,
+        governorate,
+        readableAddress,
+        notes: "",
+        coordinates, // Pass chosen map coordinates
+      },
+    });
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       <div>
         <h2 className="text-2xl font-bold text-[#1b1c1c] mb-1">Where do you need care?</h2>
         <p className="text-sm text-[#3e4949]">
@@ -71,11 +169,13 @@ export default function StepLocation({ defaultValues, onSubmit, onBack, isSubmit
                 setCity("");
                 setErrors((er) => ({ ...er, governorate: "", city: "" }));
               }}
-              className="w-full h-14 appearance-none bg-white border border-[#bdc9c8] rounded-xl px-4 pr-12 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
+              className="w-full h-14 appearance-none bg-white border border-[#bdc9c8] rounded-xl px-4 pr-12 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all cursor-pointer"
             >
               <option value="" disabled>Select a region</option>
-              {GOVERNORATES.map((g) => (
-                <option key={g} value={g}>{g}</option>
+              {governorateList.map((g) => (
+                <option key={g} value={g}>
+                  {GOVERNORATES.includes(g) ? g : g}
+                </option>
               ))}
             </select>
             <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#3e4949]">
@@ -95,8 +195,11 @@ export default function StepLocation({ defaultValues, onSubmit, onBack, isSubmit
               id="city"
               value={city}
               disabled={!governorate}
-              onChange={(e) => { setCity(e.target.value); setErrors((er) => ({ ...er, city: "" })); }}
-              className="w-full h-14 appearance-none bg-white border border-[#bdc9c8] rounded-xl px-4 pr-12 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all disabled:bg-[#f0eded] disabled:text-[#3e4949]/50"
+              onChange={(e) => {
+                setCity(e.target.value);
+                setErrors((er) => ({ ...er, city: "" }));
+              }}
+              className="w-full h-14 appearance-none bg-white border border-[#bdc9c8] rounded-xl px-4 pr-12 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all disabled:bg-[#f0eded] disabled:text-[#3e4949]/50 cursor-pointer"
             >
               <option value="" disabled>{governorate ? "Select a city" : "Select region first"}</option>
               {availableCities.map((c) => (
@@ -120,76 +223,42 @@ export default function StepLocation({ defaultValues, onSubmit, onBack, isSubmit
           id="address"
           type="text"
           value={readableAddress}
-          onChange={(e) => { setReadableAddress(e.target.value); setErrors((er) => ({ ...er, readableAddress: "" })); }}
+          onChange={(e) => {
+            setReadableAddress(e.target.value);
+            setErrors((er) => ({ ...er, readableAddress: "" }));
+          }}
           placeholder="Enter street name and building number"
           className="w-full h-14 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
         />
         {errors.readableAddress && <p className="text-xs text-red-500">{errors.readableAddress}</p>}
       </div>
 
-      {/* Map placeholder */}
+      {/* Map Location Picker */}
       <div className="space-y-2">
-        <label className="block text-sm font-semibold text-[#1b1c1c]">Approximate Location</label>
-        <div className="relative w-full h-56 rounded-xl overflow-hidden border border-[#bdc9c8] group">
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `
-                linear-gradient(rgba(31,138,138,0.06) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(31,138,138,0.06) 1px, transparent 1px)
-              `,
-              backgroundSize: "36px 36px",
-              backgroundColor: "#e8f4f4",
-            }}
-          />
-          <div className="absolute inset-0 opacity-15">
-            <div className="absolute top-1/3 left-0 right-0 h-3 bg-white rounded" />
-            <div className="absolute top-2/3 left-0 right-0 h-2 bg-white rounded" />
-            <div className="absolute left-1/4 top-0 bottom-0 w-2 bg-white rounded" />
-            <div className="absolute left-3/4 top-0 bottom-0 w-2 bg-white rounded" />
-          </div>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="bg-white p-3 rounded-full shadow-lg border-2 border-[#1f8a8a]">
-              <span
-                className="material-symbols-outlined text-[#1f8a8a]"
-                style={{ fontSize: "32px", fontVariationSettings: "'FILL' 1" }}
-              >
-                location_on
-              </span>
-            </div>
-          </div>
-          {city && (
-            <div className="absolute top-3 right-3 bg-[#1f8a8a] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow">
-              {city}
-            </div>
-          )}
-          <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg border border-[#bdc9c8] flex items-center gap-2 shadow-sm text-xs font-semibold text-[#1b1c1c]">
-            <span className="material-symbols-outlined text-[#1f8a8a]" style={{ fontSize: "14px" }}>info</span>
-            Exact pin will be shared only after hiring
-          </div>
+        <div className="flex justify-between items-center">
+          <label className="block text-sm font-semibold text-[#1b1c1c]">Map Location Picker</label>
+          <button
+            type="button"
+            onClick={handleDetectLocation}
+            disabled={loadingLoc}
+            className="flex items-center gap-1.5 px-3.5 py-2 border border-[#bdc9c8] text-xs font-bold text-gray-700 bg-white rounded-xl hover:bg-gray-50 active:scale-[0.98] transition-all cursor-pointer shadow-sm disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-sm leading-none">my_location</span>
+            {loadingLoc ? "Detecting..." : "Detect Location"}
+          </button>
         </div>
-      </div>
-
-      {/* Additional notes */}
-      <div className="space-y-2">
-        <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="notes">
-          Additional Instructions{" "}
-          <span className="text-[#3e4949]/60 font-normal">(Optional)</span>
-        </label>
-        <textarea
-          id="notes"
-          rows={3}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Gate code, landmarks, or specific entrance instructions..."
-          className="w-full bg-white border border-[#bdc9c8] rounded-xl p-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all resize-none"
-        />
+        <div className="relative w-full h-60 rounded-2xl overflow-hidden border border-[#bdc9c8] shadow-inner">
+          <SharedMap center={leafletCenter} readOnly={false} zoom={13} onChange={handleMapChange} />
+        </div>
+        <p className="text-[10px] text-gray-400 font-semibold leading-normal">
+          * Drag the map marker or click anywhere on the map to pinpoint your exact coordinates. Inputs will auto-fill.
+        </p>
       </div>
 
       {/* Trust note */}
       <div className="flex items-center gap-2 text-[#3e4949]/70 text-xs">
         <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>verified_user</span>
-        Your full address is only shared with a caregiver after you accept their application.
+        Your full address and map details are only shared with a caregiver after you accept their application.
       </div>
 
       {/* Navigation */}

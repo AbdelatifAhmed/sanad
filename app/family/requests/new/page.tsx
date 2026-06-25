@@ -12,10 +12,12 @@ import StepLocation from "./StepLocation";
 import SuccessScreen from "./SuccessScreen";
 
 const INITIAL_FORM: CareRequestFormData = {
+  title: "",
   beneficiaryId: "",
   serviceType: "elderly_care",
   description: "",
   budgetPerHour: "",
+  preferredCaregiverGender: undefined,
   scheduleData: {
     workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
     startTime: "08:00",
@@ -27,6 +29,7 @@ const INITIAL_FORM: CareRequestFormData = {
     governorate: "",
     readableAddress: "",
     notes: "",
+    coordinates: [46.6753, 24.7136], // Default coordinates to Riyadh [longitude, latitude]
   },
 };
 
@@ -73,7 +76,7 @@ export default function NewCareRequestPage() {
 
   /* ---------- Step handlers ---------- */
   const handleStep1Next = (
-    data: Pick<CareRequestFormData, "beneficiaryId" | "serviceType" | "description" | "budgetPerHour">
+    data: Pick<CareRequestFormData, "title" | "beneficiaryId" | "serviceType" | "description" | "budgetPerHour" | "preferredCaregiverGender">
   ) => {
     setFormData((prev) => ({ ...prev, ...data }));
     setStep(2);
@@ -94,11 +97,13 @@ export default function NewCareRequestPage() {
     // Build the exact payload the backend expects
     const payload = {
       // Required by backend
-      title: `${SERVICE_TYPE_LABELS[final.serviceType] || "Care"} Request`,
+      title: final.title || `${SERVICE_TYPE_LABELS[final.serviceType] || "Care"} Request`,
       description: final.description,
       serviceType: final.serviceType,
       budgetPerHour: Number(final.budgetPerHour),
       beneficiaryId: final.beneficiaryId || undefined,
+      // Optional gender preference
+      ...(final.preferredCaregiverGender ? { preferredCaregiverGender: final.preferredCaregiverGender } : {}),
       // Skills: empty array (no ObjectId lookup in wizard)
       requiredSkills: [],
       // Schedule
@@ -108,9 +113,9 @@ export default function NewCareRequestPage() {
         endTime: final.scheduleData.endTime,
         durationInWeeks: Number(final.scheduleData.durationInWeeks),
       },
-      // Location — coordinates default [0,0] if no map interaction
+      // Location — coordinates mapped dynamically from map interaction
       location: {
-        coordinates: [0, 0],
+        coordinates: final.locationData.coordinates || [46.6753, 24.7136],
         readableAddress: final.locationData.readableAddress,
         city: final.locationData.city,
         governorate: final.locationData.governorate,
@@ -150,12 +155,12 @@ export default function NewCareRequestPage() {
   /* ---------- Wizard ---------- */
   return (
     <div className="max-w-6xl w-full mx-auto">
-      <div className="mb-8">
+      {/* <div className="mb-8">
         <h1 className="text-2xl font-bold text-[#1b1c1c]">Post a New Care Request</h1>
         <p className="text-sm text-[#3e4949] mt-1">
           Complete the 3-step form to find the perfect caregiver for your family.
         </p>
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left column: hero + stepper */}
@@ -201,10 +206,12 @@ export default function NewCareRequestPage() {
             {step === 1 && (
               <StepCareDetails
                 defaultValues={{
+                  title: formData.title,
                   beneficiaryId: formData.beneficiaryId,
                   serviceType: formData.serviceType,
                   description: formData.description,
                   budgetPerHour: formData.budgetPerHour,
+                  preferredCaregiverGender: formData.preferredCaregiverGender,
                 }}
                 onNext={handleStep1Next}
               />

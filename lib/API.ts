@@ -93,9 +93,9 @@ export const bookingCheckOut = async (id: string, data: Record<string, unknown>)
 };
 
 // --- COMPANION ROUTER (/companion) ---
-export const getVerifiedCompanions = async (params?: Record<string, unknown>): Promise<CompanionProfile[]> => {
-  const res = await api.get<ApiResponse<CompanionProfile[]>>("/companion", { params });
-  return res.data.data as CompanionProfile[];
+export const getVerifiedCompanions = async (params?: Record<string, unknown>) => {
+  const res = await api.get("/companion", { params });
+  return res.data; // returns { status, results, pagination, data: { companions } }
 };
 
 export const getCompanionById = async (id: string): Promise<CompanionProfile> => {
@@ -182,6 +182,17 @@ export const getJobPostsForCompanions = async (): Promise<JobPost[]> => {
   return res.data.data as JobPost[];
 };
 
+export const getJobPostById = async (id: string): Promise<JobPost> => {
+  const res = await api.get<ApiResponse<any>>(`/job-posts/${id}`);
+  return (res.data.data?.job ?? res.data.data) as JobPost;
+};
+
+export const deleteJobPost = async (id: string): Promise<any> => {
+  const res = await api.delete(`/job-posts/${id}`);
+  return res.data;
+};
+
+
 // --- PROPOSALS ROUTER (/proposals) ---
 export const sendProposal = async (data: SendProposalBody): Promise<Proposal> => {
   const res = await api.post<ApiResponse<Proposal>>("/proposals", data);
@@ -197,9 +208,10 @@ export const updateProposalStatus = async (
 };
 
 export const getProposalsForJob = async (jobId: string): Promise<Proposal[]> => {
-  const res = await api.get<ApiResponse<Proposal[]>>(`/proposals/job/${jobId}`);
-  return res.data.data as Proposal[];
+  const res = await api.get<ApiResponse<any>>(`/proposals/job/${jobId}`);
+  return (res.data.data?.proposals ?? res.data.data) as Proposal[];
 };
+
 
 // --- PAYMENTS ROUTER (/payments) ---
 export const payBooking = async (id: string, data: PayBookingBody): Promise<PaymentRecord> => {

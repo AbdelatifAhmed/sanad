@@ -6,14 +6,32 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Send, Check, Timer, ShieldCheck, Lock, ArrowRight, AlertCircle } from "lucide-react";
 import { useFamilyElderlyProfiles, useCreateBooking } from "@/lib/hooks";
 import RequestCaregiverHeader from "./RequestCaregiverHeader";
 import WhoNeedsCare, { FamilyMember } from "./WhoNeedsCare";
 import ScheduleInformation from "./ScheduleInformation";
 import LocationSelection, { CITIES_BY_REGION } from "./LocationSelection";
+import TaskSelection from "./TaskSelection";
 import CareDetails from "./CareDetails";
+
+const GOVERNORATE_MAP: Record<string, string> = {
+  // English geocoded names
+  "muscat": "Muscat Governorate",
+  "riyadh": "Riyadh Region",
+  "makkah": "Makkah Region",
+  "mecca": "Makkah Region",
+  "eastern": "Eastern Province",
+  "madinah": "Madinah Region",
+  "medina": "Madinah Region",
+  // Arabic geocoded names
+  "مسقط": "Muscat Governorate",
+  "الرياض": "Riyadh Region",
+  "مكة": "Makkah Region",
+  "الشرقية": "Eastern Province",
+  "المدينة": "Madinah Region"
+};
 
 interface CompanionData {
   id: string;
@@ -43,6 +61,13 @@ const bookingFormSchema = z.object({
   careType: z.string().min(1, { message: "validation.careTypeRequired" }),
   notes: z.string(),
   isRecurring: z.boolean(),
+  // Optional scheduling fields (refined below)
+  workingDays: z.array(z.string()).optional(),
+  durationInWeeks: z.number().optional(),
+  // Location coordinates and details
+  location: z.any().nullable().optional(),
+  // Required task list
+  taskList: z.array(z.string()).min(1, { message: "validation.taskListRequired" }),
 }).refine((data) => {
   if (!data.startTime || !data.endTime) return true;
   const [startH, startM] = data.startTime.split(":").map(Number);
@@ -53,6 +78,22 @@ const bookingFormSchema = z.object({
 }, {
   message: "validation.endTimeAfterStart",
   path: ["endTime"],
+}).refine((data) => {
+  if (data.isRecurring && (!data.workingDays || data.workingDays.length === 0)) {
+    return false;
+  }
+  return true;
+}, {
+  message: "validation.workingDaysRequired",
+  path: ["workingDays"],
+}).refine((data) => {
+  if (data.isRecurring && (!data.durationInWeeks || data.durationInWeeks < 1)) {
+    return false;
+  }
+  return true;
+}, {
+  message: "validation.durationRequired",
+  path: ["durationInWeeks"],
 });
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
@@ -60,6 +101,7 @@ type BookingFormValues = z.infer<typeof bookingFormSchema>;
 export default function DirectCareRequestForm({ companion }: DirectCareRequestFormProps) {
   const router = useRouter();
   const t = useTranslations("bookingForm");
+  const locale = useLocale();
   
   // Fetch real family elderly profiles from database
   const { data: profileData, isLoading: isProfilesLoading } = useFamilyElderlyProfiles();
@@ -95,6 +137,10 @@ export default function DirectCareRequestForm({ companion }: DirectCareRequestFo
       careType: "",
       notes: "",
       isRecurring: false,
+      workingDays: [],
+      durationInWeeks: 0,
+      location: null,
+      taskList: [],
     },
   });
 
@@ -104,6 +150,10 @@ export default function DirectCareRequestForm({ companion }: DirectCareRequestFo
   const startTime = watch("startTime");
   const endTime = watch("endTime");
   const isRecurring = watch("isRecurring");
+  const workingDays = watch("workingDays") || [];
+  const durationInWeeks = watch("durationInWeeks");
+  const locationValue = watch("location");
+  const taskList = watch("taskList") || [];
   const governorate = watch("governorate");
   const city = watch("city");
   const streetAddress = watch("streetAddress");
@@ -124,33 +174,7 @@ export default function DirectCareRequestForm({ companion }: DirectCareRequestFo
     }
   }, [familyMembers, selectedMemberId, setValue]);
 
-  // Pre-fill location once profile loads
-  useEffect(() => {
-    if (profileData?.profile?.address) {
-      const addr = profileData.profile.address;
-      if (addr.fullAddress) setValue("streetAddress", addr.fullAddress);
-      
-      if (addr.city) {
-        // Find if this city exists in our region map
-        let foundRegion = "";
-        for (const [region, cities] of Object.entries(CITIES_BY_REGION)) {
-          if (cities.includes(addr.city)) {
-            foundRegion = region;
-            break;
-          }
-        }
-        
-        if (foundRegion) {
-          setValue("governorate", foundRegion);
-          setValue("city", addr.city);
-        } else {
-          // Fallback if not found in predefined list
-          setValue("governorate", "Other");
-          setValue("city", addr.city);
-        }
-      }
-    }
-  }, [profileData, setValue]);
+
 
   const calculateHours = (start: string, end: string) => {
     if (!start || !end) return 0;
@@ -160,20 +184,26 @@ export default function DirectCareRequestForm({ companion }: DirectCareRequestFo
     return diff > 0 ? diff / 60 : 0;
   };
 
-  const getErrorMessage = (fieldName: keyof BookingFormValues) => {
-    const err = formErrors[fieldName];
+  const getErrorMessage = (fieldName: keyof BookingFormValues): string | undefined => {
+    const err = formErrors[fieldName] as any;
     if (!err) return undefined;
-    if (err.message && err.message.startsWith("validation.")) {
-      return t(err.message as any);
+    const msg = typeof err.message === "string" ? err.message : "";
+    if (msg && msg.startsWith("validation.")) {
+      try {
+        const translated = t(msg as any);
+        if (translated && !translated.startsWith("bookingForm.")) {
+          return translated;
+        }
+      } catch (e) {}
     }
-    return err.message;
+    return typeof err.message === "string" ? err.message : undefined;
   };
 
   // Build errors map for backward compatibility with child components
   const errorsMap: Record<string, string> = {};
   const formKeys: (keyof BookingFormValues)[] = [
     "selectedMemberId", "serviceDate", "startTime", "endTime",
-    "governorate", "city", "streetAddress", "careType"
+    "governorate", "city", "streetAddress", "careType", "workingDays", "durationInWeeks", "taskList"
   ];
   formKeys.forEach((k) => {
     const msg = getErrorMessage(k);
@@ -185,24 +215,41 @@ export default function DirectCareRequestForm({ companion }: DirectCareRequestFo
     setIsSubmitting(true);
 
     try {
-      // Build schedule array (1 date for single booking, 4 dates for weekly recurring)
       const schedule = [];
       const baseDate = new Date(data.serviceDate);
-      const totalDays = data.isRecurring ? 4 : 1;
       const hoursPerDay = calculateHours(data.startTime, data.endTime);
+      const daysMap = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-      for (let i = 0; i < totalDays; i++) {
-        const date = new Date(baseDate);
-        date.setDate(baseDate.getDate() + (i * 7));
+      if (data.isRecurring) {
+        // Generate all scheduled days
+        const workingDays = data.workingDays || [];
+        const durationInWeeks = data.durationInWeeks || 1;
+        const totalDays = durationInWeeks * 7;
+        for (let i = 0; i < totalDays; i++) {
+          const currentDate = new Date(baseDate);
+          currentDate.setDate(baseDate.getDate() + i);
+          const dayName = daysMap[currentDate.getDay()];
+          
+          if (workingDays.includes(dayName)) {
+            schedule.push({
+              date: currentDate.toISOString().split("T")[0],
+              startTime: data.startTime,
+              endTime: data.endTime,
+              tasksList: []
+            });
+          }
+        }
+      } else {
+        // Single booking day
         schedule.push({
-          date: date.toISOString().split("T")[0],
+          date: data.serviceDate,
           startTime: data.startTime,
           endTime: data.endTime,
           tasksList: []
         });
       }
 
-      const totalHours = hoursPerDay * totalDays;
+      const totalHours = hoursPerDay * schedule.length;
 
       const careTypeLabels: Record<string, string> = {
         elderly_care: t("elderlyCare"),
@@ -214,13 +261,24 @@ export default function DirectCareRequestForm({ companion }: DirectCareRequestFo
       const careTypeLabel = careTypeLabels[data.careType] || data.careType;
       const finalNotes = `${t("careTypeRequired")}: ${careTypeLabel}\n\n${t("additionalNotes")}:\n${data.notes || "None"}`;
 
+      const locationPayload = data.location || {
+        geo: {
+          type: "Point",
+          coordinates: [0, 0] as [number, number]
+        },
+        readableAddress: data.streetAddress,
+        city: data.city,
+        governorate: data.governorate
+      };
+
       const payload = {
         companionId: companion.id,
         beneficiaryId: data.selectedMemberId,
         notes: finalNotes,
-        taskList: [],
+        taskList: data.taskList,
         totalHours,
-        schedule
+        schedule,
+        location: locationPayload
       };
 
       await submitBooking(payload);
@@ -356,10 +414,14 @@ export default function DirectCareRequestForm({ companion }: DirectCareRequestFo
         startTime={startTime}
         endTime={endTime}
         isRecurring={isRecurring}
+        workingDays={workingDays}
+        durationInWeeks={durationInWeeks || 0}
         onChangeDate={(val) => setValue("serviceDate", val, { shouldValidate: true })}
         onChangeStart={(val) => setValue("startTime", val, { shouldValidate: true })}
         onChangeEnd={(val) => setValue("endTime", val, { shouldValidate: true })}
         onToggleRecurring={() => setValue("isRecurring", !isRecurring)}
+        onChangeWorkingDays={(val) => setValue("workingDays", val, { shouldValidate: true })}
+        onChangeDuration={(val) => setValue("durationInWeeks", val, { shouldValidate: true })}
         errors={errorsMap}
       />
 
@@ -374,6 +436,44 @@ export default function DirectCareRequestForm({ companion }: DirectCareRequestFo
         }}
         onChangeCity={(val) => setValue("city", val, { shouldValidate: true })}
         onChangeStreet={(val) => setValue("streetAddress", val, { shouldValidate: true })}
+        locationValue={locationValue}
+        onChangeLocation={(val) => {
+          setValue("location", val, { shouldValidate: true });
+          if (val) {
+            if (val.governorate) {
+              const searchStr = val.governorate.toLowerCase();
+              let matchedGov = "";
+              for (const [key, target] of Object.entries(GOVERNORATE_MAP)) {
+                if (searchStr.includes(key)) {
+                  matchedGov = target;
+                  break;
+                }
+              }
+              
+              if (matchedGov) {
+                setValue("governorate", matchedGov, { shouldValidate: true });
+              } else {
+                setValue("governorate", val.governorate, { shouldValidate: true });
+              }
+            } else if (val.city) {
+              let matchedGov = "";
+              for (const [region, cities] of Object.entries(CITIES_BY_REGION)) {
+                if (cities.includes(val.city)) {
+                  matchedGov = region;
+                  break;
+                }
+              }
+              setValue("governorate", matchedGov || "Other", { shouldValidate: true });
+            }
+
+            if (val.city) {
+              setValue("city", val.city, { shouldValidate: true });
+            }
+            if (val.readableAddress) {
+              setValue("streetAddress", val.readableAddress, { shouldValidate: true });
+            }
+          }
+        }}
         errors={errorsMap}
       />
 
@@ -384,6 +484,14 @@ export default function DirectCareRequestForm({ companion }: DirectCareRequestFo
         onChangeCareType={(val) => setValue("careType", val, { shouldValidate: true })}
         onChangeNotes={(val) => setValue("notes", val)}
         error={errorsMap.careType}
+      />
+
+      {/* 6. Tasks Checklist */}
+      <TaskSelection
+        careType={careType}
+        tasks={taskList}
+        onChangeTasks={(val) => setValue("taskList", val, { shouldValidate: true })}
+        error={errorsMap.taskList}
       />
 
       {/* Form Action Buttons */}

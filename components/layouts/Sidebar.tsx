@@ -15,11 +15,13 @@ type NavLabelKey =
   | "myPosts"
   | "requests"
   | "bookings"
+  | "availablePost"
   | "calendar"
   | "messages"
   | "wallet"
   | "profile"
-  | "settings";
+  | "settings"
+  | "applications";
 
 type AppLabelKey = "name" | "familyDashboard" | "careDashboard";
 

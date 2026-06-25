@@ -1,8 +1,9 @@
 import { Star, MapPin, Award, CheckCircle } from "lucide-react";
+import { getAvatarUrl } from "@/lib/avatar";
 
 interface RequestCaregiverHeaderProps {
   name: string;
-  avatar: string;
+  avatar: any;
   title: string;
   experience: string;
   location: string;
@@ -27,7 +28,7 @@ export default function RequestCaregiverHeader({
       <div className="relative shrink-0">
         <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border border-sand-high shadow-sm bg-sand-low">
           <img 
-            src={avatar} 
+            src={getAvatarUrl(avatar, "/avatar_3.jpg") || "/avatar_3.jpg"} 
             alt={name} 
             className="w-full h-full object-cover"
           />

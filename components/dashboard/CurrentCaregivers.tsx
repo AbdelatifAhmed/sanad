@@ -1,11 +1,12 @@
 import React from "react";
 import Link from "next/link";
 import { Calendar, MessageSquare, Briefcase, ArrowRight } from "lucide-react";
+import { getAvatarUrl } from "@/lib/avatar";
 
 interface CaregiverItem {
   id: string;
   name: string;
-  avatar: string;
+  avatar: any;
   role: string;
   subtext: string;
   status: string;
@@ -55,7 +56,7 @@ export default function CurrentCaregivers({ caregivers }: CurrentCaregiversProps
                     <div className="relative shrink-0">
                       <div className="w-12 h-12 rounded-full overflow-hidden border border-sand-high">
                         <img 
-                          src={caregiver.avatar || "/avatar_2.jpg"} 
+                          src={getAvatarUrl(caregiver.avatar, "/avatar_2.jpg") || "/avatar_2.jpg"} 
                           alt={caregiver.name} 
                           className="w-full h-full object-cover" 
                         />
