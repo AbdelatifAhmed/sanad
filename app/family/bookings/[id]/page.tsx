@@ -358,7 +358,7 @@ export default function FamilyTrackingPage() {
                       <CheckCircle className="w-3.5 h-3.5" />
                     </div>
                     <span className={`text-sm font-medium ${task.isCompleted ? "line-through" : ""}`}>
-                      {task.taskDescription}
+                      {task.title || task.taskDescription}
                     </span>
                   </div>
                   

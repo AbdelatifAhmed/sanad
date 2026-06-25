@@ -74,6 +74,7 @@ export interface AuthState {
 
 export interface ScheduleTaskEntry {
   _id?: string;
+  title?: string;
   taskDescription: string;
   isCompleted: boolean;
 }
@@ -146,6 +147,8 @@ export interface JobPost {
   description: string;
   serviceType: ServiceType;
   requiredSkills: string[];
+  taskList?: string[];
+  preferredGender?: "any gender" | "male" | "female";
   budgetPerHour: number;
   schedule: JobPostSchedule;
   location: LocationDetails;
@@ -161,6 +164,7 @@ export interface Proposal {
   proposedRate: number;
   coverLetter: string;
   status: ProposalStatus;
+  taskList?: string[];
   createdAt?: string | Date;
   updatedAt?: string | Date;
 }

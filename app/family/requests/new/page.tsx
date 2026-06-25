@@ -16,6 +16,9 @@ const INITIAL_FORM: CareRequestFormData = {
   serviceType: "elderly_care",
   description: "",
   budgetPerHour: "",
+  taskList: [],
+  preferredGender: "any gender",
+  requiredSkills: [],
   scheduleData: {
     workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
     startTime: "08:00",
@@ -74,7 +77,7 @@ export default function NewCareRequestPage() {
 
   /* ---------- Step handlers ---------- */
   const handleStep1Next = (
-    data: Pick<CareRequestFormData, "beneficiaryId" | "serviceType" | "description" | "budgetPerHour">
+    data: Pick<CareRequestFormData, "beneficiaryId" | "serviceType" | "description" | "budgetPerHour" | "taskList" | "preferredGender" | "requiredSkills">
   ) => {
     setFormData((prev) => ({ ...prev, ...data }));
     setStep(2);
@@ -100,8 +103,9 @@ export default function NewCareRequestPage() {
       serviceType: final.serviceType,
       budgetPerHour: Number(final.budgetPerHour),
       beneficiaryId: final.beneficiaryId || undefined,
-      // Skills: empty array (no ObjectId lookup in wizard)
-      requiredSkills: [],
+      requiredSkills: final.requiredSkills || [],
+      taskList: final.taskList || [],
+      preferredGender: final.preferredGender || "any gender",
       // Schedule
       schedule: {
         workingDays: final.scheduleData.workingDays,
@@ -206,6 +210,9 @@ export default function NewCareRequestPage() {
                   serviceType: formData.serviceType,
                   description: formData.description,
                   budgetPerHour: formData.budgetPerHour,
+                  taskList: formData.taskList || [],
+                  preferredGender: formData.preferredGender || "any gender",
+                  requiredSkills: formData.requiredSkills || [],
                 }}
                 onNext={handleStep1Next}
               />

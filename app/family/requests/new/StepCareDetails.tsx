@@ -4,10 +4,10 @@ import { useState } from "react";
 import { CareRequestFormData, ServiceType, Beneficiary } from "@/lib/types/care-request";
 import { useFamilyElderlyProfiles } from "@/lib/hooks";
 
-type Step1Data = Pick<CareRequestFormData, "beneficiaryId" | "serviceType" | "description" | "budgetPerHour">;
+type Step1Data = Pick<CareRequestFormData, "beneficiaryId" | "serviceType" | "description" | "budgetPerHour" | "taskList" | "preferredGender" | "requiredSkills">;
 
 interface StepCareDetailsProps {
-  defaultValues: Step1Data;
+  defaultValues: Partial<CareRequestFormData> & Step1Data;
   onNext: (data: Step1Data) => void;
 }
 
@@ -27,6 +27,13 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
   const [serviceType, setServiceType] = useState<ServiceType>(defaultValues.serviceType);
   const [description, setDescription] = useState(defaultValues.description);
   const [budgetPerHour, setBudgetPerHour] = useState<number | "">(defaultValues.budgetPerHour);
+  const [taskList, setTaskList] = useState<string[]>(defaultValues.taskList || []);
+  const [taskInput, setTaskInput] = useState("");
+  const [preferredGender, setPreferredGender] = useState<"any gender" | "male" | "female">(
+    defaultValues.preferredGender || "any gender"
+  );
+  const [requiredSkills, setRequiredSkills] = useState<string[]>(defaultValues.requiredSkills || []);
+  const [skillInput, setSkillInput] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
@@ -41,7 +48,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
   const handleNext = () => {
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
-    onNext({ beneficiaryId, serviceType, description, budgetPerHour });
+    onNext({ beneficiaryId, serviceType, description, budgetPerHour, taskList, preferredGender, requiredSkills });
   };
 
   return (
@@ -172,6 +179,163 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
           />
         </div>
         {errors.budgetPerHour && <p className="text-xs text-red-500">{errors.budgetPerHour}</p>}
+      </div>
+
+      {/* Preferred Gender */}
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-[#1b1c1c]">
+          Preferred Gender (الجنس المفضل للمرافق)
+        </label>
+        <div className="grid grid-cols-3 gap-3">
+          {(
+            [
+              { value: "any gender", label: "Any Gender", labelAr: "أي جنس" },
+              { value: "male", label: "Male", labelAr: "ذكر" },
+              { value: "female", label: "Female", labelAr: "أنثى" },
+            ] as const
+          ).map((g) => {
+            const isActive = preferredGender === g.value;
+            return (
+              <button
+                key={g.value}
+                type="button"
+                onClick={() => setPreferredGender(g.value)}
+                className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 text-center transition-all duration-200 ${
+                  isActive
+                    ? "border-[#1f8a8a] bg-[#1f8a8a]/5 text-[#1f8a8a]"
+                    : "border-[#bdc9c8]/60 text-[#3e4949] hover:border-[#1f8a8a]/40"
+                }`}
+              >
+                <span className="text-sm font-bold">{g.label}</span>
+                <span className="text-xs text-[#3e4949]/70">{g.labelAr}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Required Skills */}
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="skill_input">
+          Required Skills (المهارات المطلوبة)
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="skill_input"
+            type="text"
+            value={skillInput}
+            onChange={(e) => setSkillInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (skillInput.trim()) {
+                  if (!requiredSkills.includes(skillInput.trim())) {
+                    setRequiredSkills((prev) => [...prev, skillInput.trim()]);
+                  }
+                  setSkillInput("");
+                }
+              }
+            }}
+            placeholder="e.g. CPR, Nursing, Mobility assistance..."
+            className="flex-1 h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (skillInput.trim()) {
+                if (!requiredSkills.includes(skillInput.trim())) {
+                  setRequiredSkills((prev) => [...prev, skillInput.trim()]);
+                }
+                setSkillInput("");
+              }
+            }}
+            className="px-4 h-12 bg-[#1f8a8a] text-white rounded-xl text-sm font-bold hover:bg-[#0d8282] transition-all"
+          >
+            Add
+          </button>
+        </div>
+        {requiredSkills.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {requiredSkills.map((skill, index) => (
+              <span
+                key={index}
+                className="flex items-center gap-1 px-3 py-1 rounded-full bg-[#1f8a8a]/10 text-[#1f8a8a] text-xs font-bold border border-[#1f8a8a]/20"
+              >
+                {skill}
+                <button
+                  type="button"
+                  onClick={() => setRequiredSkills((prev) => prev.filter((_, i) => i !== index))}
+                  className="hover:text-red-500 transition-colors focus:outline-none ml-1 text-xs"
+                >
+                  &times;
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Daily Care Tasks */}
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="task_input">
+          Daily Care Tasks (المهام اليومية المطلوبة)
+        </label>
+        <p className="text-xs text-[#3e4949]/70">
+          Add specific duties for the companion to perform and check off during their shift.
+        </p>
+        <div className="flex gap-2">
+          <input
+            id="task_input"
+            type="text"
+            value={taskInput}
+            onChange={(e) => setTaskInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (taskInput.trim()) {
+                  setTaskList((prev) => [...prev, taskInput.trim()]);
+                  setTaskInput("");
+                }
+              }
+            }}
+            placeholder="e.g. Give blood pressure meds, Help with lunch..."
+            className="flex-1 h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (taskInput.trim()) {
+                setTaskList((prev) => [...prev, taskInput.trim()]);
+                setTaskInput("");
+              }
+            }}
+            className="px-4 h-12 bg-[#1f8a8a] text-white rounded-xl text-sm font-bold hover:bg-[#0d8282] transition-all"
+          >
+            Add
+          </button>
+        </div>
+        {taskList.length > 0 && (
+          <ul className="space-y-1.5 pt-1">
+            {taskList.map((task, index) => (
+              <li
+                key={index}
+                className="flex items-center justify-between p-2.5 bg-[#eae7e7]/40 border border-[#bdc9c8]/40 rounded-xl text-sm text-[#3e4949] font-medium"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#1f8a8a] text-base">task_alt</span>
+                  <span>{task}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTaskList((prev) => prev.filter((_, i) => i !== index))}
+                  className="text-red-500 hover:text-red-700 p-1 flex items-center"
+                >
+                  <span className="material-symbols-outlined text-sm font-bold">delete</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Info banner */}

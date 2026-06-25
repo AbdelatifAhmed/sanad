@@ -526,7 +526,7 @@ export default function CompanionShiftPage() {
                             {task.isCompleted && <CheckCircle className="w-4 h-4 shrink-0" />}
                           </div>
                           <span className={`text-sm font-medium ${task.isCompleted ? "line-through" : ""}`}>
-                            {task.taskDescription}
+                            {task.title || task.taskDescription}
                           </span>
                         </div>
                       ))}

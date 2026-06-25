@@ -35,13 +35,15 @@ export interface FamilyProfile {
   beneficiaries: Beneficiary[];
 }
 
-// The multi-step wizard accumulates this shape
 export interface CareRequestFormData {
   // Step 1 – Care Details
   beneficiaryId: string;
   serviceType: ServiceType;
   description: string;
   budgetPerHour: number | "";
+  taskList?: string[];
+  preferredGender?: "any gender" | "male" | "female";
+  requiredSkills?: string[];
   // Step 2 – Scheduling
   scheduleData: {
     workingDays: WorkingDay[];
@@ -67,7 +69,9 @@ export interface JobPost {
   title: string;
   description: string;
   serviceType: ServiceType;
-  requiredSkills: any[];
+  requiredSkills: string[];
+  taskList?: string[];
+  preferredGender?: "any gender" | "male" | "female";
   budgetPerHour: number;
   schedule: {
     workingDays: WorkingDay[];

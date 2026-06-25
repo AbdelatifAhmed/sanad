@@ -56,6 +56,7 @@ import {
   getFamilyCareRequests,
   getFamilyElderlyProfiles,
   getJobPostById,
+  updateJobPost
 } from "./API";
 
 // ==========================================
@@ -1324,6 +1325,27 @@ export const useJobPostById = (id: string) => {
   }, [fetch]);
 
   return { data, isLoading, error, refetch: fetch };
+};
+
+export const useUpdateJobPost = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<any>(null);
+
+  const execute = async (id: string, data: any) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const res = await updateJobPost(id, data);
+      return res;
+    } catch (err: any) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { execute, isLoading, error };
 };
 
 
