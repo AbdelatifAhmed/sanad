@@ -287,7 +287,7 @@ const updateProposalStatus = async (req, res) => {
         companionId: proposal.companionId,
         jobPostId: jobPost._id,
         beneficiaryId: jobPost.beneficiaryId, 
-        status: "pending_payment", // Flow B expects payment next
+        status: "pending_payment",
         hourlyRateAtBooking: proposal.proposedRate,
         totalHours: Math.round(totalHours),
         totalPrice: 0, 
@@ -295,8 +295,9 @@ const updateProposalStatus = async (req, res) => {
         endDate,
         workingDays,
         schedule: generatedSchedule,
-        notes: jobPost.description
-      }], { session });
+        notes: jobPost.description,
+        paymentStatus: "unpaid",
+      }]);
 
       proposal.status = "accepted";
       await proposal.save({ session });

@@ -5,7 +5,8 @@ const {
   getJobPostsForCompanions,
   getJobPostById,
   getServiceTypes,
-  updateJobPost
+  updateJobPost,
+  deleteJobPost
 } = require("../controllers/jobPostController");
 const { authenticate } = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/RoleMiddleware");
@@ -30,4 +31,6 @@ router.get("/", authenticate, authorizeRoles("companion", "admin"), getJobPostsF
   .put("/", authenticate, authorizeRoles("companion", "admin"), getJobPostsForCompanions);
 
 router.get("/:id", authenticate, getJobPostById);
+router.delete("/:id", authenticate, authorizeRoles("family", "admin"), deleteJobPost);
+
 module.exports = router;

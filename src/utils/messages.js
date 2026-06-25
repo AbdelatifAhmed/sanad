@@ -285,6 +285,14 @@ const messages = {
     coordinatesRequired: {
       en: "Companion coordinates are required for distance calculation.",
       ar: "إحداثيات المرافق الحالية مطلوبة لحساب الأقرب."
+    },
+    notFound: {
+      en: "Job post not found.",
+      ar: "هذا الطلب غير موجود."
+    },
+    successDeleted: {
+      en: "Request deleted successfully.",
+      ar: "تم حذف الطلب بنجاح."
     }
   },
   proposal: {

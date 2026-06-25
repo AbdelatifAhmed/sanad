@@ -92,6 +92,7 @@ const createJobPost = async (req, res) => {
       taskList,
       preferredGender,
       budgetPerHour,
+      ...(preferredCaregiverGender ? { preferredCaregiverGender } : {}),
       schedule: {
         workingDays,
         startTime,
@@ -476,5 +477,6 @@ module.exports = {
   getJobPostsForCompanions,
   getJobPostById,
   getServiceTypes,
-  updateJobPost
+  updateJobPost,
+  deleteJobPost
 };

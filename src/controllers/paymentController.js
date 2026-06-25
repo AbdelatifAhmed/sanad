@@ -560,8 +560,8 @@ const releasePayout = async (req, res) => {
         req.user._id,
         lang === "en" ? "Payout Released" : "تم صرف المبلغ",
         lang === "en"
-          ? `Your payout for booking has been released. Available balance: EGP ${payment.amount.toFixed(2)}`
-          : `تم صرف أجرك. الرصيد المتاح: ${payment.amount.toFixed(2)} جنيه مصري`,
+          ? `Your payout for booking has been released. Available balance: $${payment.amount.toFixed(2)}`
+          : `تم صرف أجرك. الرصيد المتاح: $${payment.amount.toFixed(2)}`,
         "payment",
         req.io,
       );
