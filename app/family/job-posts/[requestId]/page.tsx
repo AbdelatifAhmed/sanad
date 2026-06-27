@@ -567,7 +567,7 @@ function EmptyApplications() {
         Once caregivers discover your request, their applications will appear here.
       </p>
       <Link
-        href="/family/requests"
+        href="/family/job-posts"
         className="mt-6 flex items-center gap-2 text-sm font-semibold text-[#1f8a8a] hover:underline"
       >
         <span className="material-symbols-outlined text-base">arrow_back</span>
@@ -615,7 +615,7 @@ export default function FamilyRequestDetailsPage() {
       showToast("Request deleted successfully!", "success");
       setIsDeleteModalOpen(false);
       setTimeout(() => {
-        router.push("/family/requests");
+        router.push("/family/job-posts");
       }, 1200);
     } catch (err: any) {
       console.error(err);
@@ -703,7 +703,7 @@ export default function FamilyRequestDetailsPage() {
   if (jobError || !job) {
     return (
       <div className="max-w-6xl mx-auto">
-        <Link href="/family/requests" className="flex items-center gap-1.5 text-[#1f8a8a] font-semibold text-sm hover:underline mb-6">
+        <Link href="/family/job-posts" className="flex items-center gap-1.5 text-[#1f8a8a] font-semibold text-sm hover:underline mb-6">
           <span className="material-symbols-outlined text-sm">arrow_back</span>
           Back to My Requests
         </Link>
@@ -729,7 +729,7 @@ export default function FamilyRequestDetailsPage() {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Breadcrumb */}
         <Link
-          href="/family/requests"
+          href="/family/job-posts"
           className="flex items-center gap-1.5 text-[#1f8a8a] font-semibold text-sm hover:underline w-fit"
         >
           <span className="material-symbols-outlined text-sm">arrow_back</span>
@@ -754,7 +754,7 @@ export default function FamilyRequestDetailsPage() {
           </div>
           <div className="flex gap-2 shrink-0">
             <Link
-              href={`/family/requests/new`}
+              href={`/family/job-posts/edit/${job._id}`}
               className="flex items-center gap-2 border border-[#1f8a8a] text-[#1f8a8a] px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-[#d1eeee]/30 transition-all"
             >
               Edit Request

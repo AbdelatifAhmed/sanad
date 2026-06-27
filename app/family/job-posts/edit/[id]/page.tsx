@@ -4,29 +4,34 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useFamilyElderlyProfiles, useJobPostById, useUpdateJobPost } from "@/lib/hooks";
 import { ServiceType, WorkingDay, Beneficiary } from "@/lib/types/care-request";
+import { useTranslations, useLocale } from "next-intl";
 
-const SERVICE_TYPES: { value: ServiceType; label: string; labelAr: string; icon: string }[] = [
-  { value: "elderly_care", label: "Elderly Care", labelAr: "رعاية كبار السن", icon: "elderly" },
-  { value: "companionship", label: "Companion Care", labelAr: "مرافقة مسن", icon: "volunteer_activism" },
-  { value: "home_nursing", label: "Home Nursing", labelAr: "تمريض منزلي", icon: "medical_services" },
-  { value: "physical_therapy", label: "Physical Therapy", labelAr: "علاج طبيعي", icon: "accessible" },
-  { value: "child_care", label: "Child Care", labelAr: "رعاية أطفال", icon: "child_care" },
+const SERVICE_TYPES: { value: ServiceType; labelKey: "elderlyCare" | "companionCare" | "homeNursing" | "physicalTherapy" | "childCare"; icon: string }[] = [
+  { value: "elderly_care", labelKey: "elderlyCare", icon: "elderly" },
+  { value: "companionship", labelKey: "companionCare", icon: "volunteer_activism" },
+  { value: "home_nursing", labelKey: "homeNursing", icon: "medical_services" },
+  { value: "physical_therapy", labelKey: "physicalTherapy", icon: "accessible" },
+  { value: "child_care", labelKey: "childCare", icon: "child_care" },
 ];
 
-const WEEKDAYS: { value: WorkingDay; labelAr: string }[] = [
-  { value: "Saturday", labelAr: "السبت" },
-  { value: "Sunday", labelAr: "الأحد" },
-  { value: "Monday", labelAr: "الإثنين" },
-  { value: "Tuesday", labelAr: "الثلاثاء" },
-  { value: "Wednesday", labelAr: "الأربعاء" },
-  { value: "Thursday", labelAr: "الخميس" },
-  { value: "Friday", labelAr: "الجمعة" },
+const WEEKDAYS: WorkingDay[] = [
+  "Saturday",
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
 ];
 
 export default function EditJobPostPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const t = useTranslations("jobPostForm");
+  const tBooking = useTranslations("bookingForm");
+  const locale = useLocale();
+  const isRtl = locale === "ar";
 
   const { data: jobData, isLoading: jobLoading } = useJobPostById(id);
   const { data: profileData, isLoading: profilesLoading } = useFamilyElderlyProfiles();
@@ -113,21 +118,21 @@ export default function EditJobPostPage() {
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!beneficiaryId) errs.beneficiaryId = "الرجاء اختيار المستفيد من الرعاية";
-    if (!title.trim()) errs.title = "عنوان الطلب مطلوب";
-    if (!description.trim()) errs.description = "تفاصيل الطلب مطلوبة";
+    if (!beneficiaryId) errs.beneficiaryId = t("beneficiaryRequired");
+    if (!title.trim()) errs.title = t("titleRequired");
+    if (!description.trim()) errs.description = t("descriptionRequired");
     if (budgetPerHour === "" || Number(budgetPerHour) < 1) {
-      errs.budgetPerHour = "السعر المقترح يجب أن يكون أكبر من 0";
+      errs.budgetPerHour = t("budgetRequired");
     }
-    if (workingDays.length === 0) errs.workingDays = "الرجاء تحديد أيام العمل";
-    if (!startTime) errs.startTime = "وقت بدء العمل مطلوب";
-    if (!endTime) errs.endTime = "وقت انتهاء العمل مطلوب";
+    if (workingDays.length === 0) errs.workingDays = tBooking("validation.workingDaysRequired");
+    if (!startTime) errs.startTime = tBooking("validation.startRequired");
+    if (!endTime) errs.endTime = tBooking("validation.endRequired");
     if (durationInWeeks === "" || Number(durationInWeeks) < 1) {
-      errs.durationInWeeks = "المدة المطلوبة بالأسابيع يجب أن تكون أسبوع على الأقل";
+      errs.durationInWeeks = tBooking("validation.durationRequired");
     }
-    if (!city.trim()) errs.city = "المدينة مطلوبة";
-    if (!governorate.trim()) errs.governorate = "المحافظة مطلوبة";
-    if (!readableAddress.trim()) errs.readableAddress = "العنوان بالتفصيل مطلوب";
+    if (!city.trim()) errs.city = tBooking("validation.cityRequired");
+    if (!governorate.trim()) errs.governorate = tBooking("validation.governorateRequired");
+    if (!readableAddress.trim()) errs.readableAddress = tBooking("validation.addressRequired");
     return errs;
   };
 
@@ -167,16 +172,16 @@ export default function EditJobPostPage() {
 
     try {
       await updateJob(id, payload);
-      router.push("/family/requests");
+      router.push("/family/job-posts");
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || "فشلت عملية تعديل طلب العمل.";
+      const msg = err?.response?.data?.message || err?.message || "Failed to update job request.";
       setSubmitError(msg);
     }
   };
 
   if (jobLoading) {
     return (
-      <div className="max-w-4xl mx-auto py-8 text-center" dir="rtl">
+      <div className="max-w-4xl mx-auto py-8 text-center" dir={isRtl ? "rtl" : "ltr"}>
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 w-1/3 mx-auto rounded-xl" />
           <div className="h-64 bg-gray-100 rounded-2xl" />
@@ -186,11 +191,11 @@ export default function EditJobPostPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4" dir="rtl">
+    <div className="max-w-4xl mx-auto py-8 px-4" dir={isRtl ? "rtl" : "ltr"}>
       <div className="bg-white rounded-3xl p-6 md:p-10 shadow-soft border border-[#eae7e7]">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-extrabold text-[#1f8a8a] mb-2">تعديل طلب العمل</h1>
-          <p className="text-sm text-[#3e4949]">تعديل تفاصيل الرعاية أو جدول الزيارات والمهام المطلوبة لعائلتك.</p>
+          <h1 className="text-3xl font-extrabold text-[#1f8a8a] mb-2">{t("editTitle")}</h1>
+          <p className="text-sm text-[#3e4949]">{t("editSubtitle")}</p>
         </div>
 
         {submitError && (
@@ -203,7 +208,7 @@ export default function EditJobPostPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Recipient Selection */}
           <div className="space-y-3">
-            <label className="block text-sm font-bold text-[#1b1c1c]">اختيار المستفيد من الرعاية *</label>
+            <label className="block text-sm font-bold text-[#1b1c1c]">{t("recipientInfo")} *</label>
             {profilesLoading ? (
               <div className="h-12 bg-gray-100 animate-pulse rounded-xl" />
             ) : beneficiaries.length > 0 ? (
@@ -226,13 +231,13 @@ export default function EditJobPostPage() {
                       {b.category === "elderly" ? "elderly" : "accessibility_new"}
                     </span>
                     <span>{b.name}</span>
-                    <span className="text-xs opacity-60">({b.age} سنة)</span>
+                    <span className="text-xs opacity-60">({b.age} {tBooking("years")})</span>
                   </button>
                 ))}
               </div>
             ) : (
               <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 text-amber-700 text-sm">
-                لم يتم العثور على أفراد عائلة مسجلين. يرجى إضافة مستفيد في صفحة الملف الشخصي أولاً.
+                {t("noBeneficiaries")}
               </div>
             )}
             {errors.beneficiaryId && <p className="text-xs text-red-500">{errors.beneficiaryId}</p>}
@@ -240,7 +245,7 @@ export default function EditJobPostPage() {
 
           {/* Title */}
           <div className="space-y-2">
-            <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="title">عنوان الطلب *</label>
+            <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="title">{t("requestTitle")} *</label>
             <input
               id="title"
               type="text"
@@ -249,7 +254,7 @@ export default function EditJobPostPage() {
                 setTitle(e.target.value);
                 setErrors((prev) => ({ ...prev, title: "" }));
               }}
-              placeholder="مثال: ممرض منزلي لرعاية مسن يعاني من السكري"
+              placeholder={t("titlePlaceholder")}
               className="w-full h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
             />
             {errors.title && <p className="text-xs text-red-500">{errors.title}</p>}
@@ -257,7 +262,7 @@ export default function EditJobPostPage() {
 
           {/* Service Type */}
           <div className="space-y-2">
-            <label className="block text-sm font-bold text-[#1b1c1c]">نوع الخدمة المطلوبة *</label>
+            <label className="block text-sm font-bold text-[#1b1c1c]">{t("careType")} *</label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {SERVICE_TYPES.map((ct) => (
                 <button
@@ -271,7 +276,7 @@ export default function EditJobPostPage() {
                   }`}
                 >
                   <span className="material-symbols-outlined text-2xl">{ct.icon}</span>
-                  <span className="text-xs font-bold">{ct.labelAr}</span>
+                  <span className="text-xs font-bold">{tBooking(ct.labelKey)}</span>
                 </button>
               ))}
             </div>
@@ -279,7 +284,7 @@ export default function EditJobPostPage() {
 
           {/* Description */}
           <div className="space-y-2">
-            <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="description">تفاصيل الحالة الطبية والاحتياجات *</label>
+            <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="description">{t("descriptionNeeds")} *</label>
             <textarea
               id="description"
               rows={4}
@@ -288,7 +293,7 @@ export default function EditJobPostPage() {
                 setDescription(e.target.value);
                 setErrors((prev) => ({ ...prev, description: "" }));
               }}
-              placeholder="اكتب بالتفصيل متطلبات الحالة، الأدوية، القيود الغذائية..."
+              placeholder={t("descriptionPlaceholder")}
               className="w-full bg-white border border-[#bdc9c8] rounded-xl p-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all resize-none"
             />
             {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
@@ -297,7 +302,9 @@ export default function EditJobPostPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Budget Per Hour */}
             <div className="space-y-2">
-              <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="budget">الميزانية المقترحة لكل ساعة (ريال سعودي) *</label>
+              <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="budget">
+                {t("budgetPerHour")} ({t("currency")}) *
+              </label>
               <input
                 id="budget"
                 type="number"
@@ -307,7 +314,7 @@ export default function EditJobPostPage() {
                   setBudgetPerHour(e.target.value === "" ? "" : Number(e.target.value));
                   setErrors((prev) => ({ ...prev, budgetPerHour: "" }));
                 }}
-                placeholder="مثال: 60"
+                placeholder={t("budgetPlaceholder")}
                 className="w-full h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
               />
               {errors.budgetPerHour && <p className="text-xs text-red-500">{errors.budgetPerHour}</p>}
@@ -315,22 +322,22 @@ export default function EditJobPostPage() {
 
             {/* Preferred Gender */}
             <div className="space-y-2">
-              <label className="block text-sm font-bold text-[#1b1c1c]">الجنس المفضل لمقدم الخدمة</label>
+              <label className="block text-sm font-bold text-[#1b1c1c]">{t("preferredGender")}</label>
               <select
                 value={preferredGender}
                 onChange={(e) => setPreferredGender(e.target.value as any)}
                 className="w-full h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
               >
-                <option value="any gender">لا يهم (أي جنس)</option>
-                <option value="male">ذكر</option>
-                <option value="female">أنثى</option>
+                <option value="any gender">{t("anyGender")}</option>
+                <option value="male">{t("male")}</option>
+                <option value="female">{t("female")}</option>
               </select>
             </div>
           </div>
 
           {/* Required Skills Tags */}
           <div className="space-y-2">
-            <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="skill_input">المهارات والشهادات المطلوبة</label>
+            <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="skill_input">{t("requiredSkills")}</label>
             <div className="flex gap-2">
               <input
                 id="skill_input"
@@ -343,7 +350,7 @@ export default function EditJobPostPage() {
                     handleAddSkill();
                   }
                 }}
-                placeholder="مثال: قياس الضغط، شهادة CPR، رعاية مرضى السكري"
+                placeholder={t("skillsPlaceholder")}
                 className="flex-1 h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
               />
               <button
@@ -351,7 +358,7 @@ export default function EditJobPostPage() {
                 onClick={handleAddSkill}
                 className="px-4 h-12 bg-[#1f8a8a] text-white rounded-xl text-sm font-bold hover:bg-[#0d8282] transition-all"
               >
-                إضافة
+                {t("skillsAddButton")}
               </button>
             </div>
             {requiredSkills.length > 0 && (
@@ -365,7 +372,7 @@ export default function EditJobPostPage() {
                     <button
                       type="button"
                       onClick={() => setRequiredSkills((prev) => prev.filter((_, i) => i !== index))}
-                      className="hover:text-red-500 transition-colors focus:outline-none mr-1"
+                      className="hover:text-red-500 transition-colors focus:outline-none ml-1"
                     >
                       &times;
                     </button>
@@ -377,8 +384,8 @@ export default function EditJobPostPage() {
 
           {/* Task List Checklist */}
           <div className="space-y-2">
-            <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="task_input">قائمة المهام اليومية المطلوبة من المرافق</label>
-            <p className="text-xs text-[#3e4949]/70">أضف قائمة بالمهام المحددة ليقوم المرافق بالتشيك عليها يومياً (مثل: إعطاء الدواء في الساعة 2، فحص السكري، مساعدة في الغداء).</p>
+            <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="task_input">{t("dailyCareTasks")}</label>
+            <p className="text-xs text-[#3e4949]/70">{t("tasksDesc")}</p>
             <div className="flex gap-2">
               <input
                 id="task_input"
@@ -391,7 +398,7 @@ export default function EditJobPostPage() {
                     handleAddTask();
                   }
                 }}
-                placeholder="أدخل مهمة جديدة..."
+                placeholder={t("tasksPlaceholder")}
                 className="flex-1 h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
               />
               <button
@@ -399,7 +406,7 @@ export default function EditJobPostPage() {
                 onClick={handleAddTask}
                 className="px-4 h-12 bg-[#1f8a8a] text-white rounded-xl text-sm font-bold hover:bg-[#0d8282] transition-all"
               >
-                إضافة
+                {t("tasksAddButton")}
               </button>
             </div>
             {taskList.length > 0 && (
@@ -427,20 +434,20 @@ export default function EditJobPostPage() {
           </div>
 
           <div className="border-t border-[#bdc9c8]/30 pt-6">
-            <h3 className="text-lg font-bold text-[#1f8a8a] mb-4">تفاصيل جدول العمل والزيارات</h3>
+            <h3 className="text-lg font-bold text-[#1f8a8a] mb-4">{t("workingHours")}</h3>
             
             {/* Weekdays */}
             <div className="space-y-2 mb-4">
-              <label className="block text-sm font-bold text-[#1b1c1c]">أيام العمل المطلوبة في الأسبوع *</label>
+              <label className="block text-sm font-bold text-[#1b1c1c]">{t("workingDays")} *</label>
               <div className="flex flex-wrap gap-2">
                 {WEEKDAYS.map((day) => {
-                  const isSelected = workingDays.includes(day.value);
+                  const isSelected = workingDays.includes(day);
                   return (
                     <button
-                      key={day.value}
+                      key={day}
                       type="button"
                       onClick={() => {
-                        toggleDay(day.value);
+                        toggleDay(day);
                         setErrors((prev) => ({ ...prev, workingDays: "" }));
                       }}
                       className={`px-3 py-2 rounded-xl text-xs font-semibold border-2 transition-all ${
@@ -449,7 +456,7 @@ export default function EditJobPostPage() {
                           : "border-[#bdc9c8]/60 text-[#3e4949] hover:border-[#1f8a8a]/40"
                       }`}
                     >
-                      {day.labelAr}
+                      {tBooking(`schedule.dayNames.${day}`)}
                     </button>
                   );
                 })}
@@ -460,7 +467,7 @@ export default function EditJobPostPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Start Time */}
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="start_time">وقت البدء *</label>
+                <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="start_time">{t("startTime")} *</label>
                 <input
                   id="start_time"
                   type="time"
@@ -469,14 +476,14 @@ export default function EditJobPostPage() {
                     setStartTime(e.target.value);
                     setErrors((prev) => ({ ...prev, startTime: "" }));
                   }}
-                  className="w-full h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all text-right"
+                  className="w-full h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all text-center"
                 />
                 {errors.startTime && <p className="text-xs text-red-500">{errors.startTime}</p>}
               </div>
 
               {/* End Time */}
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="end_time">وقت الانتهاء *</label>
+                <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="end_time">{t("endTime")} *</label>
                 <input
                   id="end_time"
                   type="time"
@@ -485,14 +492,14 @@ export default function EditJobPostPage() {
                     setEndTime(e.target.value);
                     setErrors((prev) => ({ ...prev, endTime: "" }));
                   }}
-                  className="w-full h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all text-right"
+                  className="w-full h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all text-center"
                 />
                 {errors.endTime && <p className="text-xs text-red-500">{errors.endTime}</p>}
               </div>
 
               {/* Duration Weeks */}
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="duration">المدة (بالأسابيع) *</label>
+                <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="duration">{t("duration")} ({t("weeks")}) *</label>
                 <input
                   id="duration"
                   type="number"
@@ -510,12 +517,12 @@ export default function EditJobPostPage() {
           </div>
 
           <div className="border-t border-[#bdc9c8]/30 pt-6">
-            <h3 className="text-lg font-bold text-[#1f8a8a] mb-4">الموقع الجغرافي للخدمة</h3>
+            <h3 className="text-lg font-bold text-[#1f8a8a] mb-4">{t("whereCare")}</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
               {/* City */}
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="city">المدينة *</label>
+                <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="city">{t("city")} *</label>
                 <input
                   id="city"
                   type="text"
@@ -524,7 +531,7 @@ export default function EditJobPostPage() {
                     setCity(e.target.value);
                     setErrors((prev) => ({ ...prev, city: "" }));
                   }}
-                  placeholder="مثال: الرياض"
+                  placeholder={t("selectCity")}
                   className="w-full h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
                 />
                 {errors.city && <p className="text-xs text-red-500">{errors.city}</p>}
@@ -532,7 +539,7 @@ export default function EditJobPostPage() {
 
               {/* Governorate */}
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="gov">المحافظة / المنطقة *</label>
+                <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="gov">{t("regionGov")} *</label>
                 <input
                   id="gov"
                   type="text"
@@ -541,7 +548,7 @@ export default function EditJobPostPage() {
                     setGovernorate(e.target.value);
                     setErrors((prev) => ({ ...prev, governorate: "" }));
                   }}
-                  placeholder="مثال: منطقة الرياض"
+                  placeholder={t("selectRegion")}
                   className="w-full h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
                 />
                 {errors.governorate && <p className="text-xs text-red-500">{errors.governorate}</p>}
@@ -550,7 +557,7 @@ export default function EditJobPostPage() {
 
             {/* Readable Address */}
             <div className="space-y-2">
-              <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="address">العنوان بالتفصيل *</label>
+              <label className="block text-sm font-bold text-[#1b1c1c]" htmlFor="address">{t("streetAddress")} *</label>
               <input
                 id="address"
                 type="text"
@@ -559,7 +566,7 @@ export default function EditJobPostPage() {
                   setReadableAddress(e.target.value);
                   setErrors((prev) => ({ ...prev, readableAddress: "" }));
                 }}
-                placeholder="مثال: حي الياسمين، شارع الملقا، عمارة 14 شقة 5"
+                placeholder={t("streetAddressPlaceholder")}
                 className="w-full h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
               />
               {errors.readableAddress && <p className="text-xs text-red-500">{errors.readableAddress}</p>}
@@ -570,17 +577,17 @@ export default function EditJobPostPage() {
           <div className="flex justify-end gap-3 pt-6 border-t border-[#bdc9c8]/30">
             <button
               type="button"
-              onClick={() => router.push("/family/requests")}
+              onClick={() => router.push("/family/job-posts")}
               className="px-6 h-12 rounded-xl border border-[#bdc9c8] text-[#3e4949] font-bold text-sm hover:bg-[#eae7e7]/30 transition-all"
             >
-              إلغاء
+              {t("cancel")}
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="flex items-center justify-center gap-2 px-8 h-12 rounded-xl bg-[#1f8a8a] text-white font-bold text-sm hover:bg-[#0d8282] transition-all disabled:opacity-50"
             >
-              {submitting ? "جاري الحفظ..." : "تعديل طلب العمل"}
+              {submitting ? t("saving") : t("save")}
             </button>
           </div>
         </form>

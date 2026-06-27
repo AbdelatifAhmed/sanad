@@ -1,16 +1,20 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 interface WizardStepperProps {
   currentStep: 1 | 2 | 3;
 }
 
-const steps = [
-  { number: 1, label: "Care Details" },
-  { number: 2, label: "Scheduling" },
-  { number: 3, label: "Location" },
-];
-
 export default function WizardStepper({ currentStep }: WizardStepperProps) {
+  const t = useTranslations("jobPostForm");
+
+  const steps = [
+    { number: 1, labelKey: "stepDetails" },
+    { number: 2, labelKey: "stepScheduling" },
+    { number: 3, labelKey: "stepLocation" },
+  ];
+
   return (
     <nav className="space-y-1 bg-[#f6f3f2] p-6 rounded-2xl border border-[#bdc9c8]/30">
       {steps.map((step) => {
@@ -50,7 +54,7 @@ export default function WizardStepper({ currentStep }: WizardStepperProps) {
                   : "text-[#3e4949]/50"
               }`}
             >
-              {step.label}
+              {t(step.labelKey as any)}
             </span>
             {isActive && (
               <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#1f8a8a]" />

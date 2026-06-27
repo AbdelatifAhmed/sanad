@@ -2,12 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 interface SuccessScreenProps {
   onPostAnother: () => void;
 }
 
 export default function SuccessScreen({ onPostAnother }: SuccessScreenProps) {
+  const t = useTranslations("jobPostForm");
   const iconRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -60,21 +62,20 @@ export default function SuccessScreen({ onPostAnother }: SuccessScreenProps) {
             </span>
           </div>
           <h1 className="text-3xl font-bold text-[#1b1c1c] mb-3">
-            Request Successfully Posted
+            {t("successTitle")}
           </h1>
           <p className="text-[#3e4949] text-lg max-w-lg mx-auto">
-            Your care request is now live and being shared with our network of
-            verified caregivers.
+            {t("successDesc")}
           </p>
         </div>
 
         {/* What's Next timeline */}
-        <div className="bg-[#f6f3f2] rounded-2xl p-6 text-left mb-8 border border-[#eae7e7]">
+        <div className="bg-[#f6f3f2] rounded-2xl p-6 text-start mb-8 border border-[#eae7e7]">
           <h2 className="text-xl font-bold text-[#1f8a8a] mb-6 px-2">
-            What&apos;s Next
+            {t("whatsNext")}
           </h2>
 
-          <div className="space-y-6 relative before:content-[''] before:absolute before:left-[27px] before:top-4 before:bottom-4 before:w-[2px] before:bg-[#1f8a8a]/20">
+          <div className="space-y-6 relative before:content-[''] before:absolute before:left-[27px] rtl:before:left-auto rtl:before:right-[27px] before:top-4 before:bottom-4 before:w-[2px] before:bg-[#1f8a8a]/20">
             {/* Step 1 */}
             <div className="flex gap-4 relative">
               <div className="z-10 w-14 h-14 bg-[#1f8a8a] rounded-full flex items-center justify-center text-white shadow-lg ring-4 ring-[#f6f3f2] shrink-0">
@@ -83,10 +84,9 @@ export default function SuccessScreen({ onPostAnother }: SuccessScreenProps) {
                 </span>
               </div>
               <div className="pt-1">
-                <h3 className="font-bold text-[#1b1c1c] mb-1">Matching Process</h3>
+                <h3 className="font-bold text-[#1b1c1c] mb-1">{t("step1Title")}</h3>
                 <p className="text-sm text-[#3e4949]">
-                  We&apos;re notifying caregivers who match your specific needs, location,
-                  and schedule requirements.
+                  {t("step1Text")}
                 </p>
               </div>
             </div>
@@ -99,10 +99,9 @@ export default function SuccessScreen({ onPostAnother }: SuccessScreenProps) {
                 </span>
               </div>
               <div className="pt-1">
-                <h3 className="font-bold text-[#1b1c1c] mb-1">Review Applications</h3>
+                <h3 className="font-bold text-[#1b1c1c] mb-1">{t("step2Title")}</h3>
                 <p className="text-sm text-[#3e4949]">
-                  You&apos;ll receive notifications as soon as caregivers apply. View their
-                  profiles, experience, and background checks.
+                  {t("step2Text")}
                 </p>
               </div>
             </div>
@@ -115,10 +114,9 @@ export default function SuccessScreen({ onPostAnother }: SuccessScreenProps) {
                 </span>
               </div>
               <div className="pt-1">
-                <h3 className="font-bold text-[#1b1c1c] mb-1">Connect &amp; Hire</h3>
+                <h3 className="font-bold text-[#1b1c1c] mb-1">{t("step3Title")}</h3>
                 <p className="text-sm text-[#3e4949]">
-                  Chat with applicants through our secure messenger, check their reviews,
-                  and hire the best fit for your family.
+                  {t("step3Text")}
                 </p>
               </div>
             </div>
@@ -128,13 +126,13 @@ export default function SuccessScreen({ onPostAnother }: SuccessScreenProps) {
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
-            href="/family/requests"
+            href="/family/job-posts"
             className="w-full sm:w-auto h-14 px-8 bg-[#1f8a8a] text-white font-bold rounded-full hover:bg-[#0d8282] transition-all active:scale-95 shadow-md text-center flex items-center justify-center gap-2"
           >
             <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
               assignment
             </span>
-            View My Requests
+            {t("viewRequests")}
           </Link>
           <button
             onClick={onPostAnother}
@@ -143,7 +141,7 @@ export default function SuccessScreen({ onPostAnother }: SuccessScreenProps) {
             <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
               add_circle
             </span>
-            Post Another Request
+            {t("postAnother")}
           </button>
         </div>
 
@@ -152,7 +150,7 @@ export default function SuccessScreen({ onPostAnother }: SuccessScreenProps) {
           <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
             verified_user
           </span>
-          All caregivers are background-checked for your peace of mind.
+          {t("successTrustNote")}
         </p>
       </div>
     </div>

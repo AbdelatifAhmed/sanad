@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CareRequestFormData, WorkingDay } from "@/lib/types/care-request";
+import { useTranslations } from "next-intl";
 
 type Step2Data = Pick<CareRequestFormData, "scheduleData">;
 
@@ -15,13 +16,16 @@ const ALL_DAYS: WorkingDay[] = [
   "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"
 ];
 
-const DAY_PRESETS: { label: string; icon: string; days: WorkingDay[] }[] = [
-  { label: "Daily", icon: "event_repeat", days: ALL_DAYS },
-  { label: "Weekdays", icon: "calendar_view_week", days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] },
-  { label: "Weekends", icon: "beach_access", days: ["Friday", "Saturday"] },
+const DAY_PRESETS: { value: "daily" | "weekdays" | "weekends"; icon: string; days: WorkingDay[] }[] = [
+  { value: "daily", icon: "event_repeat", days: ALL_DAYS },
+  { value: "weekdays", icon: "calendar_view_week", days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] },
+  { value: "weekends", icon: "beach_access", days: ["Friday", "Saturday"] },
 ];
 
 export default function StepScheduling({ defaultValues, onNext, onBack }: StepSchedulingProps) {
+  const t = useTranslations("jobPostForm");
+  const tBooking = useTranslations("bookingForm");
+  
   const s = defaultValues.scheduleData;
 
   const [workingDays, setWorkingDays] = useState<WorkingDay[]>(s.workingDays);
@@ -54,13 +58,13 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (workingDays.length === 0) errs.workingDays = "Please select at least one working day.";
-    if (!startTime) errs.startTime = "Start time is required.";
-    if (!endTime) errs.endTime = "End time is required.";
+    if (workingDays.length === 0) errs.workingDays = tBooking("validation.workingDaysRequired" as any);
+    if (!startTime) errs.startTime = tBooking("validation.startRequired" as any);
+    if (!endTime) errs.endTime = tBooking("validation.endRequired" as any);
     if (startTime && endTime && (calcHours() ?? 0) <= 0)
-      errs.endTime = "End time must be after start time.";
+      errs.endTime = tBooking("validation.endTimeAfterStart" as any);
     if (durationInWeeks === "" || Number(durationInWeeks) < 1)
-      errs.durationInWeeks = "Duration must be at least 1 week.";
+      errs.durationInWeeks = tBooking("validation.durationRequired" as any);
     return errs;
   };
 
@@ -77,12 +81,21 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
     });
   };
 
+  const getDurationLabel = (w: number) => {
+    if (w === 52) return t("year");
+    if (w === 4) return t("month");
+    if (w === 8) return t("months", { count: 2 });
+    if (w === 12) return t("months", { count: 3 });
+    if (w === 24) return t("months", { count: 6 });
+    return t("customWeeks", { count: w });
+  };
+
   return (
     <div className="space-y-8">
       {/* Working days */}
       <div>
-        <h3 className="text-xl font-bold text-[#1f8a8a] mb-1">Working Days</h3>
-        <p className="text-sm text-[#3e4949]">Select the days care is required each week.</p>
+        <h3 className="text-xl font-bold text-[#1f8a8a] mb-1">{t("workingDays")}</h3>
+        <p className="text-sm text-[#3e4949]">{t("workingDaysDesc")}</p>
       </div>
 
       {/* Quick presets */}
@@ -93,17 +106,17 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
             preset.days.every((d) => workingDays.includes(d));
           return (
             <button
-              key={preset.label}
+              key={preset.value}
               type="button"
               onClick={() => applyPreset(preset.days)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all cursor-pointer ${
                 isActive
                   ? "border-[#1f8a8a] bg-[#1f8a8a] text-white"
                   : "border-[#bdc9c8]/60 text-[#3e4949] hover:border-[#1f8a8a]/40"
               }`}
             >
               <span className="material-symbols-outlined text-base">{preset.icon}</span>
-              {preset.label}
+              {tBooking(`schedule.presets.${preset.value}` as any)}
             </button>
           );
         })}
@@ -118,21 +131,21 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
               key={day}
               type="button"
               onClick={() => toggleDay(day)}
-              className={`flex flex-col items-center py-3 px-1 rounded-xl border-2 text-xs font-bold transition-all duration-200 ${
+              className={`flex flex-col items-center py-3 px-1 rounded-xl border-2 text-xs font-bold transition-all duration-200 cursor-pointer ${
                 isSelected
                   ? "border-[#1f8a8a] bg-[#1f8a8a]/5 text-[#1f8a8a]"
                   : "border-[#bdc9c8]/60 text-[#3e4949]/60 hover:border-[#1f8a8a]/40"
               }`}
             >
               <span className={`w-2 h-2 rounded-full mb-1 ${isSelected ? "bg-[#1f8a8a]" : "bg-[#bdc9c8]"}`} />
-              {day.slice(0, 3)}
+              {tBooking(`schedule.dayNames.${day}` as any)}
             </button>
           );
         })}
       </div>
       {workingDays.length > 0 && (
         <p className="text-xs text-[#1f8a8a] font-medium">
-          ✓ {workingDays.length} day{workingDays.length > 1 ? "s" : ""} selected: {workingDays.join(", ")}
+          ✓ {workingDays.length} {workingDays.length > 1 ? tBooking("schedule.daysSelected" as any) : tBooking("schedule.daySelected" as any)} {workingDays.map(d => tBooking(`schedule.dayNames.${d}` as any)).join(", ")}
         </p>
       )}
       {errors.workingDays && <p className="text-xs text-red-500">{errors.workingDays}</p>}
@@ -141,30 +154,30 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
 
       {/* Working hours */}
       <div>
-        <h3 className="text-xl font-bold text-[#1f8a8a] mb-1">Working Hours</h3>
-        <p className="text-sm text-[#3e4949]">Set the daily start and end time for the caregiver.</p>
+        <h3 className="text-xl font-bold text-[#1f8a8a] mb-1">{t("workingHours")}</h3>
+        <p className="text-sm text-[#3e4949]">{t("workingHoursDesc")}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-end">
         <div className="flex gap-3 items-end">
           <div className="flex-1 space-y-1">
-            <span className="text-xs text-[#3e4949]/70 uppercase tracking-wider font-semibold">Start Time</span>
+            <span className="text-xs text-[#3e4949]/70 uppercase tracking-wider font-semibold">{t("startTime")}</span>
             <input
               type="time"
               value={startTime}
               onChange={(e) => { setStartTime(e.target.value); setErrors((er) => ({ ...er, startTime: "" })); }}
-              className="w-full h-14 rounded-xl border border-[#bdc9c8] bg-white px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
+              className="w-full h-14 rounded-xl border border-[#bdc9c8] bg-white px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all text-center"
             />
             {errors.startTime && <p className="text-xs text-red-500">{errors.startTime}</p>}
           </div>
-          <span className="text-[#3e4949] pb-4 text-sm">to</span>
+          <span className="text-[#3e4949] pb-4 text-sm">{t("to")}</span>
           <div className="flex-1 space-y-1">
-            <span className="text-xs text-[#3e4949]/70 uppercase tracking-wider font-semibold">End Time</span>
+            <span className="text-xs text-[#3e4949]/70 uppercase tracking-wider font-semibold">{t("endTime")}</span>
             <input
               type="time"
               value={endTime}
               onChange={(e) => { setEndTime(e.target.value); setErrors((er) => ({ ...er, endTime: "" })); }}
-              className="w-full h-14 rounded-xl border border-[#bdc9c8] bg-white px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
+              className="w-full h-14 rounded-xl border border-[#bdc9c8] bg-white px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all text-center"
             />
             {errors.endTime && <p className="text-xs text-red-500">{errors.endTime}</p>}
           </div>
@@ -177,12 +190,12 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
           </div>
           <div>
             <p className="text-sm font-bold text-[#1b1c1c]">
-              {totalHoursPerDay ? `${totalHoursPerDay}h per day` : "Set working hours"}
+              {totalHoursPerDay ? t("hoursPerDay", { count: totalHoursPerDay }) : t("setHours")}
             </p>
             <p className="text-xs text-[#3e4949]">
               {totalHoursPerDay && workingDays.length > 0
-                ? `~${(totalHoursPerDay * workingDays.length).toFixed(0)}h per week`
-                : "Select days & times above"}
+                ? t("hoursPerWeek", { count: (totalHoursPerDay * workingDays.length).toFixed(0) })
+                : t("selectDaysTimes")}
             </p>
           </div>
         </div>
@@ -192,13 +205,13 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
 
       {/* Duration */}
       <div>
-        <h3 className="text-xl font-bold text-[#1f8a8a] mb-1">Duration</h3>
-        <p className="text-sm text-[#3e4949]">How many weeks do you need this care arrangement?</p>
+        <h3 className="text-xl font-bold text-[#1f8a8a] mb-1">{t("duration")}</h3>
+        <p className="text-sm text-[#3e4949]">{t("durationDesc")}</p>
       </div>
 
       <div className="space-y-2">
         <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="duration_weeks">
-          Duration (weeks) <span className="text-red-500">*</span>
+          {t("duration")} ({t("weeks")}) <span className="text-red-500">*</span>
         </label>
         <div className="flex flex-wrap gap-2 mb-3">
           {[4, 8, 12, 24, 52].map((w) => (
@@ -206,13 +219,13 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
               key={w}
               type="button"
               onClick={() => { setDurationInWeeks(w); setErrors((er) => ({ ...er, durationInWeeks: "" })); }}
-              className={`px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
+              className={`px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all cursor-pointer ${
                 durationInWeeks === w
                   ? "border-[#1f8a8a] bg-[#1f8a8a]/5 text-[#1f8a8a]"
                   : "border-[#bdc9c8]/60 text-[#3e4949] hover:border-[#1f8a8a]/40"
               }`}
             >
-              {w === 52 ? "1 year" : w === 4 ? "1 month" : w === 12 ? "3 months" : w === 24 ? "6 months" : `${w}w`}
+              {getDurationLabel(w)}
             </button>
           ))}
         </div>
@@ -229,7 +242,7 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
               setDurationInWeeks(e.target.value === "" ? "" : Number(e.target.value));
               setErrors((er) => ({ ...er, durationInWeeks: "" }));
             }}
-            placeholder="Or enter custom weeks..."
+            placeholder={t("durationPlaceholder")}
             className="w-full h-14 bg-white border border-[#bdc9c8] rounded-xl pl-12 pr-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
           />
         </div>
@@ -241,17 +254,17 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 px-5 h-14 rounded-xl text-[#1f8a8a] font-bold text-sm hover:bg-[#1f8a8a]/5 transition-all"
+          className="flex items-center gap-2 px-5 h-14 rounded-xl text-[#1f8a8a] font-bold text-sm hover:bg-[#1f8a8a]/5 transition-all cursor-pointer"
         >
           <span className="material-symbols-outlined">arrow_back</span>
-          Back to Care Details
+          {t("back")}
         </button>
         <button
           type="button"
           onClick={handleNext}
-          className="flex items-center gap-2 px-8 h-14 rounded-xl bg-[#1f8a8a] text-white font-bold text-sm hover:bg-[#0d8282] transition-all shadow-md active:scale-95"
+          className="flex items-center gap-2 px-8 h-14 rounded-xl bg-[#1f8a8a] text-white font-bold text-sm hover:bg-[#0d8282] transition-all shadow-md active:scale-95 cursor-pointer"
         >
-          Next
+          {t("next")}
           <span className="material-symbols-outlined">arrow_forward</span>
         </button>
       </div>

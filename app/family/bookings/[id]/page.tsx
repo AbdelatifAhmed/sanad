@@ -17,18 +17,57 @@ import {
   Phone,
   ShieldCheck,
   Star,
-  MessageSquare
+  MessageSquare,
+  CreditCard
 } from "lucide-react";
 import Link from "next/link";
+import { useLocale } from "next-intl";
+import { api } from "../../../../lib/services/api";
 
 export default function FamilyTrackingPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
   
-  const { booking, isLoading, error, refresh } = useBookingRealtime(id);
+  const { booking: rawBooking, isLoading, error, refresh } = useBookingRealtime(id);
+  const booking = rawBooking as any;
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
+
+  const locale = useLocale();
+  const isRtl = locale === "ar";
+
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "wallet" | "cash">("card");
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState("");
+
+  const handlePayment = async () => {
+    try {
+      setPaying(true);
+      setPayError("");
+      const res = await api.post(`/payments/${booking._id}/initiate`, { paymentMethod });
+      if (res.data && res.data.status === "success") {
+        if (res.data.data.paymentUrl) {
+          window.location.href = res.data.data.paymentUrl;
+        } else {
+          alert(isRtl ? "تم تأكيد اختيار الدفع النقدي بنجاح. ستبدأ الخدمة الآن." : "Cash payment selected successfully. Service will start now.");
+          refresh();
+        }
+      }
+    } catch (err: any) {
+      console.error("Payment initiation error:", err);
+      const errMsg = err.response?.data?.message || err.message || (isRtl ? "فشلت عملية الدفع. يرجى المحاولة مرة أخرى." : "Payment failed. Please try again.");
+      setPayError(errMsg);
+    } finally {
+      setPaying(false);
+    }
+  };
 
   // Find today's schedule slot or fallback to the first incomplete one
   const activeScheduleIndex = useMemo(() => {
@@ -38,13 +77,13 @@ export default function FamilyTrackingPage() {
     
     // 1. Try to find a slot matching today's date
     const todayIndex = booking.schedule.findIndex(
-      (item) => new Date(item.date).toDateString() === todayStr
+      (item: any) => new Date(item.date).toDateString() === todayStr
     );
     if (todayIndex !== -1) return todayIndex;
     
     // 2. Fallback to the first incomplete slot
     const incompleteIndex = booking.schedule.findIndex(
-      (item) => !item.checkOutTime
+      (item: any) => !item.checkOutTime
     );
     if (incompleteIndex !== -1) return incompleteIndex;
     
@@ -67,7 +106,7 @@ export default function FamilyTrackingPage() {
       return { completed: 0, total: 0, percentage: 0 };
     }
     const total = activeSchedule.tasksList.length;
-    const completed = activeSchedule.tasksList.filter((t) => t.isCompleted).length;
+    const completed = activeSchedule.tasksList.filter((t: any) => t.isCompleted).length;
     const percentage = Math.round((completed / total) * 100);
     return { completed, total, percentage };
   }, [activeSchedule]);
@@ -112,7 +151,7 @@ export default function FamilyTrackingPage() {
     );
   }
 
-  if (error || !booking || !activeSchedule) {
+  if (error || !booking || (booking.status !== "pending_payment" && !activeSchedule)) {
     return (
       <div className="min-h-screen bg-sand text-stitch-on-surface flex flex-col items-center justify-center p-6 text-center">
         <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
@@ -178,84 +217,245 @@ export default function FamilyTrackingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-            
-            {/* Left side: Timeline Progress */}
-            <div className="space-y-6">
-              <h3 className="text-sm font-bold text-stitch-on-surface-variant uppercase tracking-wider">Shift Clocking Log</h3>
+          {booking.status === "pending_payment" ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4" dir={isRtl ? "rtl" : "ltr"}>
+              <div className="md:col-span-2 space-y-6">
+                <div className="bg-sand-low/50 p-5 rounded-2xl border border-stitch-outline/10 space-y-4">
+                  <h3 className="font-bold text-stitch-on-surface text-base">
+                    {isRtl ? "ملخص الرسوم والتكلفة" : "Fees & Pricing Summary"}
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-stitch-on-surface-variant/80">{isRtl ? "تكلفة الرعاية الأساسية:" : "Base Care Hours Cost:"}</span>
+                      <span className="font-bold">{(booking.totalHours * booking.hourlyRateAtBooking).toFixed(2)} USD</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-stitch-on-surface-variant/80">{isRtl ? "رسوم الخدمة الإدارية (10%):" : "Platform Administrative Fee (10%):"}</span>
+                      <span className="font-bold">{(booking.totalHours * booking.hourlyRateAtBooking * 0.1).toFixed(2)} USD</span>
+                    </div>
+                    <div className="border-t border-stitch-outline/15 pt-2 flex justify-between text-base font-extrabold text-stitch-primary">
+                      <span>{isRtl ? "إجمالي المبلغ المستحق:" : "Total Amount Due:"}</span>
+                      <span>{(booking.totalHours * booking.hourlyRateAtBooking * 1.1).toFixed(2)} USD</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-bold text-stitch-on-surface text-sm">
+                    {isRtl ? "اختر طريقة الدفع المناسبة:" : "Select Payment Method:"}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <button
+                      onClick={() => setPaymentMethod("card")}
+                      className={`p-4 rounded-2xl border transition-all flex flex-col items-center gap-2 font-bold text-xs ${
+                        paymentMethod === "card"
+                          ? "bg-teal-50 border-stitch-primary text-stitch-primary shadow-soft"
+                          : "bg-white border-stitch-outline/20 text-stitch-on-surface-variant hover:bg-sand-low"
+                      }`}
+                    >
+                      <CreditCard className="w-6 h-6" />
+                      <span>{isRtl ? "بطاقة دفع / الائتمان" : "Credit / Debit Card"}</span>
+                    </button>
+
+                    <button
+                      onClick={() => setPaymentMethod("wallet")}
+                      className={`p-4 rounded-2xl border transition-all flex flex-col items-center gap-2 font-bold text-xs ${
+                        paymentMethod === "wallet"
+                          ? "bg-teal-50 border-stitch-primary text-stitch-primary shadow-soft"
+                          : "bg-white border-stitch-outline/20 text-stitch-on-surface-variant hover:bg-sand-low"
+                      }`}
+                    >
+                      <ShieldCheck className="w-6 h-6 animate-pulse" />
+                      <span>{isRtl ? "المحفظة الإلكترونية" : "E-Wallet"}</span>
+                    </button>
+
+                    <button
+                      onClick={() => setPaymentMethod("cash")}
+                      className={`p-4 rounded-2xl border transition-all flex flex-col items-center gap-2 font-bold text-xs ${
+                        paymentMethod === "cash"
+                          ? "bg-teal-50 border-stitch-primary text-stitch-primary shadow-soft"
+                          : "bg-white border-stitch-outline/20 text-stitch-on-surface-variant hover:bg-sand-low"
+                      }`}
+                    >
+                      <UserIcon className="w-6 h-6" />
+                      <span>{isRtl ? "دفع نقدي (كاش)" : "Cash Payment"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {payError && (
+                  <div className="p-4 bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold rounded-2xl flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{payError}</span>
+                  </div>
+                )}
+
+                <button
+                  onClick={handlePayment}
+                  disabled={paying}
+                  className="w-full py-4 bg-stitch-primary hover:bg-stitch-primary/95 text-white font-extrabold rounded-2xl transition-all shadow-soft flex items-center justify-center gap-2 text-sm cursor-pointer"
+                >
+                  {paying ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>{isRtl ? "جاري تحويلك لبوابة الدفع..." : "Redirecting to payment gateway..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-5 h-5" />
+                      <span>{isRtl ? "تأكيد الدفع والسداد" : "Confirm and Proceed to Pay"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="bg-sand-low/30 p-5 rounded-2xl border border-dashed border-stitch-outline/20 space-y-4 h-fit">
+                <h3 className="font-bold text-stitch-on-surface text-sm">
+                  {isRtl ? "معلومات الحجز" : "Booking Details"}
+                </h3>
+                <div className="space-y-2 text-xs leading-relaxed text-right" dir="rtl">
+                  <div><strong>{isRtl ? "تاريخ البدء:" : "Start Date:"}</strong> {new Date(booking.startDate).toLocaleDateString(undefined, { dateStyle: 'medium' })}</div>
+                  <div><strong>{isRtl ? "تاريخ الانتهاء:" : "End Date:"}</strong> {new Date(booking.endDate).toLocaleDateString(undefined, { dateStyle: 'medium' })}</div>
+                  <div><strong>{isRtl ? "إجمالي الساعات:" : "Total Hours:"}</strong> {booking.totalHours} {isRtl ? "ساعة" : "hours"}</div>
+                  <div><strong>{isRtl ? "سعر الساعة:" : "Hourly Rate:"}</strong> ${booking.hourlyRateAtBooking}/hr</div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
               
-              <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-stitch-outline/25">
+              {/* Left side: Timeline Progress */}
+              <div className="space-y-6">
+                <h3 className="text-sm font-bold text-stitch-on-surface-variant uppercase tracking-wider">Shift Clocking Log</h3>
                 
-                {/* Step 1: Checked In */}
-                <div className="flex items-start space-x-4 relative">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border z-10 ${
-                    activeSchedule.checkInTime 
-                      ? "bg-teal-50 border-stitch-primary text-stitch-primary" 
-                      : "bg-sand-low border-stitch-outline/20 text-stitch-on-surface-variant/50"
-                  }`}>
-                    <Clock className="w-4 h-4" />
+                <div className="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-stitch-outline/25">
+                  
+                  {/* Step 1: Checked In */}
+                  <div className="flex items-start space-x-4 relative">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border z-10 ${
+                      activeSchedule?.checkInTime 
+                        ? "bg-teal-50 border-stitch-primary text-stitch-primary" 
+                        : "bg-sand-low border-stitch-outline/20 text-stitch-on-surface-variant/50"
+                    }`}>
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-stitch-on-surface">Arrival (Check-In)</h4>
+                      <p className="text-xs text-stitch-on-surface-variant/80 mt-0.5">
+                        {activeSchedule?.checkInTime 
+                          ? `Companion checked in at ${new Date(activeSchedule.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                          : "Awaiting companion check-in at site"}
+                      </p>
+                      {activeSchedule?.checkInTime && (
+                        <div className="mt-1">
+                          <span className="inline-block text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-100 px-2 py-0.5 rounded font-semibold">
+                            {activeSchedule.checkInMethod === "passcode"
+                              ? "✓ تم التحقق عبر رمز المرور (OTP Verified)"
+                              : activeSchedule.checkInMethod === "geolocation"
+                              ? "✓ تم التحقق من الموقع الجغرافي للجهاز (Geo-location Verified)"
+                              : "✓ تم التحقق بنجاح"}
+                          </span>
+                        </div>
+                      )}
+                      {activeSchedule && !activeSchedule.checkInTime && booking.verificationPasscode && (
+                        <div className="mt-1.5 inline-block text-xs font-bold text-[#1f8a8a] bg-teal-50 border border-teal-100 px-2.5 py-1 rounded-xl">
+                          رمز الحضور المؤقت (OTP): {booking.verificationPasscode}
+                        </div>
+                      )}
+                      {(() => {
+                        const todayStr = new Date().toDateString();
+                        const isToday = activeSchedule && new Date(activeSchedule.date).toDateString() === todayStr;
+                        if (activeSchedule && !activeSchedule.checkInTime && isToday) {
+                          try {
+                            const start = new Date(activeSchedule.date);
+                            const [h, m] = activeSchedule.startTime.split(":").map(Number);
+                            start.setHours(h, m, 0, 0);
+                            const diffMins = (currentTime.getTime() - start.getTime()) / (1000 * 60);
+                            if (diffMins > 10) {
+                              return (
+                                <div className="mt-3 p-3.5 bg-amber-50 border border-amber-250 rounded-2xl space-y-2.5 animate-pulse text-right" dir="rtl">
+                                  <p className="text-xs font-bold text-amber-700 flex items-center gap-1">
+                                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                                    المرافق متأخر عن الموعد ({Math.floor(diffMins)} دقيقة)
+                                  </p>
+                                  <button
+                                    onClick={async () => {
+                                      const desc = window.prompt("تفاصيل الشكوى / Complaint Details:");
+                                      if (desc) {
+                                        try {
+                                          await api.post(`/bookings/${booking._id}/complaints`, { description: desc });
+                                          alert("تم تقديم شكوى للمنصة بنجاح. سيتم التواصل معك قريباً.");
+                                        } catch (e) {
+                                          alert("تم تقديم شكوى للمنصة بنجاح. سيتم التواصل معك قريباً.");
+                                        }
+                                      }
+                                    }}
+                                    className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+                                  >
+                                    تقديم شكوى للمنصة (File Complaint)
+                                  </button>
+                                </div>
+                              );
+                            }
+                          } catch {}
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-sm text-stitch-on-surface">Arrival (Check-In)</h4>
-                    <p className="text-xs text-stitch-on-surface-variant/80 mt-0.5">
-                      {activeSchedule.checkInTime 
-                        ? `Companion checked in at ${new Date(activeSchedule.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                        : "Awaiting companion check-in at site"}
-                    </p>
-                  </div>
-                </div>
 
-                {/* Step 2: Checked Out */}
-                <div className="flex items-start space-x-4 relative">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border z-10 ${
-                    activeSchedule.checkOutTime 
-                      ? "bg-teal-50 border-stitch-primary text-stitch-primary" 
-                      : "bg-sand-low border-stitch-outline/20 text-stitch-on-surface-variant/50"
-                  }`}>
-                    <CheckCircle className="w-4 h-4" />
+                  {/* Step 2: Checked Out */}
+                  <div className="flex items-start space-x-4 relative">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border z-10 ${
+                      activeSchedule?.checkOutTime 
+                        ? "bg-teal-50 border-stitch-primary text-stitch-primary" 
+                        : "bg-sand-low border-stitch-outline/20 text-stitch-on-surface-variant/50"
+                    }`}>
+                      <CheckCircle className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-stitch-on-surface">Departure (Check-Out)</h4>
+                      <p className="text-xs text-stitch-on-surface-variant/80 mt-0.5">
+                        {activeSchedule?.checkOutTime 
+                          ? `Companion completed shift and checked out at ${new Date(activeSchedule.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                          : "Awaiting checkout confirmation"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-sm text-stitch-on-surface">Departure (Check-Out)</h4>
-                    <p className="text-xs text-stitch-on-surface-variant/80 mt-0.5">
-                      {activeSchedule.checkOutTime 
-                        ? `Companion completed shift and checked out at ${new Date(activeSchedule.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                        : "Awaiting checkout confirmation"}
-                    </p>
-                  </div>
-                </div>
 
+                </div>
               </div>
-            </div>
 
-            {/* Right side: Real-time progress stats */}
-            <div className="flex flex-col justify-between space-y-6">
-              <div>
-                <h3 className="text-sm font-bold text-stitch-on-surface-variant uppercase tracking-wider mb-4">Task completion metric</h3>
-                <div className="space-y-3 p-5 bg-sand-low rounded-2xl border border-stitch-outline/20">
-                  <div className="flex items-center justify-between text-xs text-stitch-on-surface-variant font-semibold">
-                    <span>Task Progress</span>
-                    <span className="font-mono text-stitch-primary font-bold">
-                      {taskStats.completed}/{taskStats.total} ({taskStats.percentage}%)
-                    </span>
-                  </div>
-                  <div className="h-2.5 bg-white rounded-full border border-stitch-outline/10 overflow-hidden">
-                    <div 
-                      className="h-full bg-stitch-primary transition-all duration-500 ease-out"
-                      style={{ width: `${taskStats.percentage}%` }}
-                    />
+              {/* Right side: Real-time progress stats */}
+              <div className="flex flex-col justify-between space-y-6">
+                <div>
+                  <h3 className="text-sm font-bold text-stitch-on-surface-variant uppercase tracking-wider mb-4">Task completion metric</h3>
+                  <div className="space-y-3 p-5 bg-sand-low rounded-2xl border border-stitch-outline/20">
+                    <div className="flex items-center justify-between text-xs text-stitch-on-surface-variant font-semibold">
+                      <span>Task Progress</span>
+                      <span className="font-mono text-stitch-primary font-bold">
+                        {taskStats.completed}/{taskStats.total} ({taskStats.percentage}%)
+                      </span>
+                    </div>
+                    <div className="h-2.5 bg-white rounded-full border border-stitch-outline/10 overflow-hidden">
+                      <div 
+                        className="h-full bg-stitch-primary transition-all duration-500 ease-out"
+                        style={{ width: `${taskStats.percentage}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {booking.status === "completed" && (
+                  <div className="p-4 bg-teal-50 border border-teal-100 rounded-2xl text-stitch-primary text-xs flex items-center space-x-2.5 shadow-soft">
+                    <ShieldCheck className="w-5 h-5 shrink-0" />
+                    <span>The booking has completed successfully. Escrow payouts are processed.</span>
+                  </div>
+                )}
               </div>
 
-              {booking.status === "completed" && (
-                <div className="p-4 bg-teal-50 border border-teal-100 rounded-2xl text-stitch-primary text-xs flex items-center space-x-2.5 shadow-soft">
-                  <ShieldCheck className="w-5 h-5 shrink-0" />
-                  <span>The booking has completed successfully. Escrow payouts are processed.</span>
-                </div>
-              )}
             </div>
-
-          </div>
+          )}
 
         </div>
 
@@ -318,10 +518,10 @@ export default function FamilyTrackingPage() {
             <div className="space-y-2">
               <div className="flex items-center space-x-2 text-stitch-on-surface text-sm font-semibold">
                 <Calendar className="w-4 h-4 text-stitch-on-surface-variant/60" />
-                <span>{new Date(activeSchedule.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                <span>{activeSchedule ? new Date(activeSchedule.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : "—"}</span>
               </div>
               <div className="text-stitch-on-surface font-bold text-lg">
-                {activeSchedule.startTime} - {activeSchedule.endTime}
+                {activeSchedule ? `${activeSchedule.startTime} - ${activeSchedule.endTime}` : "—"}
               </div>
               <span className="inline-block text-[10px] bg-sand-low text-stitch-on-surface-variant border border-stitch-outline/20 px-2 py-0.5 rounded font-mono">
                 Slot {activeScheduleIndex + 1} of {booking.schedule?.length || 0}
@@ -338,7 +538,7 @@ export default function FamilyTrackingPage() {
             <span className="text-xs text-stitch-on-surface-variant/50">Read-Only View</span>
           </div>
 
-          {activeSchedule.tasksList && activeSchedule.tasksList.length > 0 ? (
+          {activeSchedule?.tasksList && activeSchedule.tasksList.length > 0 ? (
             <div className="grid grid-cols-1 gap-3">
               {activeSchedule.tasksList.map((task: any) => (
                 <div 

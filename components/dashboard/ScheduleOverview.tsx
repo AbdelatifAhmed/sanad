@@ -22,6 +22,7 @@ export interface Booking {
     _id: string;
     name: string;
     phoneNumber?: string;
+    phone?: string;
     email?: string;
     avatar?: any;
   } | null;
@@ -132,6 +133,7 @@ export async function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewP
       const family = booking.familyId || {
         name: "Unknown Patient",
         phoneNumber: "",
+        phone: "",
         email: "",
         avatar: null,
       };
@@ -142,7 +144,7 @@ export async function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewP
           bookingId: booking._id,
           family: {
             name: family.name,
-            phoneNumber: family.phoneNumber || "",
+            phoneNumber: family.phone || family.phoneNumber || "",
             email: family.email || "",
             avatar: family.avatar || null,
           },

@@ -1,13 +1,16 @@
 import React from "react";
 import Link from "next/link";
 import { Plus, Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function QuickActions() {
+  const t = useTranslations("quickActions");
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Create Care Request Card */}
       <Link 
-        href="/family/requests/new" 
+        href="/family/job-posts/new" 
         className="group relative bg-[#015347] hover:bg-[#00473c] p-6 rounded-3xl shadow-soft transition-all duration-300 transform hover:translate-y-[-2px] flex items-center gap-5 text-white overflow-hidden cursor-pointer"
       >
         <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -16,10 +19,10 @@ export default function QuickActions() {
         </div>
         <div className="space-y-0.5">
           <h3 className="font-body font-bold text-lg leading-snug">
-            Create Care Request
+            {t("createRequestTitle")}
           </h3>
           <p className="text-white/80 text-xs font-medium">
-            Schedule temporary or ongoing support.
+            {t("createRequestDesc")}
           </p>
         </div>
       </Link>
@@ -34,10 +37,10 @@ export default function QuickActions() {
         </div>
         <div className="space-y-0.5">
           <h3 className="font-body font-bold text-lg leading-snug text-[#012d1d]">
-            Browse Caregivers
+            {t("browseCaregiversTitle")}
           </h3>
           <p className="text-gray-500 text-xs font-medium">
-            Find highly qualified healthcare professionals.
+            {t("browseCaregiversDesc")}
           </p>
         </div>
       </Link>

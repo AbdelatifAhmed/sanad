@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CareRequestFormData, ServiceType, Beneficiary } from "@/lib/types/care-request";
 import { useFamilyElderlyProfiles } from "@/lib/hooks";
+import { useTranslations } from "next-intl";
 
 type Step1Data = Pick<CareRequestFormData, "title" | "beneficiaryId" | "serviceType" | "description" | "budgetPerHour" | "taskList" | "preferredGender" | "requiredSkills">;
 
@@ -11,15 +12,17 @@ interface StepCareDetailsProps {
   onNext: (data: Step1Data) => void;
 }
 
-const SERVICE_TYPES: { value: ServiceType; label: string; icon: string }[] = [
-  { value: "elderly_care", label: "Elderly Care", icon: "elderly" },
-  { value: "companionship", label: "Companion Care", icon: "volunteer_activism" },
-  { value: "home_nursing", label: "Home Nursing", icon: "medical_services" },
-  { value: "physical_therapy", label: "Physical Therapy", icon: "accessible" },
-  { value: "child_care", label: "Child Care", icon: "child_care" },
+const SERVICE_TYPES: { value: ServiceType; labelKey: "elderlyCare" | "companionCare" | "homeNursing" | "physicalTherapy" | "childCare"; icon: string }[] = [
+  { value: "elderly_care", labelKey: "elderlyCare", icon: "elderly" },
+  { value: "companionship", labelKey: "companionCare", icon: "volunteer_activism" },
+  { value: "home_nursing", labelKey: "homeNursing", icon: "medical_services" },
+  { value: "physical_therapy", labelKey: "physicalTherapy", icon: "accessible" },
+  { value: "child_care", labelKey: "childCare", icon: "child_care" },
 ];
 
 export default function StepCareDetails({ defaultValues, onNext }: StepCareDetailsProps) {
+  const t = useTranslations("jobPostForm");
+  const tBooking = useTranslations("bookingForm");
   const { data: profileData, isLoading: profilesLoading } = useFamilyElderlyProfiles();
   const beneficiaries: Beneficiary[] = profileData?.beneficiaries ?? [];
 
@@ -39,13 +42,13 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!title.trim()) errs.title = "Please enter a title for your request.";
+    if (!title.trim()) errs.title = t("titleRequired");
     if (beneficiaries.length === 0)
-      errs.beneficiary = "Please add at least one beneficiary before proceeding. Go to your Profile to add a family member.";
-    if (!serviceType) errs.serviceType = "Please select a care type.";
-    if (!description.trim()) errs.description = "Please describe the care needs.";
+      errs.beneficiary = t("beneficiaryRequired");
+    if (!serviceType) errs.serviceType = t("careTypeRequired");
+    if (!description.trim()) errs.description = t("descriptionRequired");
     if (budgetPerHour === "" || Number(budgetPerHour) < 1)
-      errs.budgetPerHour = "Please enter a valid hourly budget (minimum 1).";
+      errs.budgetPerHour = t("budgetRequired");
     return errs;
   };
 
@@ -60,17 +63,17 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
       {/* Request Title */}
       <div className="space-y-2">
         <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="request_title">
-          Request Title <span className="text-red-500">*</span>
+          {t("requestTitle")} <span className="text-red-500">*</span>
         </label>
         <p className="text-xs text-[#3e4949]/70">
-          A clear title helps caregivers quickly understand your needs.
+          {t("titleDescription")}
         </p>
         <input
           id="request_title"
           type="text"
           value={title}
           onChange={(e) => { setTitle(e.target.value); setErrors((er) => ({ ...er, title: "" })); }}
-          placeholder="e.g. Need a caregiver for elderly parent"
+          placeholder={t("titlePlaceholder")}
           className={`w-full h-14 bg-white border rounded-xl px-4 text-sm outline-none transition-all ${
             errors.title
               ? "border-red-400 focus:ring-2 focus:ring-red-200"
@@ -84,8 +87,8 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
 
       {/* Section header */}
       <div>
-        <h3 className="text-xl font-bold text-[#1f8a8a] mb-1">Recipient Information</h3>
-        <p className="text-sm text-[#3e4949]">Select who needs care from your registered beneficiaries.</p>
+        <h3 className="text-xl font-bold text-[#1f8a8a] mb-1">{t("recipientInfo")}</h3>
+        <p className="text-sm text-[#3e4949]">{t("recipientDesc")}</p>
       </div>
 
       {/* Beneficiary selector */}
@@ -95,7 +98,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
         </div>
       ) : beneficiaries.length > 0 ? (
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-[#1b1c1c]">Select Beneficiary</label>
+          <label className="block text-sm font-semibold text-[#1b1c1c]">{t("selectBeneficiary")}</label>
           <div className="flex flex-wrap gap-3">
             {beneficiaries.map((b) => (
               <button
@@ -112,7 +115,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
                   {b.category === "elderly" ? "elderly" : "accessibility_new"}
                 </span>
                 <span>{b.name}</span>
-                <span className="text-xs opacity-60">({b.age}y)</span>
+                <span className="text-xs opacity-60">({b.age} {tBooking("years")})</span>
               </button>
             ))}
           </div>
@@ -124,11 +127,11 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
             warning
           </span>
           <div>
-            <p className="text-sm font-semibold text-red-700">No beneficiaries found</p>
+            <p className="text-sm font-semibold text-red-700">{t("noBeneficiaries")}</p>
             <p className="text-sm text-red-600 mt-0.5">
-              Please add a family member in your{" "}
-              <a href="/family/profile" className="font-bold underline">Profile</a>{" "}
-              first, then return here.
+              {t("addFamilyMemberDesc").split("{profileLink}")[0]}
+              <a href="/family/profile" className="font-bold underline">{t("profile")}</a>
+              {t("addFamilyMemberDesc").split("{profileLink}")[1]}
             </p>
             {errors.beneficiary && <p className="text-xs text-red-600 mt-1 font-medium">{errors.beneficiary}</p>}
           </div>
@@ -139,14 +142,14 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
 
       {/* Care specifics */}
       <div>
-        <h3 className="text-xl font-bold text-[#1f8a8a] mb-1">Care Specifics</h3>
-        <p className="text-sm text-[#3e4949]">Define the type of support needed.</p>
+        <h3 className="text-xl font-bold text-[#1f8a8a] mb-1">{t("careSpecifics")}</h3>
+        <p className="text-sm text-[#3e4949]">{t("careSpecificsDesc")}</p>
       </div>
 
       {/* Service type cards */}
       <div className="space-y-2">
         <label className="block text-sm font-semibold text-[#1b1c1c]">
-          Care Type <span className="text-red-500">*</span>
+          {t("careType")} <span className="text-red-500">*</span>
         </label>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {SERVICE_TYPES.map((ct) => {
@@ -163,7 +166,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
                 }`}
               >
                 <span className="material-symbols-outlined text-3xl">{ct.icon}</span>
-                <span className="text-xs font-semibold">{ct.label}</span>
+                <span className="text-xs font-semibold">{tBooking(ct.labelKey)}</span>
               </button>
             );
           })}
@@ -171,49 +174,21 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
         {errors.serviceType && <p className="text-xs text-red-500">{errors.serviceType}</p>}
       </div>
 
-      {/* Preferred Caregiver Gender */}
-      <div className="space-y-2">
-        <label className="block text-sm font-semibold text-[#1b1c1c]">
-          Preferred Caregiver Gender
-        </label>
-        <p className="text-xs text-[#3e4949]/70">
-          Optional. Select if you prefer a specific gender for your caregiver.
-        </p>
-        <div className="flex gap-3">
-          {(["male", "female"] as const).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => setPreferredGender(preferredGender === g ? "any gender" : g)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 text-sm font-medium transition-all duration-200 ${
-                preferredGender === g
-                  ? "border-[#1f8a8a] bg-[#1f8a8a]/5 text-[#1f8a8a]"
-                  : "border-[#bdc9c8]/60 text-[#3e4949] hover:border-[#1f8a8a]/40"
-              }`}
-            >
-              <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>
-                {g === "male" ? "man" : "woman"}
-              </span>
-              <span className="capitalize">{g}</span>
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Description */}
       <div className="space-y-2">
         <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="needs_desc">
-          Description of Needs <span className="text-red-500">*</span>
+          {t("descriptionNeeds")} <span className="text-red-500">*</span>
         </label>
         <p className="text-xs text-[#3e4949]/70">
-          Include dietary restrictions, personality traits, daily routines, or specific tasks required.
+          {t("descriptionNeedsDesc")}
         </p>
         <textarea
           id="needs_desc"
           rows={4}
           value={description}
           onChange={(e) => { setDescription(e.target.value); setErrors((er) => ({ ...er, description: "" })); }}
-          placeholder="Describe the specific care needs in detail..."
+          placeholder={t("descriptionPlaceholder")}
           className="w-full bg-white border border-[#bdc9c8] rounded-xl p-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all resize-none"
         />
         {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
@@ -222,7 +197,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
       {/* Budget per hour */}
       <div className="space-y-2">
         <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="budget">
-          Budget per Hour (USD) <span className="text-red-500">*</span>
+          {t("budgetPerHour")} ({t("currency")}) <span className="text-red-500">*</span>
         </label>
         <div className="relative">
           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#3e4949] pointer-events-none">
@@ -237,7 +212,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
               setBudgetPerHour(e.target.value === "" ? "" : Number(e.target.value));
               setErrors((er) => ({ ...er, budgetPerHour: "" }));
             }}
-            placeholder="e.g. 60"
+            placeholder={t("budgetPlaceholder")}
             className="w-full h-14 bg-white border border-[#bdc9c8] rounded-xl pl-12 pr-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
           />
         </div>
@@ -247,14 +222,14 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
       {/* Preferred Gender */}
       <div className="space-y-2">
         <label className="block text-sm font-semibold text-[#1b1c1c]">
-          Preferred Gender (الجنس المفضل للمرافق)
+          {t("preferredGender")}
         </label>
         <div className="grid grid-cols-3 gap-3">
           {(
             [
-              { value: "any gender", label: "Any Gender", labelAr: "أي جنس" },
-              { value: "male", label: "Male", labelAr: "ذكر" },
-              { value: "female", label: "Female", labelAr: "أنثى" },
+              { value: "any gender", key: "anyGender" },
+              { value: "male", key: "male" },
+              { value: "female", key: "female" },
             ] as const
           ).map((g) => {
             const isActive = preferredGender === g.value;
@@ -269,8 +244,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
                     : "border-[#bdc9c8]/60 text-[#3e4949] hover:border-[#1f8a8a]/40"
                 }`}
               >
-                <span className="text-sm font-bold">{g.label}</span>
-                <span className="text-xs text-[#3e4949]/70">{g.labelAr}</span>
+                <span className="text-sm font-bold">{t(g.key)}</span>
               </button>
             );
           })}
@@ -280,7 +254,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
       {/* Required Skills */}
       <div className="space-y-2">
         <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="skill_input">
-          Required Skills (المهارات المطلوبة)
+          {t("requiredSkills")}
         </label>
         <div className="flex gap-2">
           <input
@@ -299,7 +273,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
                 }
               }
             }}
-            placeholder="e.g. CPR, Nursing, Mobility assistance..."
+            placeholder={t("skillsPlaceholder")}
             className="flex-1 h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
           />
           <button
@@ -312,9 +286,9 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
                 setSkillInput("");
               }
             }}
-            className="px-4 h-12 bg-[#1f8a8a] text-white rounded-xl text-sm font-bold hover:bg-[#0d8282] transition-all"
+            className="px-4 h-12 bg-[#1f8a8a] text-white rounded-xl text-sm font-bold hover:bg-[#0d8282] transition-all cursor-pointer"
           >
-            Add
+            {t("skillsAddButton")}
           </button>
         </div>
         {requiredSkills.length > 0 && (
@@ -341,10 +315,10 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
       {/* Daily Care Tasks */}
       <div className="space-y-2">
         <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="task_input">
-          Daily Care Tasks (المهام اليومية المطلوبة)
+          {t("dailyCareTasks")}
         </label>
         <p className="text-xs text-[#3e4949]/70">
-          Add specific duties for the companion to perform and check off during their shift.
+          {t("tasksDesc")}
         </p>
         <div className="flex gap-2">
           <input
@@ -361,7 +335,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
                 }
               }
             }}
-            placeholder="e.g. Give blood pressure meds, Help with lunch..."
+            placeholder={t("tasksPlaceholder")}
             className="flex-1 h-12 bg-white border border-[#bdc9c8] rounded-xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
           />
           <button
@@ -372,9 +346,9 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
                 setTaskInput("");
               }
             }}
-            className="px-4 h-12 bg-[#1f8a8a] text-white rounded-xl text-sm font-bold hover:bg-[#0d8282] transition-all"
+            className="px-4 h-12 bg-[#1f8a8a] text-white rounded-xl text-sm font-bold hover:bg-[#0d8282] transition-all cursor-pointer"
           >
-            Add
+            {t("tasksAddButton")}
           </button>
         </div>
         {taskList.length > 0 && (
@@ -407,7 +381,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
           info
         </span>
         <p className="text-xs text-[#316d5b]">
-          Your request will be visible to verified caregivers matching your service type and location.
+          {t("infoBanner")}
         </p>
       </div>
 
@@ -419,7 +393,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
           disabled={!profilesLoading && beneficiaries.length === 0}
           className="flex items-center gap-2 px-8 h-14 rounded-xl bg-[#1f8a8a] text-white font-bold text-sm hover:bg-[#0d8282] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Next
+          {t("next")}
           <span className="material-symbols-outlined">arrow_forward</span>
         </button>
       </div>

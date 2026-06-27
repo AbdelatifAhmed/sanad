@@ -10,6 +10,7 @@ import StepCareDetails from "./StepCareDetails";
 import StepScheduling from "./StepScheduling";
 import StepLocation from "./StepLocation";
 import SuccessScreen from "./SuccessScreen";
+import { useTranslations } from "next-intl";
 
 const INITIAL_FORM: CareRequestFormData = {
   title: "",
@@ -35,36 +36,8 @@ const INITIAL_FORM: CareRequestFormData = {
   },
 };
 
-const SERVICE_TYPE_LABELS: Record<string, string> = {
-  elderly_care: "Elderly Care",
-  companionship: "Companion Care",
-  home_nursing: "Home Nursing",
-  physical_therapy: "Physical Therapy",
-  child_care: "Child Care",
-};
-
-const STEP_HERO = [
-  {
-    title: "Find the perfect care for your loved ones.",
-    subtitle: "Our empathetic approach ensures your family gets clinical reliability with domestic comfort.",
-    badge: "Verified Specialist Pool",
-    badgeIcon: "verified",
-  },
-  {
-    title: "When do you need care?",
-    subtitle: "Define the schedule to help us match the right professional for your family.",
-    badge: "Scheduling Efficiency",
-    badgeIcon: "calendar_today",
-  },
-  {
-    title: "Where do you need care?",
-    subtitle: "Provide the service location so we can find the nearest available caregivers.",
-    badge: "Location Matched",
-    badgeIcon: "location_on",
-  },
-];
-
 export default function NewCareRequestPage() {
+  const t = useTranslations("jobPostForm");
   const { execute: createRequest, isLoading: submitting } = useCreateCareRequest();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -72,7 +45,12 @@ export default function NewCareRequestPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const hero = STEP_HERO[step - 1];
+  const hero = {
+    title: t(`hero${step}Title`),
+    subtitle: t(`hero${step}Subtitle`),
+    badge: t(`hero${step}Badge`),
+    badgeIcon: step === 1 ? "verified" : step === 2 ? "calendar_today" : "location_on",
+  };
 
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -99,7 +77,7 @@ export default function NewCareRequestPage() {
     // Build the exact payload the backend expects
     const payload = {
       // Required by backend
-      title: final.title || `${SERVICE_TYPE_LABELS[final.serviceType] || "Care"} Request`,
+      title: final.title || t("defaultTitle"),
       description: final.description,
       serviceType: final.serviceType,
       budgetPerHour: Number(final.budgetPerHour),
@@ -156,13 +134,6 @@ export default function NewCareRequestPage() {
   /* ---------- Wizard ---------- */
   return (
     <div className="max-w-6xl w-full mx-auto">
-      {/* <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#1b1c1c]">Post a New Care Request</h1>
-        <p className="text-sm text-[#3e4949] mt-1">
-          Complete the 3-step form to find the perfect caregiver for your family.
-        </p>
-      </div> */}
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left column: hero + stepper */}
         <div className="lg:col-span-4">
