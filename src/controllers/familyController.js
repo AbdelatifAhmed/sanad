@@ -412,3 +412,49 @@ exports.getFamilyJobPosts = async (req, res) => {
     return res.status(500).json({ status: 'error', message: error.message });
   }
 };
+
+exports.getFamilyWallet = async (req, res) => {
+  try {
+    const familyProfile = await Family.findOne({ familyId: req.user._id });
+    if (!familyProfile) {
+      return res.status(404).json({ status: 'fail', message: 'Profile not found.' });
+    }
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        walletBalance: familyProfile.walletBalance || 0
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching family wallet:', error);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+exports.topupFamilyWallet = async (req, res) => {
+  try {
+    const { amount } = req.body;
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ status: 'fail', message: 'Invalid top-up amount.' });
+    }
+
+    const familyProfile = await Family.findOne({ familyId: req.user._id });
+    if (!familyProfile) {
+      return res.status(404).json({ status: 'fail', message: 'Profile not found.' });
+    }
+
+    familyProfile.walletBalance = (familyProfile.walletBalance || 0) + amount;
+    await familyProfile.save();
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Wallet topped up successfully.',
+      data: {
+        walletBalance: familyProfile.walletBalance
+      }
+    });
+  } catch (error) {
+    console.error('Error topping up family wallet:', error);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};

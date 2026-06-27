@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const { hasBookingConflict } = require("../utils/checkConflict"); 
 const messages = require("../utils/messages"); 
 const { sendNotification } = require('../services/notificationService');
+const { getFirstShiftStartDateTime } = require("../utils/jobExpiryTask");
 const sendProposal = async (req, res) => {
  try {
     const lang = req.lang || "en";
@@ -167,9 +168,9 @@ const getProposalsForJob = async (req, res) => {
 
 
 
-const generateScheduleDates = (workingDays, startTime, endTime, durationInWeeks, tasksFromJob) => {
+const generateScheduleDates = (workingDays, startTime, endTime, durationInWeeks, tasksFromJob, baseStartDate) => {
   const schedule = [];
-  const start = new Date(); 
+  const start = new Date(baseStartDate || new Date()); 
   
   const daysMap = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
   const targetDayNumbers = workingDays.map(day => daysMap[day]);
@@ -267,19 +268,39 @@ const updateProposalStatus = async (req, res) => {
         return res.status(400).json({ status: "fail", message: messages.proposal.jobNotOpen[lang] });
       }
 
+      // Enforce 6-Hour Safety Margin Rule
+      const firstShiftStart = getFirstShiftStartDateTime(
+        jobPost.startDate || jobPost.createdAt,
+        jobPost.schedule.workingDays,
+        jobPost.schedule.startTime
+      );
+      const now = new Date();
+      const diffHours = (firstShiftStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+      if (diffHours < 6) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({
+          status: "fail",
+          message: lang === "en"
+            ? "Safety rule check failed: The shift starts in less than 6 hours."
+            : "فشل التحقق من قاعدة السلامة: تبدأ المناوبة خلال أقل من 6 ساعات."
+        });
+      }
+
       const { workingDays, startTime, endTime, durationInWeeks } = jobPost.schedule;
       
       const tasksFromJob = jobPost.taskList || proposal.taskList || []; 
 
-      const generatedSchedule = generateScheduleDates(workingDays, startTime, endTime, durationInWeeks, tasksFromJob);
+      // Use jobPost.startDate for generatedSchedule
+      const generatedSchedule = generateScheduleDates(workingDays, startTime, endTime, durationInWeeks, tasksFromJob, jobPost.startDate);
 
       const [startHour, startMin] = startTime.split(':').map(Number);
       const [endHour, endMin] = endTime.split(':').map(Number);
       const hoursPerDay = (endHour + endMin/60) - (startHour + startMin/60);
       const totalHours = hoursPerDay * generatedSchedule.length;
 
-      const startDate = new Date();
-      const endDate = new Date();
+      const startDate = new Date(jobPost.startDate);
+      const endDate = new Date(startDate);
       endDate.setDate(startDate.getDate() + (durationInWeeks * 7));
 
       const [newBooking] = await Booking.create([{
@@ -302,7 +323,7 @@ const updateProposalStatus = async (req, res) => {
       proposal.status = "accepted";
       await proposal.save({ session });
 
-      jobPost.status = "filled";
+      jobPost.status = "assigned";
       await jobPost.save({ session });
 
       // Reject all other pending proposals and notify those companions

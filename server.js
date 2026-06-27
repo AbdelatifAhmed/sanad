@@ -99,6 +99,10 @@ app.use((req, res, next) => {
 app.use("/api", routes);
 connectDB();
 
+// Start Job Post Expiry Background Task
+const { startExpiryTask } = require("./src/utils/jobExpiryTask");
+startExpiryTask(io);
+
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {

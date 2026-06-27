@@ -207,7 +207,7 @@ const handlePaymentWebhook = async (req, res) => {
         session,
       );
       if (jobPost) {
-        jobPost.status = "filled";
+        jobPost.status = "assigned";
         await jobPost.save({ session });
 
         // Reject all other pending proposals for this job

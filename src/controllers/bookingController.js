@@ -93,6 +93,16 @@ const createBooking = async (req, res) => {
       return res.status(400).json({ error: messages.booking.companionNotFound[lang] });
     }
 
+    // Escrow balance validation check
+    const totalCost = totalHours * rate * 1.10; // includes 10% admin fee
+    if ((familyProfile.walletBalance || 0) < totalCost) {
+      return res.status(400).json({
+        error: lang === "en"
+          ? "Your current balance is insufficient. Please charge your wallet first before requesting the service."
+          : "رصيدك الحالي لا يكفي، برجاء شحن المحفظة أولاً قبل طلب الخدمة"
+      });
+    }
+
     const isBusy = await hasComprehensiveConflict(
       companionId,
       schedule
@@ -311,10 +321,10 @@ const checkIn = async (req, res) => {
     try {
         const lang = req.lang || "en";
         const { id } = req.params; // Booking ID
-        const { scheduleId } = req.body;
+        const { scheduleId, lat, lng, passcode } = req.body;
         const companionId = req.user._id;
 
-        const result = await bookingService.checkIn(id, scheduleId, companionId);
+        const result = await bookingService.checkIn(id, scheduleId, companionId, { lat, lng, passcode });
 
         await sendNotification(
             result.familyId,

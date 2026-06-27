@@ -26,7 +26,12 @@ const familySchema = new mongoose.Schema(
       area: { type: String, required: true },
       fullAddress: { type: String, required: true }
     },
-    beneficiaries: [beneficiarySchema]
+    beneficiaries: [beneficiarySchema],
+    walletBalance: {
+      type: Number,
+      default: 0,
+      min: [0, "الرصيد لا يمكن أن يكون سالباً"],
+    },
   },
   { timestamps: true }
 );

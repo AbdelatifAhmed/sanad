@@ -2,7 +2,20 @@ const Booking = require("../models/booking.schema");
 const Payment = require("../models/payment.schema");
 const CompanionDebt = require("../models/companionDebt.schema");
 
-const checkIn = async (bookingId, scheduleId, companionId) => {
+function getDistanceInKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const d = R * c; // Distance in km
+    return d;
+}
+
+const checkIn = async (bookingId, scheduleId, companionId, verification = {}) => {
     const booking = await Booking.findById(bookingId);
 
     if (!booking) {
@@ -27,9 +40,43 @@ const checkIn = async (bookingId, scheduleId, companionId) => {
         throw new Error("Already checked in for this schedule day");
     }
 
-    scheduleItem.checkInTime = new Date();
+    const { lat, lng, passcode } = verification;
+    let verified = false;
+    let method = "";
 
-    if (booking.status === 'approved' || booking.status === 'pending') {
+    // 1. Verify Passcode
+    if (passcode) {
+        const targetPasscode = booking.verificationPasscode;
+        if (targetPasscode && passcode.toString() === targetPasscode.toString()) {
+            verified = true;
+            method = "passcode";
+            scheduleItem.checkInPasscode = passcode.toString();
+        }
+    }
+
+    // 2. Verify Geolocation (within 500m / 0.5km)
+    if (!verified && lat !== undefined && lng !== undefined) {
+        if (booking.location && booking.location.geo && booking.location.geo.coordinates) {
+            const [bookingLng, bookingLat] = booking.location.geo.coordinates;
+            if (bookingLat && bookingLng) {
+                const distance = getDistanceInKm(lat, lng, bookingLat, bookingLng);
+                if (distance <= 0.5) { // 500 meters safety limit
+                    verified = true;
+                    method = "geolocation";
+                    scheduleItem.checkInGeo = { lat, lng };
+                }
+            }
+        }
+    }
+
+    if (!verified) {
+        throw new Error("خطأ في التحقق من الحضور: الرمز المدخل غير صحيح أو موقعك الجغرافي بعيد جداً عن موقع الرعاية");
+    }
+
+    scheduleItem.checkInTime = new Date();
+    scheduleItem.checkInMethod = method;
+
+    if (booking.status === 'approved' || booking.status === 'pending' || booking.status === 'pending_payment') {
         booking.status = 'active';
     }
 

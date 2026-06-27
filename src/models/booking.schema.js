@@ -65,6 +65,10 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
     workingDays: [String],
+    verificationPasscode: {
+      type: String,
+      default: () => Math.floor(1000 + Math.random() * 9000).toString(),
+    },
     schedule: [
       {
         date: { type: Date, required: true },
@@ -79,6 +83,12 @@ const bookingSchema = new mongoose.Schema(
         ],
         checkInTime: { type: Date },
         checkOutTime: { type: Date },
+        checkInGeo: {
+          lat: { type: Number },
+          lng: { type: Number },
+        },
+        checkInMethod: { type: String }, // 'passcode' or 'geolocation'
+        checkInPasscode: { type: String },
       },
     ],
     notes: {
