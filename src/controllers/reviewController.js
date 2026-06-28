@@ -3,6 +3,7 @@ const Booking = require("../models/booking.schema");
 const Companion = require("../models/companion.schema");
 const mongoose = require("mongoose");
 const messages = require("../utils/messages");
+const { generateEmbedding } = require("../services/ai/ragService");
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
@@ -62,12 +63,22 @@ const createReview = async (req, res) => {
         .json({ error: messages.review.companionNotFound[lang] });
     }
 
+    let sentimentEmbedding = null;
+    if (comment && comment.trim()) {
+      try {
+        sentimentEmbedding = await generateEmbedding(comment.trim());
+      } catch (err) {
+        console.error("Error generating sentiment embedding for review:", err.message);
+      }
+    }
+
     const newReview = await Review.create({
       bookingId,
       familyId,
       companionId: companionProfile._id,
       rating: ratingNum,
       comment: comment?.trim() || "",
+      ...(sentimentEmbedding && { sentiment_embedding: sentimentEmbedding })
     });
 
     const populatedReview = await Review.findById(newReview._id)

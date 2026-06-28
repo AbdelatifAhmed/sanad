@@ -45,19 +45,22 @@ const userSchema = new mongoose.Schema(
       url: { type: String, trim: true },
       public_id: { type: String, trim: true }
     },
+    gender: {
+      type: String,
+      enum: ["male", "female"],
+    },
   },
   { timestamps: true },
 );
 
-// علاقة افتراضية بين المستخدم والمرافق المهني (Companion) لسهولة الوصول إلى بيانات المرافق من خلال المستخدم
-// userSchema.virtual('companionProfile', {
-//   ref: 'Companion',         
-//   localField: '_id',         
-//   foreignField: 'userId',   
-//   justOne: true             
-// });
+userSchema.virtual('companionProfile', {
+  ref: 'Companion',         
+  localField: '_id',         
+  foreignField: 'userId',   
+  justOne: true             
+});
 
-// userSchema.set('toObject', { virtuals: true });
-// userSchema.set('toJSON', { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
+userSchema.set('toJSON', { virtuals: true });
 
 module.exports = mongoose.model("User", userSchema);

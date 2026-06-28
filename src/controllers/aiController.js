@@ -1,6 +1,5 @@
-const { sessionAgent } = require("../services/ai/sessionAgent");
 const ragService = require("../services/ai/ragService");
-const { orchestrateAiChat } = require('../services/ai/octopus');
+const { orchestrateAiChat } = require('../services/ai/orchestrator');
 const AIChatSession = require("../models/aiChatSession.schema.js");
 
 const handleFamilyChat = async (req, res) => {
