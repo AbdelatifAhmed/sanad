@@ -35,7 +35,7 @@ const checkJobPostsExpiry = async (io) => {
       const diffMs = firstShiftStart.getTime() - now.getTime();
       const diffMins = diffMs / (1000 * 60);
       
-      if (diffMs <= 0) {
+      if (diffMins < 15) {
         post.status = "canceled";
         await post.save();
         
@@ -44,7 +44,7 @@ const checkJobPostsExpiry = async (io) => {
             post.familyId,
             post.familyId,
             "Job Post Canceled | إلغاء طلب العمل",
-            `تم إلغاء طلب العمل "${post.title}" تلقائياً لبدء وقت المناوبة دون تعيين مرافق.`,
+            `تم إلغاء طلب العمل "${post.title}" تلقائياً لاقتراب موعد المناوبة (أقل من 15 دقيقة) دون تعيين مرافق.`,
             "jobpost",
             io
           );

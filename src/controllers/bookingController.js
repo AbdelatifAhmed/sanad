@@ -680,6 +680,52 @@ const getMyBookings = async (req, res) => {
   }
 };
 
+const fileComplaint = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    const { id } = req.params;
+    const { description } = req.body;
+
+    if (!description) {
+      return res.status(400).json({
+        status: "error",
+        message: lang === "ar" ? "تفاصيل الشكوى مطلوبة" : "Description is required"
+      });
+    }
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({
+        status: "error",
+        message: lang === "ar" ? "لم يتم العثور على هذا الحجز" : "Booking not found"
+      });
+    }
+
+    // Verify authorized user (only family of this booking can file complaints)
+    if (req.user.role !== "admin" && booking.familyId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        status: "error",
+        message: messages.common.forbidden[lang]
+      });
+    }
+
+    booking.complaints = booking.complaints || [];
+    booking.complaints.push({ description });
+    await booking.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: lang === "ar" ? "تم تسجيل الشكوى بنجاح" : "Complaint registered successfully"
+    });
+  } catch (error) {
+    console.error("Error filing complaint:", error);
+    return res.status(500).json({
+      status: "error",
+      message: messages.common.serverError[req.lang || "en"]
+    });
+  }
+};
+
 module.exports = {
     createBooking,
     updateBookingStatus,
@@ -689,5 +735,6 @@ module.exports = {
     respondToBooking,
     updateTaskStatus,
     getBookingById,
-    getMyBookings
+    getMyBookings,
+    fileComplaint
 };

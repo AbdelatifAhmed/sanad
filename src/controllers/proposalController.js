@@ -268,22 +268,22 @@ const updateProposalStatus = async (req, res) => {
         return res.status(400).json({ status: "fail", message: messages.proposal.jobNotOpen[lang] });
       }
 
-      // Enforce 6-Hour Safety Margin Rule
+      // Enforce 15-Minute Safety Margin Rule
       const firstShiftStart = getFirstShiftStartDateTime(
         jobPost.startDate || jobPost.createdAt,
         jobPost.schedule.workingDays,
         jobPost.schedule.startTime
       );
       const now = new Date();
-      const diffHours = (firstShiftStart.getTime() - now.getTime()) / (1000 * 60 * 60);
-      if (diffHours < 6) {
+      const diffMins = (firstShiftStart.getTime() - now.getTime()) / (1000 * 60);
+      if (diffMins < 15) {
         await session.abortTransaction();
         session.endSession();
         return res.status(400).json({
           status: "fail",
           message: lang === "en"
-            ? "Safety rule check failed: The shift starts in less than 6 hours."
-            : "فشل التحقق من قاعدة السلامة: تبدأ المناوبة خلال أقل من 6 ساعات."
+            ? "Safety rule check failed: The shift starts in less than 15 minutes."
+            : "فشل التحقق من قاعدة السلامة: تبدأ المناوبة خلال أقل من 15 دقيقة."
         });
       }
 

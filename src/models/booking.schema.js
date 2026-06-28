@@ -103,6 +103,12 @@ const bookingSchema = new mongoose.Schema(
       city: { type: String, trim: true },
       governorate: { type: String, trim: true },
     },
+    complaints: [
+      {
+        description: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true },
 );

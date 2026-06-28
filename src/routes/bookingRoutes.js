@@ -9,7 +9,8 @@ const {
   checkOut,
   updateTaskStatus,
   getBookingById,
-  getMyBookings
+  getMyBookings,
+  fileComplaint
 } = require("../controllers/bookingController");
 const { authenticate } = require("../middleware/authMiddleware");
 const { isFamily, isCompanion } = require("../middleware/RoleMiddleware");
@@ -27,5 +28,6 @@ router.post("/:id/check-out", checkOut);
 // New booking detail and task update routes
 router.get("/:id", getBookingById);
 router.patch("/:id/schedule/:scheduleId/tasks/:taskId", isCompanion, updateTaskStatus);
+router.post("/:id/complaints", isFamily, fileComplaint);
 
 module.exports = router;
