@@ -11,6 +11,11 @@ router.get(
   companionAdminController.getPendingCompanions,
 );
 
+router.get(
+  "/",
+  companionAdminController.getCompanions,
+);
+
 router.patch("/verify-companion/:id", companionAdminController.verifyCompanion);
 
 module.exports = router;

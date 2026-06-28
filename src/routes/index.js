@@ -4,6 +4,8 @@ const langMiddleware = require("../middleware/langMiddleware");
 const aiRoutes = require("./aiRoutes");
 const companionAdminRoutes = require("./admin/campanionAdmin");
 const userAdminRoutes = require("./admin/userAdmin");
+const familyAdminRoutes = require("./admin/familyAdmin");
+const settingsAdminRoutes = require("./admin/settingsAdmin");
 const reviewAdminRoutes = require("./admin/reviewsAdmin");
 const authRoutes = require("./authRoutes");
 const bookingRoutes = require("./bookingRoutes");
@@ -25,6 +27,8 @@ router.use(langMiddleware);
 
 router.use("/admin/companions", companionAdminRoutes);
 router.use("/admin/users", userAdminRoutes);
+router.use("/admin/families", familyAdminRoutes);
+router.use("/admin/settings", settingsAdminRoutes);
 router.use("/admin/bookings", bookingAdminRoutes);
 router.use("/admin/reviews", reviewAdminRoutes);
 router.use("/admin", dashboardStatsRoutes);
