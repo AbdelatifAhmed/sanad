@@ -40,16 +40,27 @@ exports.getAllFamilies = async (req, res) => {
     const sortParams = {};
     sortParams[sortBy] = sortOrder === "asc" ? 1 : -1;
 
-    // Fetch users meeting filters
-    const [users, total] = await Promise.all([
+    // Fetch users meeting filters + global summary stats in parallel
+    const [users, total, totalActive, totalSuspended, allFamilyIds] = await Promise.all([
       User.find(userQuery)
         .select("-passwordHash -__v")
         .sort(sortParams)
         .limit(limit)
         .skip(skip)
         .lean(),
-      User.countDocuments(userQuery)
+      User.countDocuments(userQuery),
+      User.countDocuments({ role: "family", isBanned: false }),
+      User.countDocuments({ role: "family", isBanned: true }),
+      User.find({ role: "family" }).select("_id").lean()
     ]);
+
+    // Compute global stats (elderly + active requests) across ALL families
+    const allIds = allFamilyIds.map(u => u._id);
+    const [allFamilyProfiles, allActiveRequests] = await Promise.all([
+      Family.find({ familyId: { $in: allIds } }).select("beneficiaries").lean(),
+      Booking.countDocuments({ familyId: { $in: allIds }, status: { $in: ["approved", "active"] } })
+    ]);
+    const totalElderly = allFamilyProfiles.reduce((sum, f) => sum + (f.beneficiaries?.length || 0), 0);
 
     if (users.length === 0) {
       return res.status(200).json({
@@ -61,7 +72,8 @@ exports.getAllFamilies = async (req, res) => {
           limit,
           totalPages: Math.ceil(total / limit),
           hasMore: false
-        }
+        },
+        stats: { total: totalActive + totalSuspended, totalActive, totalSuspended, totalElderly, totalActiveRequests: allActiveRequests }
       });
     }
 
@@ -121,6 +133,13 @@ exports.getAllFamilies = async (req, res) => {
         limit,
         totalPages: Math.ceil(total / limit),
         hasMore: page * limit < total
+      },
+      stats: {
+        total: totalActive + totalSuspended,
+        totalActive,
+        totalSuspended,
+        totalElderly,
+        totalActiveRequests: allActiveRequests
       }
     });
   } catch (error) {
