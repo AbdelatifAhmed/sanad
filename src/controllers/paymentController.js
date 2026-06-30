@@ -5,6 +5,10 @@ const Payment = require("../models/payment.schema");
 const JobPost = require("../models/jobPost.schema");
 const Proposal = require("../models/proposal.schema");
 const CompanionDebt = require("../models/companionDebt.schema");
+const Family = require("../models/family.schema");
+const Companion = require("../models/companion.schema");
+const WalletTransaction = require("../models/walletTransaction.schema");
+const stripeService = require("../services/stripeService");
 const { sendNotification } = require("../services/notificationService");
 const messages = require("../utils/messages");
 
@@ -62,24 +66,126 @@ const initiatePayment = async (req, res) => {
     const adminFee = basePrice * 0.1;
     const totalAmount = basePrice + adminFee;
 
-    const transactionId =
-      "txn_" + Math.random().toString(36).substr(2, 9).toUpperCase();
+    // For WALLET payment, check balance and deduct
+    if (paymentMethod === "wallet") {
+      const familyProfile = await Family.findOne({ familyId: req.user._id });
+      if (!familyProfile || (familyProfile.walletBalance || 0) < totalAmount) {
+        return res.status(400).json({
+          status: "fail",
+          message: lang === "en"
+            ? "Insufficient wallet balance. Please top up your wallet."
+            : "رصيد المحفظة غير كافٍ. يرجى شحن محفظتك أولاً.",
+        });
+      }
 
-    // Create payment record with pending status
-    const payment = await Payment.create({
-      bookingId: booking._id,
-      familyId: booking.familyId,
-      companionId: booking.companionId,
-      amount: basePrice,
-      adminFee,
-      totalAmount,
-      paymentMethod,
-      status: "pending",
-      transactionId,
-    });
+      // Deduct balance and create database records
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        familyProfile.walletBalance -= totalAmount;
+        await familyProfile.save({ session });
+
+        const transactionId = "txn_" + Math.random().toString(36).substr(2, 9).toUpperCase();
+        
+        const payment = await Payment.create([{
+          bookingId: booking._id,
+          familyId: booking.familyId,
+          companionId: booking.companionId,
+          amount: basePrice,
+          adminFee,
+          totalAmount,
+          paymentMethod: "wallet",
+          status: "paid",
+          transactionId,
+        }], { session });
+
+        booking.status = "approved";
+        booking.paymentStatus = "paid";
+        booking.paymentMethod = "wallet";
+        await booking.save({ session });
+
+        if (booking.jobPostId) {
+          const jobPost = await JobPost.findById(booking.jobPostId).session(session);
+          if (jobPost) {
+            jobPost.status = "assigned";
+            await jobPost.save({ session });
+
+            await Proposal.updateMany(
+              {
+                jobPostId: booking.jobPostId,
+                companionId: { $ne: booking.companionId },
+                status: "pending",
+              },
+              { status: "rejected" },
+              { session }
+            );
+          }
+        }
+
+        await WalletTransaction.create([{
+          userId: req.user._id,
+          amount: -totalAmount,
+          type: "payment",
+          status: "completed",
+          transactionId,
+          descriptionAr: "دفع مقابل حجز رعاية منزلية من المحفظة",
+          descriptionEn: "Payment for home care booking via Wallet",
+        }], { session });
+
+        await session.commitTransaction();
+
+        // Send real-time notification
+        try {
+          await sendNotification(
+            booking.companionId,
+            req.user._id,
+            lang === "en" ? "Booking Confirmed & Paid" : "تم تأكيد الحجز والدفع",
+            lang === "en"
+              ? `Payment confirmed! You can now start communication with the family.`
+              : `تم تأكيد الدفع! يمكنك الآن بدء التواصل مع العائلة.`,
+            "payment",
+            req.io
+          );
+        } catch (err) {
+          console.error("Failed to send notification:", err.message);
+        }
+
+        return res.status(200).json({
+          status: "success",
+          message: lang === "en"
+            ? "Payment completed successfully using wallet balance."
+            : "تم إتمام الدفع بنجاح باستخدام رصيد المحفظة.",
+          data: {
+            payment: payment[0],
+            booking,
+            isCashPayment: false,
+            isWalletPayment: true,
+          },
+        });
+
+      } catch (err) {
+        await session.abortTransaction();
+        throw err;
+      } finally {
+        session.endSession();
+      }
+    }
 
     // For CASH payments, process immediately (no gateway)
     if (paymentMethod === "cash") {
+      const transactionId = "txn_" + Math.random().toString(36).substr(2, 9).toUpperCase();
+      const payment = await Payment.create({
+        bookingId: booking._id,
+        familyId: booking.familyId,
+        companionId: booking.companionId,
+        amount: basePrice,
+        adminFee,
+        totalAmount,
+        paymentMethod: "cash",
+        status: "pending",
+        transactionId,
+      });
+
       return res.status(200).json({
         status: "success",
         message:
@@ -95,18 +201,46 @@ const initiatePayment = async (req, res) => {
       });
     }
 
-    // For card/wallet, return payment gateway URL (Stripe/Paymob integration point)
-    const paymentUrl = `${process.env.PAYMENT_GATEWAY_URL || "https://gateway.example.com"}/checkout?transactionId=${transactionId}&amount=${totalAmount}`;
+    // For CARD payment, create Stripe PaymentIntent
+    if (paymentMethod === "card") {
+      try {
+        const paymentIntent = await stripeService.createPaymentIntent(totalAmount, "egp", {
+          bookingId: booking._id.toString(),
+          type: "booking_payment",
+        });
 
-    return res.status(200).json({
-      status: "success",
-      message: messages.payment.paymentInitiated[lang],
-      data: {
-        payment,
-        paymentUrl,
-        isCashPayment: false,
-      },
-    });
+        const payment = await Payment.create({
+          bookingId: booking._id,
+          familyId: booking.familyId,
+          companionId: booking.companionId,
+          amount: basePrice,
+          adminFee,
+          totalAmount,
+          paymentMethod: "card",
+          status: "pending",
+          transactionId: paymentIntent.id,
+          stripePaymentIntentId: paymentIntent.id,
+        });
+
+        return res.status(200).json({
+          status: "success",
+          message: messages.payment.paymentInitiated[lang],
+          data: {
+            payment,
+            clientSecret: paymentIntent.client_secret,
+            transactionId: paymentIntent.id,
+            isCashPayment: false,
+          },
+        });
+      } catch (err) {
+        console.error("Stripe Card payment initiation error:", err);
+        return res.status(500).json({
+          status: "error",
+          message: lang === "en" ? "Stripe service connection failed" : "فشل الاتصال بخدمة Stripe",
+          error: err.message,
+        });
+      }
+    }
   } catch (error) {
     console.error("Error initiating payment:", error);
     return res.status(500).json({
@@ -135,33 +269,139 @@ const handlePaymentWebhook = async (req, res) => {
 
   try {
     const lang = req.lang || "en";
-    const { transactionId, status, webhookId } = req.body;
+    let event = req.body;
 
-    // HMAC Signature verification if webhook secret is configured
-    const webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const signature = req.headers["x-signature"];
-      if (!signature) {
+    // Verify Stripe signature if header is present
+    const signature = req.headers["stripe-signature"];
+    if (signature && process.env.STRIPE_WEBHOOK_SECRET) {
+      try {
+        event = stripeService.verifyWebhookSignature(
+          req.rawBody || JSON.stringify(req.body),
+          signature,
+          process.env.STRIPE_WEBHOOK_SECRET
+        );
+      } catch (err) {
+        console.error("Webhook signature verification failed:", err.message);
         await session.abortTransaction();
-        return res.status(401).json({
-          status: "fail",
-          message: "Missing signature header.",
-        });
-      }
-
-      const hmac = crypto.createHmac("sha256", webhookSecret);
-      hmac.update(JSON.stringify(req.body));
-      const expectedSignature = hmac.digest("hex");
-
-      if (signature !== expectedSignature) {
-        await session.abortTransaction();
-        return res.status(401).json({
-          status: "fail",
-          message: "Invalid webhook signature.",
-        });
+        return res.status(400).send(`Webhook Error: ${err.message}`);
       }
     }
 
+    // 1. Process Stripe Webhook Event
+    if (event.type) {
+      if (event.type === "payment_intent.succeeded") {
+        const paymentIntent = event.data.object;
+        const { userId, type, bookingId } = paymentIntent.metadata || {};
+
+        if (type === "topup" && userId) {
+          // Process Wallet top-up
+          const familyProfile = await Family.findOne({ familyId: userId }).session(session);
+          if (familyProfile) {
+            const topupAmount = paymentIntent.amount / 100;
+            familyProfile.walletBalance = (familyProfile.walletBalance || 0) + topupAmount;
+            await familyProfile.save({ session });
+
+            // Update transaction status
+            await WalletTransaction.findOneAndUpdate(
+              { transactionId: paymentIntent.id },
+              { status: "completed" },
+              { session }
+            );
+
+            await session.commitTransaction();
+
+            // Send notification to family
+            try {
+              await sendNotification(
+                userId,
+                null,
+                lang === "en" ? "Wallet Charged Successfully" : "تم شحن المحفظة بنجاح",
+                lang === "en"
+                  ? `Your wallet has been topped up with $${topupAmount.toFixed(2)}.`
+                  : `تم شحن محفظتك بمبلغ $${topupAmount.toFixed(2)}.`,
+                "payment",
+                req.io
+              );
+            } catch (err) {
+              console.error("Failed to send topup notification:", err.message);
+            }
+
+            return res.status(200).json({ status: "success", message: "Topup completed" });
+          }
+        }
+
+        if (type === "booking_payment" && bookingId) {
+          // Process Booking Payment
+          const payment = await Payment.findOne({ stripePaymentIntentId: paymentIntent.id }).session(session);
+          if (payment && payment.status !== "paid") {
+            payment.status = "paid";
+            await payment.save({ session });
+
+            const booking = await Booking.findById(payment.bookingId).session(session);
+            if (booking) {
+              booking.status = "approved";
+              booking.paymentStatus = "paid";
+              await booking.save({ session });
+
+              if (booking.jobPostId) {
+                const jobPost = await JobPost.findById(booking.jobPostId).session(session);
+                if (jobPost) {
+                  jobPost.status = "assigned";
+                  await jobPost.save({ session });
+
+                  await Proposal.updateMany(
+                    {
+                      jobPostId: booking.jobPostId,
+                      companionId: { $ne: booking.companionId },
+                      status: "pending",
+                    },
+                    { status: "rejected" },
+                    { session }
+                  );
+                }
+              }
+
+              // Create debit transaction record
+              await WalletTransaction.create([{
+                userId: booking.familyId,
+                amount: -payment.totalAmount,
+                type: "payment",
+                status: "completed",
+                transactionId: paymentIntent.id,
+                descriptionAr: "دفع مقابل حجز رعاية منزلية عبر البطاقة",
+                descriptionEn: "Payment for home care booking via Card",
+              }], { session });
+
+              await session.commitTransaction();
+
+              // Send notification to companion
+              try {
+                await sendNotification(
+                  booking.companionId,
+                  booking.familyId,
+                  lang === "en" ? "Booking Confirmed & Paid" : "تم تأكيد الحجز والدفع",
+                  lang === "en"
+                    ? `Payment confirmed! You can now start communication with the family.`
+                    : `تم تأكيد الدفع! يمكنك الآن بدء التواصل مع العائلة.`,
+                  "payment",
+                  req.io
+                );
+              } catch (err) {
+                console.error("Failed to send notification:", err.message);
+              }
+
+              return res.status(200).json({ status: "success", message: "Booking payment completed" });
+            }
+          }
+        }
+      }
+
+      await session.abortTransaction();
+      return res.status(200).json({ status: "ignored", message: "Event ignored" });
+    }
+
+    // 2. Fallback to manual payload processing for testing/mock calls
+    const { transactionId, status, webhookId } = event;
     if (!transactionId || status !== "success") {
       await session.abortTransaction();
       return res.status(400).json({
@@ -170,7 +410,6 @@ const handlePaymentWebhook = async (req, res) => {
       });
     }
 
-    // Find payment record
     const payment = await Payment.findOne({ transactionId }).session(session);
     if (!payment) {
       await session.abortTransaction();
@@ -180,12 +419,15 @@ const handlePaymentWebhook = async (req, res) => {
       });
     }
 
-    // Update payment to paid
+    if (payment.status === "paid") {
+      await session.commitTransaction();
+      return res.status(200).json({ status: "success", message: "Already paid" });
+    }
+
     payment.status = "paid";
     payment.webhookId = webhookId;
     await payment.save({ session });
 
-    // Get booking
     const booking = await Booking.findById(payment.bookingId).session(session);
     if (!booking) {
       await session.abortTransaction();
@@ -195,22 +437,16 @@ const handlePaymentWebhook = async (req, res) => {
       });
     }
 
-    // Update booking status
     booking.status = "approved";
     booking.paymentStatus = "paid";
-    booking.paymentMethod = payment.paymentMethod;
     await booking.save({ session });
 
-    // If this booking is from a JobPost, update job status and reject other proposals
     if (booking.jobPostId) {
-      const jobPost = await JobPost.findById(booking.jobPostId).session(
-        session,
-      );
+      const jobPost = await JobPost.findById(booking.jobPostId).session(session);
       if (jobPost) {
         jobPost.status = "assigned";
         await jobPost.save({ session });
 
-        // Reject all other pending proposals for this job
         await Proposal.updateMany(
           {
             jobPostId: booking.jobPostId,
@@ -218,74 +454,18 @@ const handlePaymentWebhook = async (req, res) => {
             status: "pending",
           },
           { status: "rejected" },
-          { session },
+          { session }
         );
       }
-    }
-
-    // SCENARIO 5: If cash payment, record admin fee as debt
-    if (payment.paymentMethod === "cash") {
-      let companionDebt = await CompanionDebt.findOne({
-        companionId: payment.companionId,
-      }).session(session);
-      if (!companionDebt) {
-        const debtArray = await CompanionDebt.create(
-          [
-            {
-              companionId: payment.companionId,
-              totalDebt: 0,
-              debtHistory: [],
-            },
-          ],
-          { session },
-        );
-        companionDebt = debtArray[0];
-      }
-
-      companionDebt.totalDebt += payment.adminFee;
-      companionDebt.debtHistory.push({
-        bookingId: booking._id,
-        paymentId: payment._id,
-        amount: payment.adminFee,
-        reason: "cash_payment_admin_fee",
-        recordedAt: new Date(),
-      });
-      await companionDebt.save({ session });
-      payment.debtRecorded = true;
-      await payment.save({ session });
     }
 
     await session.commitTransaction();
+    return res.status(200).json({ status: "success", message: "Payment processed" });
 
-    // Send real-time notification to companion
-    try {
-      await sendNotification(
-        payment.companionId,
-        req.user?._id || "system",
-        lang === "en" ? "Booking Confirmed & Paid" : "تم تأكيد الحجز والدفع",
-        lang === "en"
-          ? `Payment confirmed! You can now start communication with the family.`
-          : `تم تأكيد الدفع! يمكنك الآن بدء التواصل مع العائلة.`,
-        "payment",
-        req.io,
-      );
-    } catch (err) {
-      console.error("Failed to send webhook notification:", err.message);
-    }
-
-    return res.status(200).json({
-      status: "success",
-      message: messages.payment.paymentConfirmed[lang],
-      data: { payment, booking },
-    });
   } catch (error) {
     await session.abortTransaction();
-    console.error("Error handling payment webhook:", error);
-    return res.status(500).json({
-      status: "error",
-      message: messages.common.serverError[req.lang || "en"],
-      error: error.message,
-    });
+    console.error("Webhook processing error:", error);
+    return res.status(500).json({ status: "error", message: error.message });
   } finally {
     session.endSession();
   }
@@ -593,22 +773,19 @@ const getCompanionDebtLedger = async (req, res) => {
     const lang = req.lang || "en";
     const companionId = req.user._id;
 
+    const companion = await Companion.findOne({ userId: companionId });
     const debt = await CompanionDebt.findOne({ companionId });
-    if (!debt) {
-      return res.status(200).json({
-        status: "success",
-        data: {
-          companionId,
-          totalDebt: 0,
-          status: "active",
-          debtHistory: [],
-        },
-      });
-    }
 
     return res.status(200).json({
       status: "success",
-      data: debt,
+      data: {
+        companionId,
+        totalDebt: debt ? debt.totalDebt : 0,
+        status: debt ? debt.status : "active",
+        debtHistory: debt ? debt.debtHistory : [],
+        walletBalance: companion ? (companion.walletBalance || 0) : 0,
+        stripeConnectId: companion ? companion.stripeConnectId : null,
+      },
     });
   } catch (error) {
     console.error("Error fetching debt ledger:", error);
@@ -994,6 +1171,133 @@ const settleCompanionDebt = async (req, res) => {
   }
 };
 
+const connectCompanionStripe = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    
+    // Find companion profile
+    let companion = await Companion.findOne({ userId: req.user._id });
+    if (!companion) {
+      return res.status(404).json({
+        status: "fail",
+        message: lang === "en" ? "Companion profile not found" : "لم يتم العثور على ملف المرافق.",
+      });
+    }
+
+    // 1. Create Connected Account if not exist
+    if (!companion.stripeConnectId) {
+      const account = await stripeService.createConnectedAccount(req.user.email, req.user.name);
+      companion.stripeConnectId = account.id;
+      await companion.save({ validateBeforeSave: false });
+    }
+
+    // 2. Create Onboarding Link
+    const returnUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/companion/wallet?stripe_setup=success`;
+    const refreshUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/companion/wallet?stripe_setup=refresh`;
+    
+    const onboardingUrl = await stripeService.createAccountOnboardingLink(
+      companion.stripeConnectId,
+      returnUrl,
+      refreshUrl
+    );
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        url: onboardingUrl,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating Stripe Connect onboarding link:", error);
+    return res.status(500).json({
+      status: "error",
+      message: messages.common.serverError[req.lang || "en"],
+      error: error.message,
+    });
+  }
+};
+
+const requestCompanionPayout = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    
+    const companion = await Companion.findOne({ userId: req.user._id });
+    if (!companion) {
+      return res.status(404).json({
+        status: "fail",
+        message: lang === "en" ? "Companion profile not found" : "لم يتم العثور على ملف المرافق.",
+      });
+    }
+
+    if (!companion.stripeConnectId) {
+      return res.status(400).json({
+        status: "fail",
+        message: lang === "en"
+          ? "Please connect your Stripe bank account first."
+          : "يرجى ربط حسابك البنكي بـ Stripe أولاً.",
+      });
+    }
+
+    const amountToPayout = companion.walletBalance || 0;
+    if (amountToPayout <= 0) {
+      return res.status(400).json({
+        status: "fail",
+        message: lang === "en" ? "No earnings available for payout." : "لا يوجد عوائد متاحة للسحب حالياً.",
+      });
+    }
+
+    // Deduct balance and trigger transfer
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      companion.walletBalance = 0;
+      await companion.save({ session, validateBeforeSave: false });
+
+      const transactionId = "payout_" + Math.random().toString(36).substr(2, 9).toUpperCase();
+      
+      // Perform Stripe transfer
+      await stripeService.releasePayoutToCompanion(companion.stripeConnectId, amountToPayout, "egp");
+
+      // Record transaction
+      await WalletTransaction.create([{
+        userId: req.user._id,
+        amount: -amountToPayout,
+        type: "payout",
+        status: "completed",
+        transactionId,
+        descriptionAr: "سحب الأرباح تلقائياً للحساب البنكي عبر Stripe",
+        descriptionEn: "Automatic bank payout via Stripe Connect",
+      }], { session });
+
+      await session.commitTransaction();
+
+      return res.status(200).json({
+        status: "success",
+        message: lang === "en"
+          ? `Payout of $${amountToPayout.toFixed(2)} initiated successfully to your bank account.`
+          : `تم تحويل مبلغ $${amountToPayout.toFixed(2)} بنجاح لحسابك البنكي.`,
+        data: {
+          amount: amountToPayout,
+        },
+      });
+
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    } finally {
+      session.endSession();
+    }
+
+  } catch (error) {
+    console.error("Error processing companion payout:", error);
+    return res.status(500).json({
+      status: "error",
+      message: messages.common.serverError[req.lang || "en"],
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   initiatePayment,
   handlePaymentWebhook,
@@ -1005,4 +1309,6 @@ module.exports = {
   getAdminPayments,
   confirmCashPayment,
   settleCompanionDebt,
+  connectCompanionStripe,
+  requestCompanionPayout,
 };

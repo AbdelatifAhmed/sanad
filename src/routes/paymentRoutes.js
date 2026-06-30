@@ -11,6 +11,8 @@ const {
   getAdminPayments,
   confirmCashPayment,
   settleCompanionDebt,
+  connectCompanionStripe,
+  requestCompanionPayout,
 } = require("../controllers/paymentController");
 const { authenticate } = require("../middleware/authMiddleware");
 const {
@@ -58,6 +60,12 @@ router.post("/companion/settle-debt", isCompanion, settleCompanionDebt);
 // Companion Cash Confirmation Endpoint
 // ============================================================================
 router.post("/cash/confirm", isCompanion, confirmCashPayment);
+
+// ============================================================================
+// Companion Stripe Connect & Payout Endpoints
+// ============================================================================
+router.post("/companion/stripe-connect", isCompanion, connectCompanionStripe);
+router.post("/companion/payout", isCompanion, requestCompanionPayout);
 
 // Family/Companion get their own payments
 router.get("/me", getMyPayments);
