@@ -7,9 +7,9 @@ import {
   getCompanionSchedule,
   getMyCompanionProfile,
 } from "@/lib/API";
-import { StatsSection, ProfileCompletion, type DashboardStats } from "@/components/dashboard/StatsOverview";
-import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { ScheduleOverview } from "@/components/dashboard/ScheduleOverview";
+import { StatsSection, ProfileCompletion, type DashboardStats } from "@/components/dashboard/companion/StatsOverview";
+import { RecentActivity } from "@/components/dashboard/companion/RecentActivity";
+import { ScheduleOverview } from "@/components/dashboard/companion/ScheduleOverview";
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;

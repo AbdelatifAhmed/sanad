@@ -58,9 +58,58 @@ function WalletContent() {
     }
   };
 
+  const stripeSetup = searchParams.get("stripe_setup");
   useEffect(() => {
     fetchWalletData();
   }, []);
+
+  useEffect(() => {
+    if (stripeSetup === "success") {
+      setActionSuccess("تم ربط حسابك البنكي بـ Stripe بنجاح!");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("stripe_setup");
+      router.replace(url.pathname);
+    } else if (stripeSetup === "refresh") {
+      setActionError("انتهت صلاحية جلسة ربط الحساب. يرجى المحاولة مرة أخرى.");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("stripe_setup");
+      router.replace(url.pathname);
+    }
+  }, [stripeSetup, router]);
+
+  const handleConnectStripe = async () => {
+    try {
+      setSubmitting(true);
+      setActionError(null);
+      setActionSuccess(null);
+      const res = await api.post("/payments/companion/stripe-connect");
+      if (res.data?.data?.url) {
+        window.location.href = res.data.data.url;
+      } else {
+        throw new Error("Failed to generate onboarding URL.");
+      }
+    } catch (err: any) {
+      console.error("Connect stripe error:", err);
+      setActionError(err.response?.data?.message || err.message || "Failed to initiate onboarding.");
+      setSubmitting(false);
+    }
+  };
+
+  const handleRequestPayout = async () => {
+    try {
+      setSubmitting(true);
+      setActionError(null);
+      setActionSuccess(null);
+      const res = await api.post("/payments/companion/payout");
+      setActionSuccess(res.data?.message || "Payout processed successfully.");
+      await fetchWalletData();
+    } catch (err: any) {
+      console.error("Payout request error:", err);
+      setActionError(err.response?.data?.message || err.message || "Payout execution failed.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleSettleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,9 +138,7 @@ function WalletContent() {
   };
 
   // Calculate earnings
-  const availableEarnings = payments
-    .filter(p => p.status === "paid" && p.companionId === debtData?.companionId)
-    .reduce((sum, p) => sum + (p.amount || 0), 0);
+  const availableEarnings = debtData?.walletBalance || 0;
 
   const pendingRelease = payments
     .filter(p => p.status === "pending" && p.companionId === debtData?.companionId)
@@ -158,16 +205,40 @@ function WalletContent() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* Card 1: Available Earnings */}
-        <div className="bg-white border border-stitch-outline/10 shadow-soft rounded-3xl p-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-stitch-primary/5 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-teal-50 rounded-2xl text-stitch-primary">
-              <TrendingUp className="w-6 h-6" />
+        <div className="bg-white border border-stitch-outline/10 shadow-soft rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[180px]">
+          <div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-stitch-primary/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-teal-50 rounded-2xl text-stitch-primary">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-bold text-stitch-primary bg-teal-50 px-2.5 py-1 rounded-full border border-teal-100">متاح للسحب</span>
             </div>
-            <span className="text-xs font-bold text-stitch-primary bg-teal-50 px-2.5 py-1 rounded-full border border-teal-100">متاح للسحب</span>
+            <p className="text-xs text-stitch-on-surface-variant/80">إجمالي الأرباح المتاحة</p>
+            <h2 className="text-3xl font-black text-stitch-on-surface mt-1 font-mono">EGP {availableEarnings.toFixed(2)}</h2>
           </div>
-          <p className="text-xs text-stitch-on-surface-variant/80">إجمالي الأرباح المتاحة</p>
-          <h2 className="text-3xl font-black text-stitch-on-surface mt-1 font-mono">EGP {availableEarnings.toFixed(2)}</h2>
+
+          <div className="mt-4 pt-3 border-t border-[#eae7e7]">
+            {debtData?.stripeConnectId ? (
+              <button
+                onClick={handleRequestPayout}
+                disabled={submitting || availableEarnings <= 0}
+                className="w-full py-2.5 px-4 bg-stitch-primary text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-stitch-primary/95 transition-all shadow-sm"
+              >
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                <span>سحب الأرباح للحساب البنكي</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleConnectStripe}
+                disabled={submitting}
+                className="w-full py-2.5 px-4 bg-[#1f8a8a] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 hover:bg-[#0d8282] transition-all shadow-sm"
+              >
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
+                <span>ربط حساب البنك (Stripe)</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Card 2: Platform Debt */}

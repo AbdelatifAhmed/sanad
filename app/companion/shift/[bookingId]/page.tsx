@@ -31,6 +31,8 @@ export default function CompanionShiftPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCashModal, setShowCashModal] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [passcode, setPasscode] = useState("");
+  const [usePasscode, setUsePasscode] = useState(false);
 
   // Periodically update current time
   useEffect(() => {
@@ -124,15 +126,26 @@ export default function CompanionShiftPage() {
   }, [slotStartDateTime, currentTime, activeSchedule]);
 
   // Handle Companion Check-in
-  const handleCheckIn = async () => {
+  const handleCheckIn = async (gpsCoords?: { lat: number; lng: number }, inputPasscode?: string) => {
     if (!booking || !activeSchedule) return;
     try {
       setActionLoading(true);
       setActionError(null);
       
-      const res = await api.post(`/bookings/${bookingId}/check-in`, {
+      const payload: any = {
         scheduleId: activeSchedule._id
-      });
+      };
+      
+      if (gpsCoords) {
+        payload.lat = gpsCoords.lat;
+        payload.lng = gpsCoords.lng;
+      }
+      
+      if (inputPasscode) {
+        payload.passcode = inputPasscode.trim();
+      }
+      
+      const res = await api.post(`/bookings/${bookingId}/check-in`, payload);
       
       if (res.data && res.data.data) {
         setBooking(res.data.data.booking);
@@ -143,6 +156,27 @@ export default function CompanionShiftPage() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleGpsCheckIn = () => {
+    if (!navigator.geolocation) {
+      setActionError("الموقع الجغرافي غير مدعوم في متصفحك. يرجى استخدام رمز التحقق.");
+      return;
+    }
+    
+    setActionLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        handleCheckIn({ lat: latitude, lng: longitude });
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        setActionLoading(false);
+        setActionError("فشل الحصول على موقعك الجغرافي. يرجى إعطاء صلاحية الوصول للموقع في المتصفح أو المحاولة عبر رمز التحقق.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const checkOutBooking = async () => {
@@ -445,7 +479,7 @@ export default function CompanionShiftPage() {
             
             {/* Flow 1: Not Checked In Yet */}
             {!activeSchedule.checkInTime && (
-              <div className="space-y-4 max-w-sm w-full">
+              <div className="space-y-5 max-w-sm w-full">
                 <div className="w-20 h-20 bg-teal-50 border border-teal-100 rounded-full flex items-center justify-center mx-auto text-stitch-primary shadow-soft">
                   <Play className="w-8 h-8 fill-stitch-primary translate-x-0.5" />
                 </div>
@@ -455,17 +489,57 @@ export default function CompanionShiftPage() {
                     {checkInStatus.message}
                   </p>
                 </div>
-                <button
-                  onClick={handleCheckIn}
-                  disabled={actionLoading || !checkInStatus.canCheckIn}
-                  className="w-full py-4 bg-stitch-primary hover:bg-stitch-primary/95 text-white font-bold rounded-2xl shadow-soft hover:shadow-premium transition-all flex items-center justify-center space-x-2 text-base disabled:opacity-50 disabled:pointer-events-none"
-                >
-                  {actionLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <span>تسجيل الدخول (Check-In)</span>
-                  )}
-                </button>
+
+                {usePasscode ? (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      maxLength={4}
+                      placeholder="أدخل الرمز المكون من 4 أرقام"
+                      value={passcode}
+                      onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ""))}
+                      className="w-full text-center tracking-widest text-xl font-black border border-stitch-outline/25 p-3.5 rounded-2xl focus:border-stitch-primary focus:ring-1 focus:ring-stitch-primary font-mono bg-sand-low/50"
+                    />
+                    <button
+                      onClick={() => handleCheckIn(undefined, passcode)}
+                      disabled={actionLoading || !checkInStatus.canCheckIn || passcode.trim().length !== 4}
+                      className="w-full py-3.5 bg-stitch-primary hover:bg-stitch-primary/95 text-white font-bold rounded-2xl shadow-soft hover:shadow-premium transition-all flex items-center justify-center space-x-2 text-sm disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                    >
+                      {actionLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <span>تأكيد والبدء في الشفت</span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => { setUsePasscode(false); setPasscode(""); }}
+                      className="text-xs text-stitch-primary font-bold hover:underline block mx-auto cursor-pointer"
+                    >
+                      تسجيل الدخول بالموقع الجغرافي بدلاً من ذلك
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleGpsCheckIn}
+                      disabled={actionLoading || !checkInStatus.canCheckIn}
+                      className="w-full py-4 bg-stitch-primary hover:bg-stitch-primary/95 text-white font-bold rounded-2xl shadow-soft hover:shadow-premium transition-all flex items-center justify-center space-x-2 text-base disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                    >
+                      {actionLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <span>تسجيل الدخول بالموقع الجغرافي (GPS)</span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setUsePasscode(true)}
+                      disabled={actionLoading || !checkInStatus.canCheckIn}
+                      className="w-full py-3 bg-white hover:bg-sand-low text-stitch-on-surface-variant hover:text-stitch-on-surface font-semibold rounded-2xl border border-stitch-outline/25 transition-all text-sm disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                    >
+                      تسجيل الدخول برمز التحقق (Passcode)
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
