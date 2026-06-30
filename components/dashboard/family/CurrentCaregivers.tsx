@@ -1,6 +1,9 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
-import { Calendar, MessageSquare, Briefcase, ArrowRight } from "lucide-react";
+import { Calendar, MessageSquare, Briefcase, ArrowRight, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { getAvatarUrl } from "@/lib/avatar";
 
 interface CaregiverItem {
@@ -19,23 +22,55 @@ interface CurrentCaregiversProps {
 }
 
 export default function CurrentCaregivers({ caregivers }: CurrentCaregiversProps) {
+  const t = useTranslations("familyDashboard");
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="font-display text-xl font-bold text-[#012d1d]">
-          Current Caregivers
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="font-display text-xl font-bold text-[#012d1d]">
+            {t("currentCaregiversTitle")}
+          </h2>
+          <div className="relative">
+            <button
+              type="button"
+              onMouseEnter={() => setTooltipVisible(true)}
+              onMouseLeave={() => setTooltipVisible(false)}
+              onFocus={() => setTooltipVisible(true)}
+              onBlur={() => setTooltipVisible(false)}
+              className="text-stitch-on-surface-variant/40 hover:text-stitch-primary transition-colors cursor-pointer"
+              aria-label={t("currentCaregiversTooltip")}
+            >
+              <Info className="w-4 h-4" />
+            </button>
+            {tooltipVisible && (
+              <div 
+                className="absolute top-full mt-2 start-0 w-64 bg-stitch-surface border border-stitch-outline/20 rounded-2xl p-3 shadow-premium z-50 animate-fade-in"
+                role="tooltip"
+              >
+                <p className="text-xs text-stitch-on-surface-variant leading-relaxed">
+                  {t("currentCaregiversTooltip")}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
         <Link 
           href="/family/companions" 
           className="text-xs font-bold text-[#1f8a8a] flex items-center gap-1 hover:underline transition-all"
         >
-          View All <ArrowRight className="w-3 h-3" />
+          {t("viewAll")} <ArrowRight className="w-3 h-3 rtl:rotate-180" />
         </Link>
       </div>
 
+      <p className="text-xs text-gray-400 font-medium -mt-2">
+        {t("currentCaregiversDesc")}
+      </p>
+
       {caregivers.length === 0 ? (
         <div className="bg-white p-8 rounded-3xl border border-sand-high/60 shadow-soft text-center text-gray-500 text-sm font-medium">
-          No current care arrangements or pending requests.
+          {t("noCaregivers")}
         </div>
       ) : (
         <div className="space-y-4">
@@ -61,7 +96,7 @@ export default function CurrentCaregivers({ caregivers }: CurrentCaregiversProps
                           className="w-full h-full object-cover" 
                         />
                       </div>
-                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                      <span className="absolute bottom-0 end-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                     </div>
                   )}
 
@@ -90,7 +125,7 @@ export default function CurrentCaregivers({ caregivers }: CurrentCaregiversProps
 
                 {isPending ? (
                   <div className="self-end sm:self-center px-3.5 py-1.5 rounded-full text-[10px] font-bold tracking-wide bg-[#fff3cd] text-[#856404] border border-[#ffeeba]/50">
-                    ⏳ Pending Confirmation
+                    ⏳ {t("pendingConfirmation")}
                   </div>
                 ) : (
                   <Link 

@@ -1,5 +1,6 @@
 import React from "react";
 import Image from "next/image";
+import { getTranslations } from "next-intl/server";
 import { getAvatarUrl } from "@/lib/avatar";
 
 interface WelcomeHeaderProps {
@@ -7,17 +8,18 @@ interface WelcomeHeaderProps {
   userAvatar: any;
 }
 
-export default function WelcomeHeader({ userName, userAvatar }: WelcomeHeaderProps) {
+export default async function WelcomeHeader({ userName, userAvatar }: WelcomeHeaderProps) {
+  const t = await getTranslations("familyDashboard");
   const resolvedAvatar = getAvatarUrl(userAvatar, "/avatar_1.jpg");
 
   return (
     <div className="flex justify-between items-center bg-white p-6 md:p-8 rounded-3xl border border-sand-high/60 shadow-soft">
       <div className="space-y-1">
         <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight text-[#012d1d]">
-          Good morning, {userName}
+          {t("greeting", { name: userName })}
         </h1>
         <p className="text-gray-500 text-sm md:text-base font-medium">
-          Here is a summary of your ongoing care arrangements.
+          {t("summaryText")}
         </p>
       </div>
       <div className="relative group cursor-pointer">

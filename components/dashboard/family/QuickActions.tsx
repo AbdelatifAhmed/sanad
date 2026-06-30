@@ -1,10 +1,10 @@
 import React from "react";
 import Link from "next/link";
 import { Plus, Search } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
-export default function QuickActions() {
-  const t = useTranslations("quickActions");
+export default async function QuickActions() {
+  const t = await getTranslations("quickActions");
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
