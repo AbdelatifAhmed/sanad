@@ -73,11 +73,14 @@ export interface AuthState {
 }
 
 export interface ScheduleTaskEntry {
+  _id?: string;
+  title?: string;
   taskDescription: string;
   isCompleted: boolean;
 }
 
 export interface BookingScheduleEntry {
+  _id?: string;
   date: string | Date;
   startTime: string;
   endTime: string;
@@ -105,6 +108,14 @@ export interface Booking {
   workingDays?: Weekday[];
   schedule?: BookingScheduleEntry[];
   notes?: string;
+  location?: LocationDetails;
+  beneficiary?: {
+    name: string;
+    age: number;
+    gender: string;
+    category: string;
+    conditionDetails: string;
+  };
 }
 
 export interface CompanionProfile {
@@ -136,6 +147,8 @@ export interface JobPost {
   description: string;
   serviceType: ServiceType;
   requiredSkills: string[];
+  taskList?: string[];
+  preferredGender?: "any gender" | "male" | "female";
   budgetPerHour: number;
   preferredCaregiverGender?: "male" | "female";
   schedule: JobPostSchedule;
@@ -152,6 +165,7 @@ export interface Proposal {
   proposedRate: number;
   coverLetter: string;
   status: ProposalStatus;
+  taskList?: string[];
   createdAt?: string | Date;
   updatedAt?: string | Date;
 }

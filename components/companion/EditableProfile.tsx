@@ -51,6 +51,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
   const [certFile, setCertFile] = useState<File | null>(null);
 
   const [avatarLoading, setAvatarLoading] = useState(false);
+  const [dragActive, setDragActive] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     if (!initialData) {
@@ -141,6 +142,36 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
       console.error("Document upload failed", error);
     } finally {
       setDocUploading(false);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent, docType: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(prev => ({ ...prev, [docType]: true }));
+    } else if (e.type === "dragleave") {
+      setDragActive(prev => ({ ...prev, [docType]: false }));
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent, docType: 'nationalIdCard' | 'criminalRecord' | 'Certificates', certNameText?: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(prev => ({ ...prev, [docType]: false }));
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      const validTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
+      if (!validTypes.includes(file.type)) {
+        alert(locale === "ar" ? "نوع الملف غير صالح. يرجى تحميل ملف PDF أو صورة JPEG/PNG" : "Invalid file type. Please upload a PDF or JPEG/PNG image.");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert(locale === "ar" ? "حجم الملف كبير جداً. يجب أن يكون أقل من 5 ميجابايت." : "File is too large. Must be under 5MB.");
+        return;
+      }
+      handleDocumentUpload(docType, file, certNameText);
     }
   };
 
@@ -668,114 +699,249 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
         <div className="lg:col-span-4 space-y-6">
           
           {/* Certifications (Documents) */}
-          <div className="bg-[#FCF9F6] rounded-3xl p-8 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 font-stitch-body">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Certifications</h2>
+              <h2 className="text-xl font-bold text-gray-900">
+                {locale === "ar" ? "المستندات والشهادات والتوثيق" : "Verification & Certificates"}
+              </h2>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
 
-              {/* National ID Check */}
-              <div className={`p-4 rounded-2xl border shadow-sm ${hasNationalId ? 'bg-white border-gray-100' : 'bg-transparent border-dashed border-gray-300'}`}>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center shrink-0">
-                    <FileText className="w-6 h-6 text-gray-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 text-sm">National ID</h3>
-                    {hasNationalId ? (
-                      <div className="flex items-center gap-1 text-xs font-bold text-teal-700 mt-1">
-                        <CheckCircle2 className="w-3 h-3" /> VERIFIED
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-500 mt-1">Required Document</p>
-                    )}
-                  </div>
-                  {!hasNationalId && (
-                    <label className="text-stitch-primary cursor-pointer hover:bg-gray-100 p-2 rounded-full transition-colors">
-                      {docUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <UploadCloud className="w-5 h-5" />}
-                      <input type="file" className="hidden" accept=".pdf,image/jpeg,image/png" onChange={(e) => e.target.files?.[0] && handleDocumentUpload('nationalIdCard', e.target.files[0])} disabled={docUploading} />
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              {/* Criminal Record Check */}
-              <div className={`p-4 rounded-2xl border shadow-sm ${hasCriminalRecord ? 'bg-white border-gray-100' : 'bg-transparent border-dashed border-gray-300'}`}>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center shrink-0">
-                    <FileText className="w-6 h-6 text-gray-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 text-sm">Criminal Record</h3>
-                    {hasCriminalRecord ? (
-                      <div className="flex items-center gap-1 text-xs font-bold text-teal-700 mt-1">
-                        <CheckCircle2 className="w-3 h-3" /> VERIFIED
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-500 mt-1">Required Document</p>
-                    )}
-                  </div>
-                  {!hasCriminalRecord && (
-                    <label className="text-stitch-primary cursor-pointer hover:bg-gray-100 p-2 rounded-full transition-colors">
-                      {docUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <UploadCloud className="w-5 h-5" />}
-                      <input type="file" className="hidden" accept=".pdf,image/jpeg,image/png" onChange={(e) => e.target.files?.[0] && handleDocumentUpload('criminalRecord', e.target.files[0])} disabled={docUploading} />
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              {/* Named Certificates */}
-              {profile.documents?.Certificates?.map((cert: any, i: number) => (
-                <div key={i} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-                  <div className="flex gap-4">
-                    <div className="w-12 h-12 bg-teal-50 rounded-xl flex items-center justify-center shrink-0">
-                      <FileText className="w-6 h-6 text-teal-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-gray-900 text-sm">{cert.name}</h3>
-                      <div className="flex items-center gap-1 text-xs font-bold text-teal-700 mt-1">
-                        <CheckCircle2 className="w-3 h-3" /> VERIFIED
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {/* Add New Certificate Form */}
-              {showCertUpload ? (
-                <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-3">
-                  <input 
-                    type="text" 
-                    placeholder="Certificate Name" 
-                    value={certName}
-                    onChange={e => setCertName(e.target.value)}
-                    className="w-full text-sm p-2 border border-gray-200 rounded-lg outline-none focus:border-stitch-primary"
-                  />
-                  <input 
-                    type="file" 
-                    onChange={e => setCertFile(e.target.files?.[0] || null)}
-                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-stitch-primary/10 file:text-stitch-primary hover:file:bg-stitch-primary/20"
-                  />
-                  <div className="flex justify-end gap-2 pt-2">
-                    <button onClick={() => setShowCertUpload(false)} className="text-xs font-bold text-gray-500 px-3 py-1.5 hover:bg-gray-100 rounded-lg">Cancel</button>
-                    <button 
-                      onClick={() => certFile && certName && handleDocumentUpload('Certificates', certFile, certName)}
-                      disabled={!certFile || !certName || docUploading}
-                      className="text-xs font-bold text-white bg-stitch-primary px-3 py-1.5 rounded-lg disabled:opacity-50 flex items-center gap-1"
-                    >
-                      {docUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Upload"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button 
-                  onClick={() => setShowCertUpload(true)}
-                  className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-500 hover:text-stitch-primary hover:border-stitch-primary hover:bg-stitch-primary/5 transition-all font-bold text-sm flex items-center justify-center gap-2"
+              {/* National ID Card (بطاقة الرقم القومي) */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700 block">
+                  {locale === "ar" ? "بطاقة الرقم القومي (مطلوبة)" : "National ID Card (Required)"}
+                </label>
+                <div 
+                  onDragEnter={(e) => handleDrag(e, "nationalIdCard")}
+                  onDragLeave={(e) => handleDrag(e, "nationalIdCard")}
+                  onDragOver={(e) => handleDrag(e, "nationalIdCard")}
+                  onDrop={(e) => handleDrop(e, "nationalIdCard")}
+                  className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center justify-center text-center relative ${
+                    dragActive["nationalIdCard"]
+                      ? "border-stitch-primary bg-stitch-primary/5"
+                      : hasNationalId
+                      ? "border-teal-500 bg-teal-50/20"
+                      : "border-dashed border-gray-300 hover:border-stitch-primary hover:bg-gray-50/50"
+                  }`}
                 >
-                  <Plus className="w-4 h-4" /> Add Certificate
-                </button>
-              )}
+                  {hasNationalId ? (
+                    <div className="space-y-3">
+                      <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center mx-auto text-teal-600">
+                        <CheckCircle2 className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-950">
+                          {locale === "ar" ? "تم رفع بطاقة الرقم القومي" : "National ID Card Uploaded"}
+                        </p>
+                        <a 
+                          href={profile.documents?.nationalIdCard?.url} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="text-xs text-stitch-primary font-bold hover:underline inline-flex items-center gap-1 mt-1 cursor-pointer"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          {locale === "ar" ? "معاينة المستند" : "Preview Document"}
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer py-4">
+                      <UploadCloud className="w-10 h-10 text-gray-400 mb-2" />
+                      <p className="text-sm font-semibold text-gray-700">
+                        {locale === "ar" ? "اسحب وأفلت صورة البطاقة هنا أو تصفح" : "Drag & drop ID photo here or browse"}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        PDF, JPG, PNG (Max 5MB)
+                      </p>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept=".pdf,image/jpeg,image/png" 
+                        onChange={(e) => e.target.files?.[0] && handleDocumentUpload('nationalIdCard', e.target.files[0])}
+                        disabled={docUploading}
+                      />
+                    </label>
+                  )}
+                  {docUploading && (
+                    <div className="absolute inset-0 bg-white/80 rounded-2xl flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 animate-spin text-stitch-primary" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Criminal Record Certificate (الفيش الجنائي) */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700 block">
+                  {locale === "ar" ? "صحيفة الحالة الجنائية - الفيش والتشبيه (مطلوب)" : "Criminal Record Certificate (Required)"}
+                </label>
+                <div 
+                  onDragEnter={(e) => handleDrag(e, "criminalRecord")}
+                  onDragLeave={(e) => handleDrag(e, "criminalRecord")}
+                  onDragOver={(e) => handleDrag(e, "criminalRecord")}
+                  onDrop={(e) => handleDrop(e, "criminalRecord")}
+                  className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center justify-center text-center relative ${
+                    dragActive["criminalRecord"]
+                      ? "border-stitch-primary bg-stitch-primary/5"
+                      : hasCriminalRecord
+                      ? "border-teal-500 bg-teal-50/20"
+                      : "border-dashed border-gray-300 hover:border-stitch-primary hover:bg-gray-50/50"
+                  }`}
+                >
+                  {hasCriminalRecord ? (
+                    <div className="space-y-3">
+                      <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center mx-auto text-teal-600">
+                        <CheckCircle2 className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-950">
+                          {locale === "ar" ? "تم رفع الفيش الجنائي" : "Criminal Record Uploaded"}
+                        </p>
+                        <a 
+                          href={profile.documents?.criminalRecord?.url} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="text-xs text-stitch-primary font-bold hover:underline inline-flex items-center gap-1 mt-1 cursor-pointer"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          {locale === "ar" ? "معاينة المستند" : "Preview Document"}
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer py-4">
+                      <UploadCloud className="w-10 h-10 text-gray-400 mb-2" />
+                      <p className="text-sm font-semibold text-gray-700">
+                        {locale === "ar" ? "اسحب وأفلت الفيش الجنائي هنا أو تصفح" : "Drag & drop criminal record here or browse"}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        PDF, JPG, PNG (Max 5MB)
+                      </p>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept=".pdf,image/jpeg,image/png" 
+                        onChange={(e) => e.target.files?.[0] && handleDocumentUpload('criminalRecord', e.target.files[0])}
+                        disabled={docUploading}
+                      />
+                    </label>
+                  )}
+                  {docUploading && (
+                    <div className="absolute inset-0 bg-white/80 rounded-2xl flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 animate-spin text-stitch-primary" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Certificates & Professional Licenses */}
+              <div className="space-y-4 pt-2">
+                <label className="text-sm font-bold text-gray-700 block">
+                  {locale === "ar" ? "الشهادات المهنية والتراخيص الطبية" : "Professional Certificates & Medical Licenses"}
+                </label>
+                
+                {profile.documents?.Certificates?.map((cert: any, i: number) => (
+                  <div key={i} className="bg-gray-50 p-4 rounded-2xl border border-gray-200 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-gray-900 text-sm">{cert.name}</h4>
+                        <a 
+                          href={cert.url} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="text-xs text-stitch-primary hover:underline font-semibold flex items-center gap-1 mt-0.5"
+                        >
+                          {locale === "ar" ? "عرض المستند" : "View Document"}
+                        </a>
+                      </div>
+                    </div>
+                    <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded-full uppercase">
+                      {locale === "ar" ? "موثق" : "Verified"}
+                    </span>
+                  </div>
+                ))}
+
+                {showCertUpload ? (
+                  <div className="bg-gray-50/50 p-4 rounded-2xl border border-dashed border-gray-300 space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-600 block">
+                        {locale === "ar" ? "اسم الشهادة" : "Certificate Name"}
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder={locale === "ar" ? "مثال: شهادة ممارسة مهنة التمريض" : "e.g. Nursing Practice License"} 
+                        value={certName}
+                        onChange={e => setCertName(e.target.value)}
+                        className="w-full text-sm p-3 bg-white border border-gray-200 rounded-xl outline-none focus:border-stitch-primary focus:ring-1 focus:ring-stitch-primary"
+                      />
+                    </div>
+
+                    <div 
+                      onDragEnter={(e) => handleDrag(e, "Certificates")}
+                      onDragLeave={(e) => handleDrag(e, "Certificates")}
+                      onDragOver={(e) => handleDrag(e, "Certificates")}
+                      onDrop={(e) => handleDrop(e, "Certificates", certName)}
+                      className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center justify-center text-center bg-white ${
+                        dragActive["Certificates"]
+                          ? "border-stitch-primary bg-stitch-primary/5"
+                          : certFile
+                          ? "border-teal-500 bg-teal-50/20"
+                          : "border-dashed border-gray-300 hover:border-stitch-primary hover:bg-gray-50/50"
+                      }`}
+                    >
+                      {certFile ? (
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-teal-600" />
+                          <span className="text-sm font-semibold text-gray-800 truncate max-w-[200px]">{certFile.name}</span>
+                        </div>
+                      ) : (
+                        <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
+                          <UploadCloud className="w-8 h-8 text-gray-400 mb-1" />
+                          <p className="text-xs font-semibold text-gray-700">
+                            {locale === "ar" ? "اسحب وأفلت شهادة هنا أو تصفح" : "Drag & drop certificate here or browse"}
+                          </p>
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            accept=".pdf,image/jpeg,image/png" 
+                            onChange={(e) => setCertFile(e.target.files?.[0] || null)}
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button 
+                        onClick={() => { setShowCertUpload(false); setCertFile(null); setCertName(""); }} 
+                        className="text-xs font-bold text-gray-500 px-4 py-2 hover:bg-gray-150 rounded-xl"
+                      >
+                        {locale === "ar" ? "إلغاء" : "Cancel"}
+                      </button>
+                      <button 
+                        onClick={() => certFile && certName && handleDocumentUpload('Certificates', certFile, certName)}
+                        disabled={!certFile || !certName || docUploading}
+                        className="text-xs font-bold text-white bg-stitch-primary px-4 py-2 rounded-xl disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {docUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (locale === "ar" ? "رفع الآن" : "Upload")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => setShowCertUpload(true)}
+                    className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-500 hover:text-stitch-primary hover:border-stitch-primary hover:bg-stitch-primary/5 transition-all font-bold text-sm flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {locale === "ar" ? "إضافة شهادة مهنية جديدة" : "Add New Professional Certificate"}
+                  </button>
+                )}
+
+              </div>
 
             </div>
           </div>

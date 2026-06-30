@@ -1,12 +1,13 @@
-import CompanionAbout from "@/components/companion/CompanionAbout";
-import CompanionBookingCard from "@/components/companion/CompanionBookingCard";
-import CompanionCertifications from "@/components/companion/CompanionCertifications";
-import CompanionHeader from "@/components/companion/CompanionHeader";
-import CompanionSkills from "@/components/companion/CompanionSkills";
-import CompanionHobbies from "@/components/companion/CompanionHobbies";
-import CompanionAvailability from "@/components/companion/CompanionAvailability";
+import CompanionAbout from "@/components/companion/profile-view/CompanionAbout";
+import CompanionBookingCard from "@/components/companion/profile-view/CompanionBookingCard";
+import CompanionCertifications from "@/components/companion/profile-view/CompanionCertifications";
+import CompanionHeader from "@/components/companion/profile-view/CompanionHeader";
+import CompanionSkills from "@/components/companion/profile-view/CompanionSkills";
+import CompanionHobbies from "@/components/companion/profile-view/CompanionHobbies";
+import CompanionAvailability from "@/components/companion/profile-view/CompanionAvailability";
 import { serverFetch } from "@/lib/serverAuth";
 import { getAvatarUrl } from "@/lib/avatar";
+import { getTranslations, getLocale } from "next-intl/server";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -18,7 +19,10 @@ async function getCompanionData(id: string) {
 }
 
 export default async function CompanionProfilePage({ params }: PageProps) {
+  const t = await getTranslations("companionProfile");
+  const locale = await getLocale();
   let id = "";
+
   try {
     const resolvedParams = await params;
     id = resolvedParams.id;
@@ -34,17 +38,17 @@ export default async function CompanionProfilePage({ params }: PageProps) {
     const verified = companion.verificationStatus === "verified";
     
     // Map title dynamically based on specialization
-    let title = "Professional Caregiver";
+    let title = t("titleProfessional");
     if (companion.specialization === "nursing") {
-      title = "Registered Nurse & Specialized Caregiver";
+      title = `${t("titleNurse")} & ${t("titleSpecialized")}`;
     } else if (companion.specialization === "physiotherapy") {
-      title = "Physiotherapist & Specialized Caregiver";
+      title = `${t("titlePhysio")} & ${t("titleSpecialized")}`;
     } else if (companion.specialization === "companionship_companion") {
-      title = "Senior Companion & Caregiver";
+      title = `${t("titleCompanion")} & ${t("titleProfessional")}`;
     } else if (companion.companionType === "specialized") {
-      title = "Specialized Senior Caregiver";
+      title = t("titleSpecialized");
     } else {
-      title = "General Caregiver & Companion";
+      title = `${t("titleProfessional")} & ${t("titleCompanion")}`;
     }
 
     const rating = companion.rating ?? 5.0;
@@ -53,23 +57,23 @@ export default async function CompanionProfilePage({ params }: PageProps) {
     // Map Location
     const location = companion.userId?.location?.readableAddress || 
                      companion.userId?.location?.city || 
-                     "Dubai Healthcare City";
+                     (locale === "ar" ? "مدينة دبي الطبية" : "Dubai Healthcare City");
 
     // Dynamic Experience mapping (fallback if totalWorkHours is 0)
     const yearsExp = companion.totalWorkHours > 0 
       ? Math.max(1, Math.round(companion.totalWorkHours / 200)) 
       : 5;
-    const experience = `${yearsExp}+ Years Exp.`;
+    const experience = t("yearsExperience", { years: yearsExp });
 
     // Process biography paragraphs (split by newline)
     const bioParagraphs = companion.bio
       ? companion.bio.split("\n").filter((p: string) => p.trim() !== "")
-      : ["No biography provided."];
+      : [t("noBio")];
 
-    // Extract clinical skills names
+    // Extract clinical skills names dynamically based on user locale
     const skillsList = companion.skills && companion.skills.length > 0
-      ? companion.skills.map((s: { nameEn?: string; nameAr?: string }) => s.nameEn || s.nameAr)
-      : ["General Caregiving"];
+      ? companion.skills.map((s: { nameEn?: string; nameAr?: string }) => locale === "ar" ? s.nameAr || s.nameEn : s.nameEn || s.nameAr)
+      : [t("defaultSkill")];
 
     // Extract hobbies
     const hobbiesList = companion.hobbies && companion.hobbies.length > 0
@@ -124,15 +128,15 @@ export default async function CompanionProfilePage({ params }: PageProps) {
     console.error("Error loading companion profile page:", err);
     return (
       <div className="max-w-xl mx-auto my-12 bg-red-50 border border-red-200 text-red-700 p-8 rounded-3xl text-center space-y-4 shadow-soft">
-        <h3 className="text-lg font-bold">Error Loading Caregiver Profile</h3>
+        <h3 className="text-lg font-bold">{t("loadError")}</h3>
         <p className="text-sm text-red-600">
-          We couldn&apos;t retrieve this caregiver&apos;s profile. Please verify the ID or make sure you are logged in.
+          {t("loadErrorDesc")}
         </p>
         <a 
           href={`/family/companions/${id}`}
           className="inline-block bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
         >
-          Try Again
+          {t("tryAgain")}
         </a>
       </div>
     );

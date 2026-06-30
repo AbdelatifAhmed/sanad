@@ -8,6 +8,7 @@ const navItems: SidebarItem[] = [
   { labelKey: "applications", href: "/companion/applications", icon: "event_available" },
   { labelKey: "calendar", href: "/companion/schedule", icon: "calendar_today" },
   { labelKey: "messages", href: "/companion/messages", icon: "chat_bubble" },
+  { labelKey: "activeShift", href: "/companion/shift", icon: "play_circle" },
   { labelKey: "wallet", href: "/companion/wallet", icon: "wallet" },
   { labelKey: "profile", href: "/companion/profile", icon: "person" },
 ];

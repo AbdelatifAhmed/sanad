@@ -187,6 +187,10 @@ export const getJobPostById = async (id: string): Promise<JobPost> => {
   return (res.data.data?.job ?? res.data.data) as JobPost;
 };
 
+export const updateJobPost = async (id: string, data: Record<string, unknown>): Promise<JobPost> => {
+  const res = await api.patch<ApiResponse<JobPost>>(`/job-posts/${id}`, data);
+  return res.data.data as JobPost;
+};
 export const deleteJobPost = async (id: string): Promise<any> => {
   const res = await api.delete(`/job-posts/${id}`);
   return res.data;

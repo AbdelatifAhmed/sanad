@@ -1,3 +1,5 @@
+import { ChatContainer } from "../../../features/chat/components/ChatContainer";
+
 export default function FamilyMessages() {
-  return <div>Family Messages Page</div>;
+  return <ChatContainer />;
 }

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { useVerifiedCompanions } from "@/lib/hooks";
 import CaregiverCard from "@/components/companion/CaregiverCard";
 import CaregiverFilters from "@/components/companion/CaregiverFilters";
+import Pagination from "@/components/shared/Pagination";
 
 interface FilterState {
   search: string;
@@ -24,13 +26,13 @@ const DEFAULT_FILTERS: FilterState = {
 const PAGE_SIZE = 9;
 
 // Helper to derive a display title from specialization
-function deriveTitle(specialization?: string, companionType?: string): string {
-  if (specialization === "nursing") return "Registered Nurse";
-  if (specialization === "physiotherapy") return "Physiotherapist";
-  if (specialization === "companionship_companion") return "Compassionate Companion";
-  if (specialization === "dementia") return "Dementia Care Specialist";
-  if (companionType === "specialized") return "Specialized Caregiver";
-  return "Professional Caregiver";
+function deriveTitle(t: any, specialization?: string, companionType?: string): string {
+  if (specialization === "nursing") return t("titleNurse");
+  if (specialization === "physiotherapy") return t("titlePhysio");
+  if (specialization === "companionship_companion") return t("titleCompanion");
+  if (specialization === "dementia") return t("titleDementia");
+  if (companionType === "specialized") return t("titleSpecialized");
+  return t("titleProfessional");
 }
 
 // Skeleton loader card
@@ -70,6 +72,7 @@ function SkeletonCard({ viewMode = "grid" }: { viewMode?: "grid" | "list" }) {
 
 // Empty state
 function EmptyState({ onClear }: { onClear: () => void }) {
+  const t = useTranslations("companionsPage");
   return (
     <div className="col-span-full flex flex-col items-center justify-center py-24 text-center space-y-4">
       <div className="w-20 h-20 rounded-full bg-stitch-secondary-container/40 flex items-center justify-center mb-2">
@@ -78,94 +81,23 @@ function EmptyState({ onClear }: { onClear: () => void }) {
         </span>
       </div>
       <h3 className="font-stitch-display font-bold text-lg text-[#012d1d]">
-        No caregivers found
+        {t("emptyTitle")}
       </h3>
       <p className="text-sm text-stitch-on-surface-variant max-w-xs">
-        Try adjusting your filters or broadening your search to find the right match.
+        {t("emptySubtitle")}
       </p>
       <button
         onClick={onClear}
         className="mt-2 px-6 py-2.5 bg-stitch-primary text-white text-sm font-bold rounded-xl hover:opacity-90 transition-all active:scale-95 shadow-soft"
       >
-        Clear Filters
-      </button>
-    </div>
-  );
-}
-
-// Pagination bar
-function PaginationBar({
-  page,
-  totalPages,
-  onPrev,
-  onNext,
-  onGoTo,
-}: {
-  page: number;
-  totalPages: number;
-  onPrev: () => void;
-  onNext: () => void;
-  onGoTo: (p: number) => void;
-}) {
-  if (totalPages <= 1) return null;
-
-  // Build page number list with ellipsis
-  const getPages = (): (number | "...")[] => {
-    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
-    const pages: (number | "...")[] = [1];
-    if (page > 3) pages.push("...");
-    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
-      pages.push(i);
-    }
-    if (page < totalPages - 2) pages.push("...");
-    pages.push(totalPages);
-    return pages;
-  };
-
-  return (
-    <div className="flex items-center justify-center gap-2 pt-6">
-      <button
-        onClick={onPrev}
-        disabled={page === 1}
-        className="flex items-center gap-1 px-4 py-2 rounded-xl border border-sand-high/60 text-xs font-bold text-stitch-primary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-low transition-all"
-      >
-        <span className="material-symbols-outlined text-[16px]">chevron_left</span>
-        Prev
-      </button>
-
-      {getPages().map((p, i) =>
-        p === "..." ? (
-          <span key={`ellipsis-${i}`} className="px-2 text-stitch-on-surface-variant text-xs">
-            …
-          </span>
-        ) : (
-          <button
-            key={p}
-            onClick={() => onGoTo(p as number)}
-            className={`w-9 h-9 rounded-xl text-xs font-bold transition-all ${
-              p === page
-                ? "bg-stitch-primary text-white shadow-soft"
-                : "border border-sand-high/60 text-stitch-on-surface-variant hover:bg-sand-low"
-            }`}
-          >
-            {p}
-          </button>
-        )
-      )}
-
-      <button
-        onClick={onNext}
-        disabled={page === totalPages}
-        className="flex items-center gap-1 px-4 py-2 rounded-xl border border-sand-high/60 text-xs font-bold text-stitch-primary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-low transition-all"
-      >
-        Next
-        <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+        {t("emptyAction")}
       </button>
     </div>
   );
 }
 
 export default function FamilyCompanionsPage() {
+  const t = useTranslations("companionsPage");
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -208,7 +140,7 @@ export default function FamilyCompanionsPage() {
       id: c._id ?? c.id,
       name: c.userId?.name ?? "Caregiver",
       avatar: c.userId?.avatar ?? "/avatar_1.jpg",
-      title: deriveTitle(c.specialization, c.companionType),
+      title: deriveTitle(t, c.specialization, c.companionType),
       rating: c.rating ?? 5.0,
       reviewsCount: c.reviewCount ?? 0,
       location:
@@ -219,7 +151,7 @@ export default function FamilyCompanionsPage() {
       bio: c.bio ?? "",
       specialization: c.specialization ?? "",
     }));
-  }, [data]);
+  }, [data, t]);
 
   const pagination = (data as any)?.pagination;
   const total: number = pagination?.total ?? companions.length;
@@ -244,16 +176,15 @@ export default function FamilyCompanionsPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <h1 className="font-stitch-display font-bold text-2xl md:text-3xl text-[#012d1d] tracking-tight">
-              Browse Caregivers
+              {t("title")}
             </h1>
             <p className="text-sm text-stitch-on-surface-variant mt-1 max-w-xl">
-              Connect with verified, compassionate caregivers who understand the
-              value of independence and dignity.
+              {t("subtitle")}
             </p>
           </div>
 
-          {/* View mode toggle */}
-          <div className="flex items-center gap-1.5 bg-white border border-sand-high/60 rounded-xl p-1 shadow-soft self-start sm:self-auto">
+          {/* View mode toggle - Hidden on mobile screen sizes */}
+          <div className="hidden md:flex items-center gap-1.5 bg-white border border-sand-high/60 rounded-xl p-1 shadow-soft">
             <button
               onClick={() => setViewMode("grid")}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
@@ -263,7 +194,7 @@ export default function FamilyCompanionsPage() {
               }`}
             >
               <span className="material-symbols-outlined text-[15px]">grid_view</span>
-              Grid
+              {t("viewModeGrid")}
             </button>
             <button
               onClick={() => setViewMode("list")}
@@ -274,7 +205,7 @@ export default function FamilyCompanionsPage() {
               }`}
             >
               <span className="material-symbols-outlined text-[15px]">view_list</span>
-              List
+              {t("viewModeList")}
             </button>
           </div>
         </div>
@@ -292,7 +223,7 @@ export default function FamilyCompanionsPage() {
       {error && !isLoading && (
         <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl text-center text-sm font-medium shadow-soft">
           <span className="material-symbols-outlined text-2xl mb-2 block">error</span>
-          Failed to load caregivers. Please make sure you are logged in and try again.
+          {t("loadError")}
         </div>
       )}
 
@@ -329,21 +260,19 @@ export default function FamilyCompanionsPage() {
             ))}
       </section>
 
-      {/* Pagination */}
+      {/* Pagination using the shared component */}
       {!isLoading && companions.length > 0 && (
-        <PaginationBar
-          page={page}
+        <Pagination
+          currentPage={page}
           totalPages={totalPages}
-          onPrev={() => setPage((p) => Math.max(1, p - 1))}
-          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
-          onGoTo={(p) => setPage(p)}
+          onPageChange={(p) => setPage(p)}
         />
       )}
 
       {/* Results summary */}
       {!isLoading && companions.length > 0 && (
         <p className="text-center text-xs text-stitch-on-surface-variant font-medium">
-          Showing page {page} of {totalPages} — {total} caregiver{total !== 1 ? "s" : ""} total
+          {t("resultsSummary", { page, totalPages, total })}
         </p>
       )}
     </div>

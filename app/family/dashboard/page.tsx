@@ -1,9 +1,10 @@
 import React from "react";
+import { getTranslations } from "next-intl/server";
 import { serverFetch } from "@/lib/serverAuth";
-import WelcomeHeader from "@/components/dashboard/WelcomeHeader";
-import QuickActions from "@/components/dashboard/QuickActions";
-import OverviewSection from "@/components/dashboard/OverviewSection";
-import CurrentCaregivers from "@/components/dashboard/CurrentCaregivers";
+import WelcomeHeader from "@/components/dashboard/family/WelcomeHeader";
+import QuickActions from "@/components/dashboard/family/QuickActions";
+import OverviewSection from "@/components/dashboard/family/OverviewSection";
+import CurrentCaregivers from "@/components/dashboard/family/CurrentCaregivers";
 import { getAvatarUrl } from "@/lib/avatar";
 
 async function getStats() {
@@ -11,6 +12,8 @@ async function getStats() {
 }
 
 export default async function FamilyDashboard() {
+  const t = await getTranslations("familyDashboard");
+
   let stats = null;
   let loadError = false;
 
@@ -28,12 +31,12 @@ export default async function FamilyDashboard() {
   if (loadError) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-3xl text-center">
-        <p className="font-semibold">Failed to load dashboard data. Please make sure you are logged in.</p>
+        <p className="font-semibold">{t("loadError")}</p>
         <a 
           href="/family/dashboard" 
           className="mt-4 inline-block px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
         >
-          Retry
+          {t("retry")}
         </a>
       </div>
     );
