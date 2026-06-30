@@ -89,7 +89,7 @@ export const MessagesList: React.FC<MessagesListProps> = ({
   const groupedMessages = groupMessagesByDate(messages);
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-sand/10">
+    <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 space-y-6 bg-sand/10">
       {Object.keys(groupedMessages).map((dateKey) => (
         <div key={dateKey} className="space-y-4">
           {/* Day Divider */}

@@ -45,7 +45,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
   };
 
   return (
-    <div className="w-full bg-stitch-surface border-t border-stitch-outline/10 px-6 py-4 shrink-0">
+    <div className="w-full bg-stitch-surface border-t border-stitch-outline/10 px-4 py-3 md:px-6 md:py-4 shrink-0">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -65,14 +65,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
             disabled={disabled}
             className="flex-1 max-h-[120px] py-1 bg-transparent border-0 focus:outline-none focus:ring-0 text-sm text-stitch-on-surface placeholder-stitch-on-surface-variant/40 resize-none min-h-[24px]"
           />
-          
-          {/* Emoji/Helper Button Placeholder */}
-          <button
-            type="button"
-            className="p-1.5 text-stitch-on-surface-variant/50 hover:text-stitch-on-surface rounded-lg shrink-0 transition-colors"
-          >
-            <Smile className="w-5.5 h-5.5" />
-          </button>
         </div>
 
         {/* Send Button */}

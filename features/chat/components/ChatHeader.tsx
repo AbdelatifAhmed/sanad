@@ -64,7 +64,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   const userRolePath = otherUser?.role === "companion" ? "family" : "companion";
 
   return (
-    <div className="w-full sticky top-0 z-20 bg-stitch-surface/90 backdrop-blur-md border-b border-stitch-outline/10 px-6 py-4 flex items-center justify-between gap-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+    <div className="w-full sticky top-0 z-20 bg-stitch-surface/90 backdrop-blur-md border-b border-stitch-outline/10 px-4 py-3 md:px-6 md:py-4 flex items-center justify-between gap-4 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
       {/* Left side: Avatar & User Info */}
       <div className="flex items-center gap-3.5 min-w-0">
         {/* Back button for mobile screens */}
@@ -116,10 +116,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
       <div className="flex items-center gap-2 shrink-0">
         <Link
           href={`/${userRolePath}/bookings/${bookingId}`}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-sand-low hover:bg-stitch-secondary-container/15 hover:text-stitch-on-secondary-container text-stitch-on-surface-variant border border-stitch-outline/20 transition-all shadow-sm"
+          className="inline-flex items-center gap-1.5 px-2 py-2 sm:px-3.5 rounded-xl text-xs font-semibold bg-sand-low hover:bg-stitch-secondary-container/15 hover:text-stitch-on-secondary-container text-stitch-on-surface-variant border border-stitch-outline/20 transition-all shadow-sm"
+          title={t("bookingDetails")}
         >
-          <span>{t("bookingDetails")}</span>
-          <ExternalLink className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">{t("bookingDetails")}</span>
+          <ExternalLink className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
         </Link>
       </div>
     </div>

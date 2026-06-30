@@ -15,11 +15,18 @@ export const useChat = (activeBookingId: string | null, userId: string | null) =
 
   const { socket } = useSocket();
   const activeBookingIdRef = useRef(activeBookingId);
+  const activeOtherUserIdRef = useRef<string | null>(null);
 
   // Keep ref up to date for socket event handler
   useEffect(() => {
     activeBookingIdRef.current = activeBookingId;
   }, [activeBookingId]);
+
+  // Keep active other user ID ref up to date
+  useEffect(() => {
+    const activeConv = conversations.find((c) => c.bookingId === activeBookingId);
+    activeOtherUserIdRef.current = activeConv?.otherUser?._id || null;
+  }, [activeBookingId, conversations]);
 
   // Fetch Conversations List
   const fetchConversations = useCallback(async () => {
@@ -205,8 +212,12 @@ export const useChat = (activeBookingId: string | null, userId: string | null) =
       console.log("Realtime message received:", msg);
       
       const currentActiveId = activeBookingIdRef.current;
+      const currentActiveOtherUserId = activeOtherUserIdRef.current;
+      const msgOtherUserId = msg.senderId === userId ? msg.receiverId : msg.senderId;
 
-      if (msg.bookingId === currentActiveId) {
+      const isForActiveChat = currentActiveOtherUserId && msgOtherUserId === currentActiveOtherUserId;
+
+      if (isForActiveChat) {
         // Append to messages if it's the active chat, avoiding duplicates and replacing optimistic ones
         setMessages((prev) => {
           // If we already have this message ID, ignore it
@@ -243,15 +254,17 @@ export const useChat = (activeBookingId: string | null, userId: string | null) =
         });
 
         // Trigger mark as read in backend
-        markAsRead(msg.bookingId);
+        if (currentActiveId) markAsRead(currentActiveId);
       }
 
       // Update conversations sidebar last message and unread count
       setConversations((prev) => {
         const updated = prev.map((c) => {
-          if (c.bookingId === msg.bookingId) {
+          const isMatch = c.otherUser?._id === msgOtherUserId;
+          if (isMatch) {
             const isSelf = msg.senderId === userId;
-            const newUnread = (c.bookingId === currentActiveId || isSelf) 
+            const isCurrentlyActive = c.bookingId === currentActiveId;
+            const newUnread = (isCurrentlyActive || isSelf) 
               ? c.unreadCount 
               : c.unreadCount + 1;
 
