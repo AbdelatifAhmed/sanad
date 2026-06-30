@@ -1,22 +1,27 @@
+"use client";
+
 import Link from "next/link";
-import { getLocale } from "next-intl/server";
+import { useLocale } from "next-intl";
 
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
-  searchParams: Record<string, string | string[] | undefined>;
-  baseUrl: string;
+  searchParams?: Record<string, string | string[] | undefined>;
+  baseUrl?: string;
+  onPageChange?: (page: number) => void;
 }
 
-export default async function Pagination({
+export default function Pagination({
   currentPage,
   totalPages,
-  searchParams,
-  baseUrl,
+  searchParams = {},
+  baseUrl = "",
+  onPageChange,
 }: PaginationProps) {
-  const locale = await getLocale();
+  const locale = useLocale();
 
   const getHref = (pageNumber: number) => {
+    if (onPageChange) return "#";
     const params = new URLSearchParams();
     Object.entries(searchParams).forEach(([key, val]) => {
       if (val !== undefined && key !== "page") {
@@ -29,6 +34,13 @@ export default async function Pagination({
     });
     params.set("page", String(pageNumber));
     return `${baseUrl}?${params.toString()}`;
+  };
+
+  const handleClick = (e: React.MouseEvent, pageNumber: number) => {
+    if (onPageChange) {
+      e.preventDefault();
+      onPageChange(pageNumber);
+    }
   };
 
   const getPageNumbers = () => {
@@ -57,6 +69,7 @@ export default async function Pagination({
       {currentPage > 1 ? (
         <Link
           href={getHref(currentPage - 1)}
+          onClick={(e) => handleClick(e, currentPage - 1)}
           className="w-10 h-10 bg-white border border-stitch-outline/10 rounded-xl flex items-center justify-center text-stitch-on-surface hover:bg-gray-50 shadow-sm transition-colors cursor-pointer"
         >
           <span className="material-symbols-outlined text-xl rtl:rotate-180">chevron_left</span>
@@ -92,6 +105,7 @@ export default async function Pagination({
           <Link
             key={`page-${page}`}
             href={getHref(page)}
+            onClick={(e) => handleClick(e, page)}
             className="w-10 h-10 bg-white border border-stitch-outline/10 rounded-xl flex items-center justify-center text-stitch-on-surface-variant hover:bg-gray-50 shadow-sm font-semibold transition-colors cursor-pointer"
           >
             {page}
@@ -103,6 +117,7 @@ export default async function Pagination({
       {currentPage < totalPages ? (
         <Link
           href={getHref(currentPage + 1)}
+          onClick={(e) => handleClick(e, currentPage + 1)}
           className="w-10 h-10 bg-white border border-stitch-outline/10 rounded-xl flex items-center justify-center text-stitch-on-surface hover:bg-gray-50 shadow-sm transition-colors cursor-pointer"
         >
           <span className="material-symbols-outlined text-xl rtl:rotate-180">chevron_right</span>

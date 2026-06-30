@@ -16,7 +16,7 @@ export type WorkingDay =
   | "Thursday"
   | "Friday";
 
-export type JobPostStatus = "open" | "filled" | "closed";
+export type JobPostStatus = "open" | "filled" | "closed" | "assigned" | "completed" | "canceled";
 
 export interface Beneficiary {
   _id: string;

@@ -6,6 +6,7 @@ import { Literata, Be_Vietnam_Pro, IBM_Plex_Sans_Arabic, Noto_Sans_Arabic, Plus_
 import "./globals.css";
 import AuthInit from "@/components/auth/AuthInit";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { SocketProvider } from "@/components/providers/SocketProvider";
 import { isThemeMode } from "@/lib/theme";
 
 const literata = Literata({
@@ -77,7 +78,9 @@ export default async function RootLayout({
         <NextIntlClientProvider>
           <ThemeProvider initialTheme={theme}>
             <AuthInit />
-            {children}
+            <SocketProvider>
+              {children}
+            </SocketProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

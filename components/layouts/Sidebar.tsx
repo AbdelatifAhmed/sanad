@@ -131,7 +131,7 @@ export default function Sidebar({
 
   return (
     <>
-      <aside className="hidden md:flex w-72 bg-stitch-surface flex-col border-r border-stitch-outline/20 h-screen sticky top-0 font-stitch-body select-none shrink-0">
+      <aside className="hidden md:flex w-72 bg-stitch-surface flex-col border-s border-stitch-outline/20 h-screen sticky top-0 font-stitch-body select-none shrink-0">
         <div className="p-8 pb-6">
           <h1 className="text-2xl font-stitch-display font-bold text-primary tracking-tight">
             {resolvedTitle}
@@ -173,7 +173,7 @@ export default function Sidebar({
         <div className="p-6 border-t border-stitch-outline/10 relative">
           {menuOpen && (
             <div 
-              className="absolute bottom-24 left-4 right-4 bg-stitch-surface border border-stitch-outline/20 rounded-2xl p-2 shadow-premium z-50 animate-fade-in flex flex-col gap-0.5"
+              className="absolute bottom-24 start-4 end-4 bg-stitch-surface border border-stitch-outline/20 rounded-2xl p-2 shadow-premium z-50 animate-fade-in flex flex-col gap-0.5"
               onClick={(e) => e.stopPropagation()}
             >
               <Link 
@@ -186,7 +186,7 @@ export default function Sidebar({
               <div className="h-px bg-stitch-outline/10 my-1" />
               <button 
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 text-sm font-semibold transition-colors text-left cursor-pointer"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 text-sm font-semibold transition-colors text-start cursor-pointer"
               >
                 <span className="material-symbols-outlined text-xl text-red-500">logout</span>
                 <span>{tNav("logout")}</span>
@@ -205,7 +205,7 @@ export default function Sidebar({
               <p className="text-sm font-semibold text-stitch-on-surface truncate">{tNav("userAccount")}</p>
               <p className="text-xs text-stitch-on-surface-variant/60 truncate">user@sanad.com</p>
             </div>
-            <span className="material-symbols-outlined text-stitch-on-surface-variant/50 text-lg transition-transform duration-200" style={{ transform: menuOpen ? 'rotate(180deg)' : 'none' }}>
+            <span className="material-symbols-outlined text-stitch-on-surface-variant/50 text-lg transition-transform duration-200 rtl:-rotate-180" style={{ transform: menuOpen ? 'rotate(180deg)' : 'none' }}>
               expand_less
             </span>
           </div>
@@ -241,7 +241,7 @@ export default function Sidebar({
         <div className="relative flex items-center justify-center shrink-0 w-16 h-full">
           {menuOpen && (
             <div 
-              className="absolute bottom-20 right-2 bg-stitch-surface border border-stitch-outline/20 rounded-2xl p-2 shadow-premium z-50 animate-fade-in flex flex-col gap-0.5 w-48"
+              className="absolute bottom-20 end-2 bg-stitch-surface border border-stitch-outline/20 rounded-2xl p-2 shadow-premium z-50 animate-fade-in flex flex-col gap-0.5 w-48"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Extra nav items (shown only in the mobile popover) */}
@@ -276,7 +276,7 @@ export default function Sidebar({
               <div className="h-px bg-stitch-outline/10 my-1" />
               <button 
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 text-sm font-semibold transition-colors text-left cursor-pointer"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 text-red-600 hover:text-red-700 text-sm font-semibold transition-colors text-start cursor-pointer"
               >
                 <span className="material-symbols-outlined text-lg text-red-500">logout</span>
                 <span>{tNav("logout")}</span>
