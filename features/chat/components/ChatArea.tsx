@@ -71,7 +71,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const { otherUser, bookingStatus, startDate, endDate, bookingId } = activeConversation;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-stitch-surface overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-full bg-stitch-surface overflow-hidden relative min-w-0">
       {/* Chat Header */}
       <ChatHeader
         otherUser={otherUser}

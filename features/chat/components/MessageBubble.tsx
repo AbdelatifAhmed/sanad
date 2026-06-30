@@ -22,7 +22,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSelf })
       <div className={`max-w-[70%] sm:max-w-[60%] flex flex-col ${isSelf ? "items-end" : "items-start"}`}>
         {/* Message Card */}
         <div
-          className={`px-5 py-3.5 rounded-3xl text-sm leading-relaxed break-words shadow-sm transition-all duration-300 hover:shadow-soft ${
+          className={`px-5 py-3.5 rounded-3xl text-sm leading-relaxed break-words [overflow-wrap:anywhere] shadow-sm transition-all duration-300 hover:shadow-soft ${
             isSelf
               ? "bg-gradient-to-br from-stitch-primary to-stitch-primary/85 text-white rounded-tr-sm font-medium"
               : "bg-stitch-surface text-stitch-on-surface rounded-tl-sm border border-stitch-outline/15"

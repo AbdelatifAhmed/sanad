@@ -31,6 +31,18 @@ export const ChatContainer: React.FC = () => {
     }
   }, [conversations, activeBookingId]);
 
+  // Lock parent layout scroll on mount to prevent layout-related vertical scrolling and clipping
+  useEffect(() => {
+    const mainEl = document.querySelector("main");
+    if (mainEl) {
+      const originalOverflow = mainEl.style.overflow;
+      mainEl.style.overflow = "hidden";
+      return () => {
+        mainEl.style.overflow = originalOverflow;
+      };
+    }
+  }, []);
+
   const activeConversation =
     conversations.find((c) => c.bookingId === activeBookingId) || null;
 
@@ -47,7 +59,7 @@ export const ChatContainer: React.FC = () => {
   };
 
   return (
-    <div className="w-[calc(100%+3rem)] md:w-[calc(100%+4rem)] h-screen flex bg-stitch-surface -m-6 md:-m-8 border-none rounded-none overflow-hidden transition-all duration-300">
+    <div className="w-[calc(100%+3rem)] md:w-[calc(100%+4rem)] h-[calc(100dvh-4rem)] md:h-screen flex bg-stitch-surface -mt-6 -mx-6 -mb-24 md:-m-8 border-none rounded-none overflow-hidden transition-all duration-300">
       
       {/* Sidebar View */}
       <div
@@ -68,7 +80,7 @@ export const ChatContainer: React.FC = () => {
       <div
         className={`${
           !activeBookingId ? "hidden md:flex" : "flex"
-        } flex-1 h-full`}
+        } flex-1 h-full min-w-0`}
       >
         <ChatArea
           activeConversation={activeConversation}
