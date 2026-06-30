@@ -14,17 +14,187 @@ import {
   CreditCard,
   History,
   TrendingUp,
-  Lock
+  X
 } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+
+// Initialize Stripe Publishable Key
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+    "pk_test_51Pxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+);
 
 interface Transaction {
-  id: string;
-  type: "deposit" | "payment" | "refund";
+  _id: string;
+  type: "deposit" | "payment" | "refund" | "payout";
   amount: number;
-  date: Date;
+  createdAt: string;
   descriptionAr: string;
   descriptionEn: string;
-  status: "success" | "pending" | "failed";
+  status: "pending" | "completed" | "failed";
+}
+
+function StripeChargeForm({
+  onSuccess,
+  onClose,
+  isRtl,
+  t,
+}: {
+  onSuccess: (amount: number) => void;
+  onClose: () => void;
+  isRtl: boolean;
+  t: any;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [chargeAmount, setChargeAmount] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    const amountNum = Number(chargeAmount);
+    if (!chargeAmount || amountNum <= 0) {
+      setError(isRtl ? "يرجى إدخال مبلغ صحيح لشحن الرصيد" : "Please enter a valid amount");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError(null);
+
+      // 1. Create PaymentIntent in backend
+      const res = await api.post("/family/wallet/topup", { amount: amountNum });
+      const { clientSecret } = res.data?.data || {};
+
+      if (!clientSecret) {
+        throw new Error("Failed to initialize payment gateway session");
+      }
+
+      // 2. Confirm card payment with Stripe Elements
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) return;
+
+      const stripeResult = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+        },
+      });
+
+      if (stripeResult.error) {
+        throw new Error(stripeResult.error.message || "Payment verification failed");
+      }
+
+      if (stripeResult.paymentIntent?.status === "succeeded") {
+        setSuccess(true);
+        setTimeout(() => {
+          onSuccess(amountNum);
+        }, 1500);
+      } else {
+        throw new Error("Payment was not authorized");
+      }
+    } catch (err: any) {
+      console.error("Top-up processing error:", err);
+      setError(err.response?.data?.message || err.message || "Failed to process card payment");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {success ? (
+        <div className="py-8 text-center space-y-3">
+          <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto animate-bounce" />
+          <h3 className="text-lg font-bold text-[#1b1c1c]">
+            {isRtl ? "تمت عملية الشحن بنجاح!" : "Wallet Charged Successfully!"}
+          </h3>
+          <p className="text-xs text-[#3e4949]/70">
+            {isRtl ? "سيتم تحديث رصيدك بالكامل خلال لحظات." : "Your balance is being updated."}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {error && (
+            <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Amount input */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-[#3e4949]" htmlFor="charge_amount">
+              {t("chargeAmount")} ({t("egp")}) <span className="text-rose-500">*</span>
+            </label>
+            <input
+              id="charge_amount"
+              type="number"
+              min={10}
+              value={chargeAmount}
+              onChange={(e) => setChargeAmount(e.target.value)}
+              placeholder="100.00"
+              required
+              disabled={submitting}
+              className="w-full h-12 bg-[#f6f3f2]/50 border border-[#bdc9c8] rounded-2xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all font-bold"
+            />
+          </div>
+
+          {/* Card element from Stripe */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-[#3e4949]">
+              {t("cardNumber")} & {t("expiryDate")} & {t("cvv")} <span className="text-rose-500">*</span>
+            </label>
+            <div className="w-full bg-[#f6f3f2]/50 border border-[#bdc9c8] rounded-2xl p-4 min-h-[48px] focus-within:ring-2 focus-within:ring-[#1f8a8a]/20 focus-within:border-[#1f8a8a] transition-all">
+              <CardElement
+                options={{
+                  style: {
+                    base: {
+                      fontSize: "14px",
+                      color: "#1b1c1c",
+                      "::placeholder": {
+                        color: "#3e4949a0",
+                      },
+                    },
+                  },
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-3 justify-end pt-4 border-t border-[#eae7e7]">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="px-5 py-3 bg-[#f6f3f2] hover:bg-[#bdc9c8]/25 text-[#3e4949] font-bold text-xs rounded-xl cursor-pointer disabled:opacity-50"
+            >
+              {isRtl ? "إلغاء" : "Cancel"}
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || !stripe}
+              className="px-6 py-3 bg-[#1f8a8a] hover:bg-[#0d8282] text-white font-bold text-xs rounded-xl shadow-md cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {submitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  {t("confirmPayment")}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+    </form>
+  );
 }
 
 export default function FamilyWalletDashboard() {
@@ -33,115 +203,41 @@ export default function FamilyWalletDashboard() {
   const isRtl = locale === "ar";
 
   const [balance, setBalance] = useState<number>(0);
-  const [loadingBalance, setLoadingBalance] = useState(true);
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: "TXN_001",
-      type: "refund",
-      amount: 150,
-      date: new Date(Date.now() - 3600 * 24 * 1000 * 3), // 3 days ago
-      descriptionAr: "مبلغ مسترد لإلغاء زيارة",
-      descriptionEn: "Refund for cancelled visit",
-      status: "success"
-    },
-    {
-      id: "TXN_002",
-      type: "payment",
-      amount: 440,
-      date: new Date(Date.now() - 3600 * 24 * 1000 * 5), // 5 days ago
-      descriptionAr: "دفع مقابل حجز رعاية منزلية",
-      descriptionEn: "Payment for home care booking",
-      status: "success"
-    },
-    {
-      id: "TXN_003",
-      type: "deposit",
-      amount: 1000,
-      date: new Date(Date.now() - 3600 * 24 * 1000 * 8), // 8 days ago
-      descriptionAr: "شحن رصيد المحفظة عبر بطاقة مدى",
-      descriptionEn: "Wallet recharge via Mada card",
-      status: "success"
-    }
-  ]);
-
-  // Charging Modal state
+  const [loading, setLoading] = useState(true);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showChargeModal, setShowChargeModal] = useState(false);
-  const [chargeAmount, setChargeAmount] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
-  
-  const [submittingCharge, setSubmittingCharge] = useState(false);
-  const [chargeSuccess, setChargeSuccess] = useState(false);
-  const [chargeError, setChargeError] = useState<string | null>(null);
 
-  const fetchWalletBalance = async () => {
+  const fetchWalletData = async () => {
     try {
-      setLoadingBalance(true);
-      const res = await api.get("/family/wallet");
-      if (res.data?.data) {
-        setBalance(res.data.data.walletBalance || 0);
+      setLoading(true);
+      const [walletRes, txnsRes] = await Promise.all([
+        api.get("/family/wallet"),
+        api.get("/family/wallet/transactions")
+      ]);
+
+      if (walletRes.data?.data) {
+        setBalance(walletRes.data.data.walletBalance || 0);
+      }
+      if (txnsRes.data?.data?.transactions) {
+        setTransactions(txnsRes.data.data.transactions);
       }
     } catch (err) {
-      console.error("Error fetching wallet balance:", err);
+      console.error("Error fetching wallet balance or transactions:", err);
     } finally {
-      setLoadingBalance(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchWalletBalance();
+    fetchWalletData();
   }, []);
 
-  const handleChargeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chargeAmount || Number(chargeAmount) <= 0) {
-      setChargeError(isRtl ? "يرجى إدخال مبلغ صحيح لشحن الرصيد" : "Please enter a valid amount");
-      return;
-    }
-    if (!cardNumber || cardNumber.length < 15) {
-      setChargeError(isRtl ? "يرجى إدخال رقم بطاقة صحيح" : "Please enter a valid card number");
-      return;
-    }
-
-    try {
-      setSubmittingCharge(true);
-      setChargeError(null);
-      const amountNum = Number(chargeAmount);
-
-      const res = await api.post("/family/wallet/topup", { amount: amountNum });
-      if (res.data?.data) {
-        setBalance(res.data.data.walletBalance);
-        
-        // Add to local transactions list
-        const newTxn: Transaction = {
-          id: `TXN_${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-          type: "deposit",
-          amount: amountNum,
-          date: new Date(),
-          descriptionAr: "شحن رصيد المحفظة عبر بوابة الدفع الإلكتروني",
-          descriptionEn: "Wallet recharge via secure checkout",
-          status: "success"
-        };
-        setTransactions((prev) => [newTxn, ...prev]);
-        setChargeSuccess(true);
-        setTimeout(() => {
-          setShowChargeModal(false);
-          setChargeSuccess(false);
-          setChargeAmount("");
-          setCardNumber("");
-          setCardExpiry("");
-          setCardCvv("");
-        }, 2000);
-      }
-    } catch (err: any) {
-      setChargeError(err.response?.data?.message || err.message || "Failed to process charge");
-    } finally {
-      setSubmittingCharge(false);
-    }
+  const handleChargeSuccess = async (amount: number) => {
+    setShowChargeModal(false);
+    await fetchWalletData();
   };
 
-  if (loadingBalance) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-sand flex flex-col items-center justify-center p-6">
         <Loader2 className="w-12 h-12 text-[#1f8a8a] animate-spin mb-4" />
@@ -151,13 +247,13 @@ export default function FamilyWalletDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-sand text-[#1b1c1c] pb-16">
+    <div className="min-h-screen bg-sand text-[#1b1c1c] pb-16" dir={isRtl ? "rtl" : "ltr"}>
       {/* Upper Header Banner */}
       <div className="bg-gradient-to-r from-[#006767] via-[#1f8a8a] to-[#aeedd5]/50 text-white py-12 px-6 shadow-md relative overflow-hidden">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-2">
+          <div className="space-y-2 text-right">
             <span className="bg-white/20 text-[#aeedd5] text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full backdrop-blur-md">
-              {isRtl ? "المدفوعات الآمنة" : "Secure Payments"}
+              {isRtl ? "المدفوعات الآمنة عبر Stripe" : "Secure Payments via Stripe"}
             </span>
             <h1 className="text-3xl md:text-4xl font-bold font-stitch-display">{t("title")}</h1>
             <p className="text-white/80 text-sm max-w-xl">{t("subtitle")}</p>
@@ -183,7 +279,7 @@ export default function FamilyWalletDashboard() {
 
               <div>
                 <div className="text-3xl md:text-4xl font-bold text-[#1f8a8a] tracking-tight font-stitch-display">
-                  {balance.toFixed(2)} <span className="text-sm font-semibold">{t("sar")}</span>
+                  {balance.toFixed(2)} <span className="text-sm font-semibold">{t("egp")}</span>
                 </div>
                 <p className="text-xs text-[#3e4949]/70 mt-1">
                   {isRtl ? "رصيدك جاهز للاستخدام الفوري لطلب الخدمات" : "Available balance for immediate booking escrow"}
@@ -198,214 +294,102 @@ export default function FamilyWalletDashboard() {
                 {t("addFunds")}
               </button>
             </div>
-
-            {/* Quick security notice */}
-            <div className="bg-[#f6f3f2]/60 border border-[#bdc9c8]/30 rounded-3xl p-5 flex items-start gap-3">
-              <Lock className="w-5 h-5 text-[#1f8a8a] shrink-0 mt-0.5" />
-              <div className="space-y-0.5 text-xs text-[#3e4949]">
-                <h4 className="font-bold">{isRtl ? "حماية وتشفير عالي" : "Highly encrypted escrow"}</h4>
-                <p className="leading-relaxed">
-                  {isRtl 
-                    ? "تخضع محفظتك لسياسات أمان مشددة، ويتم حجز مبالغ طلبات العمل كضمان حتى الانتهاء من رعاية ذويكم."
-                    : "Funds are securely locked in escrow and only released after companion service days are completed."}
-                </p>
-              </div>
-            </div>
           </div>
 
-          {/* Ledger History List */}
-          <div className="lg:col-span-8 bg-white border border-[#eae7e7] rounded-3xl p-6 md:p-8 shadow-soft space-y-6">
-            <div className="flex items-center gap-2 border-b border-[#bdc9c8]/20 pb-4">
+          {/* Transactions list */}
+          <div className="lg:col-span-8 bg-white border border-[#eae7e7] shadow-soft rounded-3xl p-6 md:p-8 space-y-6">
+            <div className="flex items-center gap-3 pb-2 border-b border-[#eae7e7]">
               <History className="w-5 h-5 text-[#1f8a8a]" />
-              <h2 className="text-lg font-bold text-[#1b1c1c]">{t("ledgerHistory")}</h2>
+              <h3 className="font-bold text-[#1b1c1c] text-base">{t("paymentHistory")}</h3>
             </div>
 
-            <div className="space-y-4">
-              {transactions.map((txn) => {
-                const isDeposit = txn.type === "deposit" || txn.type === "refund";
-                
-                return (
-                  <div
-                    key={txn.id}
-                    className="flex items-center justify-between p-4 bg-[#f6f3f2]/30 border border-[#bdc9c8]/20 rounded-2xl hover:bg-white hover:border-[#bdc9c8] transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        isDeposit 
-                          ? "bg-emerald-50 text-emerald-600" 
-                          : "bg-rose-50 text-rose-600"
-                      }`}>
-                        {isDeposit ? (
-                          <ArrowDownLeft className="w-5 h-5" />
-                        ) : (
-                          <ArrowUpRight className="w-5 h-5" />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-[#1b1c1c]">
-                          {isRtl ? txn.descriptionAr : txn.descriptionEn}
-                        </h4>
-                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[#3e4949]/70">
-                          <span>{txn.id}</span>
-                          <span>•</span>
-                          <span>{txn.date.toLocaleDateString(isRtl ? "ar-EG" : "en-US", { month: "short", day: "numeric" })}</span>
+            {transactions.length > 0 ? (
+              <div className="space-y-4">
+                {transactions.map((txn) => {
+                  const dateStr = new Date(txn.createdAt).toLocaleDateString(locale, {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                  const isDeposit = txn.type === "deposit" || txn.type === "refund";
+                  const statusColors = {
+                    completed: "bg-emerald-50 text-emerald-700 border-emerald-100",
+                    pending: "bg-amber-50 text-amber-700 border-amber-100",
+                    failed: "bg-rose-50 text-rose-700 border-rose-100",
+                  };
+
+                  return (
+                    <div
+                      key={txn._id}
+                      className="flex items-center justify-between p-4 bg-[#fbfaf7] border border-[#eae7e7] rounded-2xl hover:shadow-soft transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            isDeposit ? "bg-emerald-50 text-emerald-600" : "bg-[#1f8a8a]/10 text-[#1f8a8a]"
+                          }`}
+                        >
+                          {isDeposit ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                        </div>
+                        <div className="space-y-0.5 text-right">
+                          <h4 className="font-bold text-[#1b1c1c] text-sm">
+                            {isRtl ? txn.descriptionAr : txn.descriptionEn}
+                          </h4>
+                          <div className="flex items-center gap-2 text-xs text-[#3e4949]/70">
+                            <span>{dateStr}</span>
+                            <span className="text-[#eae7e7]">|</span>
+                            <span className={`px-1.5 py-0.5 rounded border text-[10px] uppercase font-bold ${statusColors[txn.status]}`}>
+                              {txn.status}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="text-start md:text-end space-y-1">
-                      <div className={`text-base font-bold font-stitch-display ${isDeposit ? "text-emerald-600" : "text-rose-600"}`}>
-                        {isDeposit ? "+" : "-"}{txn.amount.toFixed(2)} {t("sar")}
+                      <div className={`font-mono font-bold text-sm ${isDeposit ? "text-emerald-600" : "text-[#1b1c1c]"}`}>
+                        {isDeposit ? "+" : "-"} {txn.amount.toFixed(2)} {t("egp")}
                       </div>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                        {t("success")}
-                      </span>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-16 text-center text-[#3e4949]/50 text-sm bg-[#fbfaf7]/50 border border-dashed border-[#eae7e7] rounded-3xl space-y-2">
+                <Wallet className="w-12 h-12 mx-auto text-[#bdc9c8] opacity-50" />
+                <p>{isRtl ? "لا توجد أي معاملات سابقة بعد." : "No transactions recorded yet."}</p>
+              </div>
+            )}
           </div>
 
         </div>
       </div>
 
-      {/* Charge Balance Modal (mock) */}
+      {/* Charge Wallet Modal */}
       {showChargeModal && (
-        <div className="fixed inset-0 bg-[#1b1c1c]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <form
-            onSubmit={handleChargeSubmit}
-            className="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 space-y-6 shadow-soft relative animate-in fade-in zoom-in-95 duration-200"
-          >
-            <div>
-              <h3 className="text-xl font-bold text-[#1f8a8a]">{t("addFunds")}</h3>
-              <p className="text-xs text-[#3e4949] mt-1">
-                {isRtl 
-                  ? "اشحن محفظتك ببطاقة مدى أو الفيزا للتمكن من إرسال طلبات الرعاية فوراً." 
-                  : "Top-up balance via our secured payment processor to post requests immediately."}
-              </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border border-[#eae7e7] w-full max-w-md rounded-3xl p-6 md:p-8 space-y-6 shadow-premium relative">
+            <div className="flex items-center justify-between border-b border-[#eae7e7] pb-4">
+              <h3 className="text-lg font-bold text-[#1b1c1c] flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-[#1f8a8a]" />
+                {isRtl ? "شحن رصيد المحفظة عبر Stripe" : "Secure Wallet Recharge"}
+              </h3>
+              <button
+                onClick={() => setShowChargeModal(false)}
+                className="p-1 hover:bg-[#f6f3f2] rounded-lg transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5 text-[#3e4949]" />
+              </button>
             </div>
 
-            {chargeError && (
-              <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-700 text-xs flex items-start gap-2.5 shadow-soft">
-                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600" />
-                <span>{chargeError}</span>
-              </div>
-            )}
-
-            {chargeSuccess ? (
-              <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-700 text-sm font-bold text-center flex flex-col items-center justify-center gap-2">
-                <CheckCircle className="w-8 h-8 text-emerald-600 animate-bounce" />
-                {t("walletCharged")}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Charge Amount */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-[#3e4949]" htmlFor="charge_amount">
-                    {t("chargeAmount")} ({t("sar")}) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    id="charge_amount"
-                    type="number"
-                    min={10}
-                    value={chargeAmount}
-                    onChange={(e) => setChargeAmount(e.target.value)}
-                    placeholder="100.00"
-                    required
-                    className="w-full h-12 bg-[#f6f3f2]/50 border border-[#bdc9c8] rounded-2xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all font-bold"
-                  />
-                </div>
-
-                {/* Card Number */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-[#3e4949]" htmlFor="card_number">
-                    {t("cardNumber")} <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#3e4949]/70">
-                      credit_card
-                    </span>
-                    <input
-                      id="card_number"
-                      type="text"
-                      maxLength={19}
-                      value={cardNumber}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "");
-                        setCardNumber(val);
-                      }}
-                      placeholder="4000 1234 5678 9010"
-                      required
-                      className="w-full h-12 bg-[#f6f3f2]/50 border border-[#bdc9c8] rounded-2xl pl-12 pr-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Exp & CVV row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-[#3e4949]" htmlFor="card_expiry">
-                      {t("expiryDate")} <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      id="card_expiry"
-                      type="text"
-                      maxLength={5}
-                      value={cardExpiry}
-                      onChange={(e) => setCardExpiry(e.target.value)}
-                      placeholder="MM/YY"
-                      required
-                      className="w-full h-12 bg-[#f6f3f2]/50 border border-[#bdc9c8] rounded-2xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all text-center font-mono"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-[#3e4949]" htmlFor="card_cvv">
-                      {t("cvv")} <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      id="card_cvv"
-                      type="password"
-                      maxLength={3}
-                      value={cardCvv}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "");
-                        setCardCvv(val);
-                      }}
-                      placeholder="***"
-                      required
-                      className="w-full h-12 bg-[#f6f3f2]/50 border border-[#bdc9c8] rounded-2xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all text-center font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Footer buttons */}
-                <div className="flex gap-3 justify-end pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowChargeModal(false)}
-                    className="px-5 py-3 bg-[#f6f3f2] hover:bg-[#bdc9c8]/25 text-[#3e4949] font-bold text-xs rounded-xl cursor-pointer"
-                  >
-                    {isRtl ? "إلغاء" : "Cancel"}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submittingCharge}
-                    className="px-6 py-3 bg-[#1f8a8a] hover:bg-[#0d8282] text-white font-bold text-xs rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
-                  >
-                    {submittingCharge ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4" />
-                        {t("confirmPayment")}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-          </form>
+            <Elements stripe={stripePromise}>
+              <StripeChargeForm
+                onSuccess={handleChargeSuccess}
+                onClose={() => setShowChargeModal(false)}
+                isRtl={isRtl}
+                t={t}
+              />
+            </Elements>
+          </div>
         </div>
       )}
     </div>
