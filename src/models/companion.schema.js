@@ -97,6 +97,14 @@ const companionSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    walletBalance: {
+      type: Number,
+      default: 0,
+    },
+    stripeConnectId: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true },
 );
