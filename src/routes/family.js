@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { updateFamilyProfile, getFamilyDashboardStats, getFamilyProfile, getFamilyJobPosts, getFamilyWallet, topupFamilyWallet } = require('../controllers/familyController');
+const { updateFamilyProfile, getFamilyDashboardStats, getFamilyProfile, getFamilyJobPosts, getFamilyWallet, topupFamilyWallet, getFamilyTransactions } = require('../controllers/familyController');
 const { authenticate } = require('../middleware/authMiddleware');
 const { isFamily } = require('../middleware/RoleMiddleware');
 const {getFamilyBookings} = require("../controllers/bookingDashboradController.js");
@@ -13,6 +13,7 @@ router.get('/bookings', getFamilyBookings);
 router.get('/me/dashboard-stats', getFamilyDashboardStats);
 router.get('/my-job-posts', getFamilyJobPosts);
 router.get('/wallet', getFamilyWallet);
+router.get('/wallet/transactions', getFamilyTransactions);
 router.post('/wallet/topup', topupFamilyWallet);
 
 module.exports = router;

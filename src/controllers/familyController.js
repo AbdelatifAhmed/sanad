@@ -2,6 +2,8 @@ const Family = require('../models/family.schema');
 const mongoose = require('mongoose');
 const messages = require("../utils/messages");
 const Booking = require('../models/booking.schema');
+const stripeService = require('../services/stripeService');
+const WalletTransaction = require('../models/walletTransaction.schema');
 
 exports.updateFamilyProfile = async (req, res) => {
   try {
@@ -443,18 +445,49 @@ exports.topupFamilyWallet = async (req, res) => {
       return res.status(404).json({ status: 'fail', message: 'Profile not found.' });
     }
 
-    familyProfile.walletBalance = (familyProfile.walletBalance || 0) + amount;
-    await familyProfile.save();
+    // Call Stripe to initiate payment intent
+    const paymentIntent = await stripeService.createPaymentIntent(amount, "egp", {
+      userId: req.user._id.toString(),
+      type: "topup",
+    });
+
+    // Save pending transaction to database
+    await WalletTransaction.create({
+      userId: req.user._id,
+      amount,
+      type: "deposit",
+      status: "pending",
+      transactionId: paymentIntent.id,
+      descriptionAr: "شحن رصيد المحفظة عبر Stripe",
+      descriptionEn: "Wallet top-up via Stripe",
+    });
 
     return res.status(200).json({
       status: 'success',
-      message: 'Wallet topped up successfully.',
+      message: 'Payment intent created successfully.',
       data: {
-        walletBalance: familyProfile.walletBalance
+        clientSecret: paymentIntent.client_secret,
+        transactionId: paymentIntent.id,
       }
     });
   } catch (error) {
     console.error('Error topping up family wallet:', error);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+exports.getFamilyTransactions = async (req, res) => {
+  try {
+    const transactions = await WalletTransaction.find({ userId: req.user._id })
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      status: 'success',
+      results: transactions.length,
+      data: { transactions }
+    });
+  } catch (error) {
+    console.error('Error fetching family transactions:', error);
     return res.status(500).json({ status: 'error', message: error.message });
   }
 };
