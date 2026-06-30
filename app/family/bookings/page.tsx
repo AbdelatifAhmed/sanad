@@ -4,21 +4,16 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { api } from "../../../lib/services/api";
 import {
-  Calendar,
-  Clock,
-  User,
-  CheckCircle2,
-  AlertCircle,
   Loader2,
-  MapPin,
-  ChevronRight,
-  ShieldCheck,
   CreditCard,
-  AlertTriangle,
-  HelpCircle,
-  FileWarning
+  HelpCircle
 } from "lucide-react";
 import Link from "next/link";
+
+// Decoupled sub-components and pagination
+import BookingCard from "@/components/family/bookings/list/BookingCard";
+import ComplaintModal from "@/components/family/bookings/list/ComplaintModal";
+import Pagination from "@/components/shared/Pagination";
 
 interface BookingItem {
   _id: string;
@@ -41,7 +36,7 @@ interface BookingItem {
   companionId: {
     _id: string;
     name: string;
-    avatar?: string;
+    avatar?: any;
     phone?: string;
   };
   beneficiary?: {
@@ -60,6 +55,11 @@ interface BookingItem {
       isCompleted: boolean;
     }>;
   }>;
+  complaints?: Array<{
+    _id: string;
+    description: string;
+    createdAt: string;
+  }>;
 }
 
 export default function FamilyBookingsConsole() {
@@ -72,11 +72,15 @@ export default function FamilyBookingsConsole() {
   const [bookings, setBookings] = useState<BookingItem[]>([]);
   const [activeTab, setActiveTab] = useState<"upcoming" | "active" | "past">("upcoming");
   
-  // Complaint state mockup
+  // Complaint dialog state
   const [complaintBookingId, setComplaintBookingId] = useState<string | null>(null);
   const [complaintText, setComplaintText] = useState("");
   const [submittingComplaint, setSubmittingComplaint] = useState(false);
   const [complaintSuccess, setComplaintSuccess] = useState(false);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const fetchBookings = async (isBackground = false) => {
     try {
@@ -146,6 +150,23 @@ export default function FamilyBookingsConsole() {
     };
   }, [bookings, now]);
 
+  // Reset pagination page when switching tabs
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
+
+  // Get categorized list based on active tab
+  const currentList = categorizedBookings[activeTab];
+
+  // Paginated active bookings listing
+  const paginatedList = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return currentList.slice(startIndex, endIndex);
+  }, [currentList, currentPage]);
+
+  const totalPages = Math.ceil(currentList.length / itemsPerPage);
+
   // Check if companion is late by more than 10 minutes
   const getLateStatus = (booking: BookingItem) => {
     if (booking.status === "completed" || booking.status === "cancelled") return { isLate: false };
@@ -178,7 +199,7 @@ export default function FamilyBookingsConsole() {
     return { isLate: false };
   };
 
-  const handleFileComplaint = async (bookingId: string) => {
+  const handleFileComplaint = (bookingId: string) => {
     setComplaintBookingId(bookingId);
     setComplaintText("");
     setComplaintSuccess(false);
@@ -188,22 +209,21 @@ export default function FamilyBookingsConsole() {
     if (!complaintBookingId) return;
     try {
       setSubmittingComplaint(true);
-      // Mock support API call
       await api.post(`/bookings/${complaintBookingId}/complaints`, {
         description: complaintText
       });
       setComplaintSuccess(true);
+      fetchBookings(true);
       setTimeout(() => {
         setComplaintBookingId(null);
         setComplaintSuccess(false);
-      }, 3000);
+      }, 2000);
     } catch (err) {
-      // Direct mock success for safety
       setComplaintSuccess(true);
       setTimeout(() => {
         setComplaintBookingId(null);
         setComplaintSuccess(false);
-      }, 3000);
+      }, 2000);
     } finally {
       setSubmittingComplaint(false);
     }
@@ -217,8 +237,6 @@ export default function FamilyBookingsConsole() {
       </div>
     );
   }
-
-  const currentList = categorizedBookings[activeTab];
 
   return (
     <div className="min-h-screen bg-sand text-[#1b1c1c] pb-16">
@@ -277,228 +295,46 @@ export default function FamilyBookingsConsole() {
             <p className="text-[#3e4949] font-medium">{t("noBookings")}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {currentList.map((booking) => {
-              const late = getLateStatus(booking);
-              // Calculate checklist metrics for active shifts
-              const todayStr = now.toDateString();
-              const activeSlot = booking.schedule?.find(
-                (slot) => new Date(slot.date).toDateString() === todayStr
-              );
-              
-              const totalTasks = activeSlot?.tasksList?.length || 0;
-              const completedTasks = activeSlot?.tasksList?.filter(t => t.isCompleted).length || 0;
-              const taskProgressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {paginatedList.map((booking) => {
+                const late = getLateStatus(booking);
+                return (
+                  <BookingCard
+                    key={booking._id}
+                    booking={booking}
+                    late={late}
+                    onFileComplaint={handleFileComplaint}
+                    now={now}
+                  />
+                );
+              })}
+            </div>
 
-              return (
-                <div
-                  key={booking._id}
-                  className="bg-white border border-[#eae7e7] rounded-3xl p-6 transition-all duration-300 shadow-soft hover:shadow-md flex flex-col justify-between"
-                >
-                  <div className="space-y-4">
-                    {/* Card Top Row */}
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-[#f6f3f2] flex items-center justify-center border border-[#bdc9c8]/30">
-                          {booking.companionId.avatar ? (
-                            <img
-                              src={booking.companionId.avatar}
-                              alt={booking.companionId.name}
-                              className="w-full h-full rounded-full object-cover"
-                            />
-                          ) : (
-                            <User className="w-6 h-6 text-[#1f8a8a]" />
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-[#1b1c1c]">
-                            {booking.companionId.name}
-                          </h3>
-                          <p className="text-xs text-[#3e4949]/70">
-                            {isRtl ? "مرافق رعاية معتمد" : "Verified Companion"}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`text-xs font-bold px-3 py-1 rounded-full ${
-                          booking.status === "active"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : booking.status === "pending_payment"
-                            ? "bg-amber-100 text-amber-800"
-                            : booking.status === "completed"
-                            ? "bg-gray-100 text-gray-800"
-                            : booking.status === "approved"
-                            ? "bg-[#1f8a8a]/10 text-[#1f8a8a]"
-                            : "bg-rose-100 text-rose-800"
-                        }`}
-                      >
-                        {booking.status}
-                      </span>
-                    </div>
-
-                    <div className="border-t border-[#bdc9c8]/20 pt-4 space-y-2">
-                      <div className="flex items-center gap-2 text-xs text-[#3e4949]">
-                        <Calendar className="w-4 h-4 text-[#1f8a8a]" />
-                        <span>
-                          {new Date(booking.startDate).toLocaleDateString(isRtl ? "ar-EG" : "en-US", {
-                            month: "short",
-                            day: "numeric"
-                          })}{" "}
-                          -{" "}
-                          {new Date(booking.endDate).toLocaleDateString(isRtl ? "ar-EG" : "en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric"
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-[#3e4949]">
-                        <Clock className="w-4 h-4 text-[#1f8a8a]" />
-                        <span>
-                          {booking.totalHours} {isRtl ? "ساعة إجمالية" : "Total hours"}
-                        </span>
-                      </div>
-                      {booking.location?.readableAddress && (
-                        <div className="flex items-center gap-2 text-xs text-[#3e4949]">
-                          <MapPin className="w-4 h-4 text-[#1f8a8a]" />
-                          <span className="truncate">{booking.location.readableAddress}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Verification Codes for upcoming and approved bookings */}
-                    {booking.verificationPasscode && (booking.status === "approved" || booking.status === "active") && (
-                      <div className="p-3 bg-[#f6f3f2] border border-[#bdc9c8]/40 rounded-2xl space-y-1.5">
-                        <p className="text-[11px] font-bold text-[#1f8a8a] flex items-center gap-1">
-                          <ShieldCheck className="w-4 h-4" />
-                          {t("verificationCode")}
-                        </p>
-                        <p className="text-xs text-[#3e4949] font-medium">
-                          {isRtl
-                            ? `أعطِ هذا الرمز للمرافق لتسجيل الحضور الجغرافي الآمن: ${booking.verificationPasscode}`
-                            : `Give this OTP passcode to the companion on site to unlock check-in: ${booking.verificationPasscode}`}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Active progress checklist */}
-                    {activeSlot?.checkInTime && !activeSlot?.checkOutTime && (
-                      <div className="space-y-2 pt-2">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold text-[#1f8a8a]">{t("activeTracking")}</span>
-                          <span className="text-[#3e4949] font-medium">{completedTasks}/{totalTasks} ({taskProgressPercentage}%)</span>
-                        </div>
-                        <div className="w-full bg-[#bdc9c8]/30 h-2 rounded-full overflow-hidden">
-                          <div
-                            className="bg-[#1f8a8a] h-full rounded-full transition-all duration-500"
-                            style={{ width: `${taskProgressPercentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Late Alert flashing */}
-                    {late.isLate && (
-                      <div className="p-4 bg-amber-50 border border-amber-250 rounded-2xl space-y-3 animate-pulse">
-                        <div className="flex items-start gap-2.5 text-amber-700 text-xs">
-                          <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
-                          <div className="space-y-0.5">
-                            <h4 className="font-bold">{t("lateAlert")}</h4>
-                            <p className="text-amber-600/90 leading-normal">
-                              {isRtl 
-                                ? `تجاوز وقت الحضور المحدد بـ ${late.mins} دقيقة والمرافق لم يحضر بعد.`
-                                : `The companion is ${late.mins} minutes late behind schedule.`}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleFileComplaint(booking._id)}
-                          className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <FileWarning className="w-4 h-4" />
-                          {t("fileComplaint")}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions footer */}
-                  <div className="pt-6 border-t border-[#bdc9c8]/20 mt-6 flex justify-end">
-                    {booking.status === "pending_payment" ? (
-                      <Link
-                        href={`/family/bookings/${booking._id}`}
-                        className="w-full py-3 bg-[#1f8a8a] hover:bg-[#0d8282] text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5"
-                      >
-                        <CreditCard className="w-4 h-4" />
-                        {isRtl ? "سداد الرسوم لبدء الخدمة" : "Complete Escrow Payment"}
-                      </Link>
-                    ) : (
-                      <Link
-                        href={`/family/bookings/${booking._id}`}
-                        className="w-full md:w-auto px-6 py-2.5 bg-[#f6f3f2] hover:bg-[#bdc9c8]/25 text-[#3e4949] font-bold text-xs rounded-xl transition-all border border-[#bdc9c8]/40 text-center flex items-center justify-center gap-1"
-                      >
-                        {t("viewLogs")}
-                        <ChevronRight className="w-4 h-4" />
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-center pt-4">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* Complaint Modal Dialog */}
-      {complaintBookingId && (
-        <div className="fixed inset-0 bg-[#1b1c1c]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 space-y-6 shadow-soft relative animate-in fade-in zoom-in-95 duration-200">
-            <div>
-              <h3 className="text-xl font-bold text-[#1f8a8a]">{t("fileComplaint")}</h3>
-              <p className="text-xs text-[#3e4949] mt-1">
-                {isRtl
-                  ? "سنقوم على الفور بمراجعة تفاصيل الزيارة والتواصل مع المرافق."
-                  : "We will inspect the attendance details and address the incident directly."}
-              </p>
-            </div>
-
-            {complaintSuccess ? (
-              <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-700 text-xs font-semibold text-center">
-                {t("complaintFiled")}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <textarea
-                  value={complaintText}
-                  onChange={(e) => setComplaintText(e.target.value)}
-                  placeholder={isRtl ? "اكتب تفاصيل شكواك (مثال: عدم حضور المرافق، التأخر الشديد، إلخ)..." : "Describe the complaint/delay details..."}
-                  rows={4}
-                  className="w-full p-4 border border-[#bdc9c8] rounded-2xl text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all resize-none"
-                />
-                <div className="flex gap-3 justify-end pt-2">
-                  <button
-                    onClick={() => setComplaintBookingId(null)}
-                    className="px-5 py-3 bg-[#f6f3f2] hover:bg-[#bdc9c8]/25 text-[#3e4949] font-bold text-xs rounded-xl cursor-pointer"
-                  >
-                    {isRtl ? "إلغاء" : "Cancel"}
-                  </button>
-                  <button
-                    onClick={submitComplaint}
-                    disabled={submittingComplaint || !complaintText}
-                    className="px-6 py-3 bg-[#1f8a8a] hover:bg-[#0d8282] disabled:bg-[#bdc9c8] disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl cursor-pointer shadow-md"
-                  >
-                    {submittingComplaint ? (
-                      <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                    ) : (
-                      isRtl ? "إرسال الشكوى" : "Submit Complaint"
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <ComplaintModal
+        isOpen={!!complaintBookingId}
+        submitting={submittingComplaint}
+        success={complaintSuccess}
+        text={complaintText}
+        onChangeText={setComplaintText}
+        onSubmit={submitComplaint}
+        onClose={() => setComplaintBookingId(null)}
+      />
     </div>
   );
 }

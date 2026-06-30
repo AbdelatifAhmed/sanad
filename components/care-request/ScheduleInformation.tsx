@@ -163,13 +163,14 @@ export default function ScheduleInformation({
         <button
           type="button"
           onClick={onToggleRecurring}
+          dir="ltr"
           className={`w-12 h-6 flex items-center rounded-full p-1 transition-all duration-300 cursor-pointer shrink-0 ${
             isRecurring ? "bg-[#1f8a8a]" : "bg-[#bdc9c8]"
           }`}
         >
           <div 
             className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-all duration-300 ${
-              isRecurring ? (isAr ? "translate-x-0" : "translate-x-6") : (isAr ? "translate-x-6" : "translate-x-0")
+              isRecurring ? "translate-x-[22px]" : "translate-x-0"
             }`} 
           />
         </button>

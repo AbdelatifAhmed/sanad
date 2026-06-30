@@ -378,22 +378,32 @@ export default function FamilyTrackingPage() {
                                     <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                                     المرافق متأخر عن الموعد ({Math.floor(diffMins)} دقيقة)
                                   </p>
-                                  <button
-                                    onClick={async () => {
-                                      const desc = window.prompt("تفاصيل الشكوى / Complaint Details:");
-                                      if (desc) {
-                                        try {
-                                          await api.post(`/bookings/${booking._id}/complaints`, { description: desc });
-                                          alert("تم تقديم شكوى للمنصة بنجاح. سيتم التواصل معك قريباً.");
-                                        } catch (e) {
-                                          alert("تم تقديم شكوى للمنصة بنجاح. سيتم التواصل معك قريباً.");
-                                        }
-                                      }
-                                    }}
-                                    className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
-                                  >
-                                    تقديم شكوى للمنصة (File Complaint)
-                                  </button>
+                                  {booking.complaints && booking.complaints.length > 0 ? (
+                                     <button
+                                       disabled
+                                       className="w-full py-2 bg-gray-300 text-gray-500 font-bold text-xs rounded-xl border border-gray-400/20 cursor-not-allowed opacity-75"
+                                     >
+                                       {isRtl ? "تم تقديم شكوى بالفعل وهي قيد المراجعة" : "Complaint already filed and under review"}
+                                     </button>
+                                   ) : (
+                                     <button
+                                       onClick={async () => {
+                                         const desc = window.prompt(isRtl ? "تفاصيل الشكوى / تفاصيل التأخير:" : "Complaint Details / Delay details:");
+                                         if (desc) {
+                                           try {
+                                             await api.post(`/bookings/${booking._id}/complaints`, { description: desc });
+                                             alert(isRtl ? "تم تقديم شكوى للمنصة بنجاح. سيتم التواصل معك قريباً." : "Complaint submitted successfully. Our support team will follow up with you.");
+                                             refresh();
+                                           } catch (e) {
+                                             alert(isRtl ? "فشل تقديم الشكوى، يرجى المحاولة لاحقاً." : "Failed to submit complaint, please try again.");
+                                           }
+                                         }
+                                       }}
+                                       className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+                                     >
+                                       {isRtl ? "تقديم شكوى للمنصة" : "File Platform Complaint"}
+                                     </button>
+                                   )}
                                 </div>
                               );
                             }
