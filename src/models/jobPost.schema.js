@@ -117,6 +117,10 @@ const jobPostSchema = new mongoose.Schema(
       enum: ["open", "assigned", "canceled", "completed"],
       default: "open",
     },
+    requirement_embedding: {
+      type: [Number], 
+      required: false
+    }
   },
   { timestamps: true },
 );

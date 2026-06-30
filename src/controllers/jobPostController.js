@@ -4,6 +4,7 @@ const messages = require("../utils/messages");
 const { sendNotification } = require('../services/notificationService');
 const Proposal = require("../models/proposal.schema");
 const { checkJobPostsExpiry } = require("../utils/jobExpiryTask");
+const { generateEmbedding } = require("../services/ai/ragService");
 
 // شكل الداتا المرسلة من الفرونت اند
 // {
@@ -110,6 +111,13 @@ const createJobPost = async (req, res) => {
       }
     }
 
+    let requirementEmbedding = null;
+    try {
+      requirementEmbedding = await generateEmbedding(`${title} ${description}`);
+    } catch (err) {
+      console.error("Error generating job post requirement embedding:", err.message);
+    }
+
     const newJob = await JobPost.create({
       familyId: req.user._id, 
       beneficiaryId,
@@ -133,7 +141,8 @@ const createJobPost = async (req, res) => {
         readableAddress: location.readableAddress,
         city: location.city,
         governorate: location.governorate
-      }
+      },
+      ...(requirementEmbedding && { requirement_embedding: requirementEmbedding })
     });
 
     // Notify family (creator) that job post was created

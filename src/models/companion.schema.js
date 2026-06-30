@@ -58,8 +58,16 @@ const companionSchema = new mongoose.Schema(
     ],
     verificationStatus: {
       type: String,
-      enum: ["pending", "verified", "rejected"],
+      enum: ["pending", "verified", "rejected", "under_review"],
       default: "pending",
+    },
+    rejectionReason: {
+      type: String,
+      default: "",
+    },
+    requestMoreInfoMessage: {
+      type: String,
+      default: "",
     },
     documents: {
       nationalIdCard: {

@@ -35,6 +35,10 @@ const reviewSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    sentiment_embedding: {
+      type: [Number],
+      required: false,
+    }
   },
   { timestamps: true }
 );

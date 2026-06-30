@@ -14,6 +14,7 @@ const app = express();
 const cookieParser = require("cookie-parser");
 
 app.use(helmet());
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 // Custom recursive NoSQL query injection sanitizer (Express 5 compatible)
 const sanitizeObject = (obj) => {
