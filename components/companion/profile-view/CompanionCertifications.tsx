@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import { ShieldCheck, CheckCircle, Circle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface CompanionDocuments {
   nationalIdUrl?: string;
@@ -12,25 +15,26 @@ interface CompanionCertificationsProps {
 }
 
 export default function CompanionCertifications({ documents }: CompanionCertificationsProps) {
+  const t = useTranslations("companionProfile");
   const verifiedId = !!documents?.nationalIdUrl;
   const verifiedCriminal = !!documents?.criminalRecordUrl;
   const verifiedSyndicate = !!documents?.syndicateCardUrl;
 
   const documentItems = [
     {
-      title: "National Identity Card",
+      title: t("nationalId"),
       verified: verifiedId,
-      desc: verifiedId ? "Identity verified securely" : "Pending verification",
+      desc: verifiedId ? t("idVerified") : t("idPending"),
     },
     {
-      title: "Criminal Record Check",
+      title: t("criminalRecord"),
       verified: verifiedCriminal,
-      desc: verifiedCriminal ? "Passed background check" : "Pending record review",
+      desc: verifiedCriminal ? t("recordVerified") : t("recordPending"),
     },
     {
-      title: "Professional Syndicate License",
+      title: t("syndicateLicense"),
       verified: verifiedSyndicate,
-      desc: verifiedSyndicate ? "Verified healthcare license" : "Optional / Not provided",
+      desc: verifiedSyndicate ? t("syndicateVerified") : t("syndicateOptional"),
     },
   ];
 
@@ -38,7 +42,7 @@ export default function CompanionCertifications({ documents }: CompanionCertific
     <div className="bg-white p-6 rounded-3xl border border-sand-high/60 shadow-soft space-y-4">
       <h3 className="font-display text-base font-bold text-[#012d1d] flex items-center gap-2 border-b border-sand-high/40 pb-3">
         <ShieldCheck className="w-5 h-5 text-[#005c53]" />
-        Verified Credentials
+        {t("verifiedCredentials")}
       </h3>
       <div className="space-y-4 pt-1">
         {documentItems.map((item, index) => (

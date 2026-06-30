@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import { Calendar, Clock } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface AvailabilitySlot {
   day: string;
@@ -11,15 +14,17 @@ interface CompanionAvailabilityProps {
 }
 
 export default function CompanionAvailability({ availability }: CompanionAvailabilityProps) {
+  const t = useTranslations("companionProfile");
+
   if (!availability || availability.length === 0) {
     return (
       <div className="bg-white p-6 md:p-8 rounded-3xl border border-sand-high/60 shadow-soft space-y-4">
         <h3 className="font-display text-lg font-bold text-[#012d1d] flex items-center gap-2 border-b border-sand-high/40 pb-3">
           <Calendar className="w-5 h-5 text-[#005c53]" />
-          Availability Schedule
+          {t("availability")}
         </h3>
         <p className="text-xs font-semibold text-gray-400">
-          No availability schedule specified yet.
+          {t("noAvailability")}
         </p>
       </div>
     );
@@ -37,7 +42,7 @@ export default function CompanionAvailability({ availability }: CompanionAvailab
     <div className="bg-white p-6 md:p-8 rounded-3xl border border-sand-high/60 shadow-soft space-y-6">
       <h3 className="font-display text-lg font-bold text-[#012d1d] flex items-center gap-2 border-b border-sand-high/40 pb-3">
         <Calendar className="w-5 h-5 text-[#005c53]" />
-        Availability Schedule
+        {t("availability")}
       </h3>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -48,7 +53,7 @@ export default function CompanionAvailability({ availability }: CompanionAvailab
           >
             <div className="flex items-center gap-2 text-[#012d1d] font-bold text-xs uppercase tracking-wider border-b border-sand-high/40 pb-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#005c53]" />
-              {item.day}
+              {t(item.day as any)}
             </div>
             <div className="flex flex-col gap-1.5">
               {item.slots && item.slots.length > 0 ? (
@@ -63,7 +68,7 @@ export default function CompanionAvailability({ availability }: CompanionAvailab
                 ))
               ) : (
                 <span className="text-[10px] font-semibold text-gray-400 italic text-center py-1">
-                  No slots
+                  {t("noSlots")}
                 </span>
               )}
             </div>

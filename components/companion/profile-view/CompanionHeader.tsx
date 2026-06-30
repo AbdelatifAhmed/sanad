@@ -1,6 +1,9 @@
+"use client";
+
 import React from "react";
 import { Star, MapPin, Briefcase, CheckCircle } from "lucide-react";
 import { getAvatarUrl } from "@/lib/avatar";
+import { useTranslations } from "next-intl";
 
 interface CompanionHeaderProps {
   name: string;
@@ -23,6 +26,8 @@ export default function CompanionHeader({
   location,
   experience,
 }: CompanionHeaderProps) {
+  const t = useTranslations("companionProfile");
+
   return (
     <div className="bg-white p-6 md:p-8 rounded-3xl border border-sand-high/60 shadow-soft flex flex-col md:flex-row items-center md:items-start gap-6 h-full w-full">
       {/* Round Avatar with online indicator */}
@@ -46,7 +51,7 @@ export default function CompanionHeader({
           {verified && (
             <span className="w-fit mx-auto md:mx-0 flex items-center gap-1.5 bg-[#e6f4f2] text-[#005c53] font-bold text-[10px] uppercase tracking-wider px-3 py-1 rounded-full border border-[#c8e6c9]/20">
               <CheckCircle className="w-3.5 h-3.5 fill-[#005c53] text-white" />
-              Verified Professional
+              {t("verifiedProfessional")}
             </span>
           )}
         </div>
@@ -62,7 +67,7 @@ export default function CompanionHeader({
               <Star className="w-4 h-4 fill-current text-amber-500" />
               <span className="text-gray-800">{rating}</span>
             </div>
-            <span className="text-gray-400 font-medium">({reviewsCount} Reviews)</span>
+            <span className="text-gray-400 font-medium">{t("reviewsCount", { count: reviewsCount })}</span>
             <span className="text-gray-300 font-light px-1">•</span>
             <div className="flex items-center gap-1 text-gray-400">
               <MapPin className="w-4 h-4" />
