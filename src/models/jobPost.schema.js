@@ -35,10 +35,19 @@ const jobPostSchema = new mongoose.Schema(
     },
     requiredSkills: [
       {
-        type: ObjectId,
-        ref: "Skill",
+        type: String,
       },
     ],
+    taskList: [
+      {
+        type: String,
+      },
+    ],
+    preferredGender: {
+      type: String,
+      enum: ["any gender", "male", "female"],
+      default: "any gender",
+    },
     budgetPerHour: {
       type: Number,
       required: [true, "سعر الساعة المقترح مطلوب"],
@@ -94,9 +103,18 @@ const jobPostSchema = new mongoose.Schema(
       type: String,
       enum: ["male", "female"],
     },
+    startDate: {
+      type: Date,
+      required: [true, "تاريخ بدء العمل مطلوب"],
+      default: Date.now,
+    },
+    warningSent: {
+      type: Boolean,
+      default: false,
+    },
     status: {
       type: String,
-      enum: ["open", "filled", "closed"],
+      enum: ["open", "assigned", "canceled", "completed"],
       default: "open",
     },
     requirement_embedding: {

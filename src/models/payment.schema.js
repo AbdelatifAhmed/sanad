@@ -46,7 +46,9 @@ const paymentSchema = new mongoose.Schema(
     webhookId: {
       type: String,
     },
-    // payout fields
+    stripePaymentIntentId: {
+      type: String,
+    },
     payoutReleased: {
       type: Boolean,
       default: false,
@@ -57,7 +59,6 @@ const paymentSchema = new mongoose.Schema(
     payoutDate: {
       type: Date,
     },
-    // refund fields
     refundStatus: {
       type: String,
       enum: ["none", "pending", "completed", "failed"],
@@ -72,7 +73,6 @@ const paymentSchema = new mongoose.Schema(
     refundReason: {
       type: String,
     },
-    // cash payment debt tracking
     debtRecorded: {
       type: Boolean,
       default: false,

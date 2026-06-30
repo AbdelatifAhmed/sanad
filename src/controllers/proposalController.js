@@ -2,9 +2,11 @@ const Proposal = require("../models/proposal.schema");
 const JobPost = require("../models/jobPost.schema");
 const Booking = require("../models/booking.schema"); 
 const Companion = require("../models/companion.schema");
+const mongoose = require("mongoose");
 const { hasBookingConflict } = require("../utils/checkConflict"); 
 const messages = require("../utils/messages"); 
 const { sendNotification } = require('../services/notificationService');
+const { getFirstShiftStartDateTime } = require("../utils/jobExpiryTask");
 const sendProposal = async (req, res) => {
  try {
     const lang = req.lang || "en";
@@ -49,6 +51,7 @@ const sendProposal = async (req, res) => {
       companionId: req.user._id,
       proposedRate,
       coverLetter,
+      taskList: jobPost.taskList || []
     });
 
     // Notify job owner (family) about new proposal
@@ -165,9 +168,9 @@ const getProposalsForJob = async (req, res) => {
 
 
 
-const generateScheduleDates = (workingDays, startTime, endTime, durationInWeeks, tasksFromJob) => {
+const generateScheduleDates = (workingDays, startTime, endTime, durationInWeeks, tasksFromJob, baseStartDate) => {
   const schedule = [];
-  const start = new Date(); 
+  const start = new Date(baseStartDate || new Date()); 
   
   const daysMap = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
   const targetDayNumbers = workingDays.map(day => daysMap[day]);
@@ -175,8 +178,8 @@ const generateScheduleDates = (workingDays, startTime, endTime, durationInWeeks,
   const totalDaysToScan = durationInWeeks * 7;
   
   const formattedTasks = tasksFromJob && tasksFromJob.length > 0 
-    ? tasksFromJob.map(task => ({ taskDescription: task, isCompleted: false }))
-    : [{ taskDescription: "رعاية الحالة العامة ومتابعة المواعيد", isCompleted: false }];
+    ? tasksFromJob.map(task => ({ title: task, taskDescription: task, isCompleted: false }))
+    : [{ title: "رعاية الحالة العامة ومتابعة المواعيد", taskDescription: "رعاية الحالة العامة ومتابعة المواعيد", isCompleted: false }];
 
   for (let i = 0; i < totalDaysToScan; i++) {
     const currentCheckDate = new Date(start);
@@ -195,36 +198,51 @@ const generateScheduleDates = (workingDays, startTime, endTime, durationInWeeks,
 };
 
 const updateProposalStatus = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
     const lang = req.lang || "en";
     const { proposalId } = req.params;
     const { status } = req.body; 
 
     if (!["accepted", "rejected"].includes(status)) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ status: "fail", message: messages.proposal.invalidAction[lang] });
     }
 
-    const proposal = await Proposal.findById(proposalId);
+    const proposal = await Proposal.findById(proposalId).session(session);
     if (!proposal) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ status: "fail", message: messages.common.notFound[lang] });
     }
 
-    const jobPost = await JobPost.findById(proposal.jobPostId);
+    const jobPost = await JobPost.findById(proposal.jobPostId).session(session);
     if (!jobPost) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ status: "fail", message: messages.proposal.jobNotFound[lang] });
     }
 
     if (jobPost.familyId.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(403).json({ status: "fail", message: messages.proposal.unauthorizedProposalView[lang] });
     }
 
     if (proposal.status !== "pending") {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ status: "fail", message: messages.proposal.proposalProcessed[lang] });
     }
 
     if (status === "rejected") {
       proposal.status = "rejected";
-      await proposal.save();
+      await proposal.save({ session });
+      await session.commitTransaction();
+      session.endSession();
+
       // Notify companion about rejection
       try {
         await sendNotification(
@@ -245,25 +263,47 @@ const updateProposalStatus = async (req, res) => {
 
     if (status === "accepted") {
       if (jobPost.status !== "open") {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(400).json({ status: "fail", message: messages.proposal.jobNotOpen[lang] });
+      }
+
+      // Enforce 15-Minute Safety Margin Rule
+      const firstShiftStart = getFirstShiftStartDateTime(
+        jobPost.startDate || jobPost.createdAt,
+        jobPost.schedule.workingDays,
+        jobPost.schedule.startTime
+      );
+      const now = new Date();
+      const diffMins = (firstShiftStart.getTime() - now.getTime()) / (1000 * 60);
+      if (diffMins < 15) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({
+          status: "fail",
+          message: lang === "en"
+            ? "Safety rule check failed: The shift starts in less than 15 minutes."
+            : "فشل التحقق من قاعدة السلامة: تبدأ المناوبة خلال أقل من 15 دقيقة."
+        });
       }
 
       const { workingDays, startTime, endTime, durationInWeeks } = jobPost.schedule;
       
-      const tasksFromJob = jobPost.tasksList || req.body.tasksList; 
+      const tasksFromJob = jobPost.taskList || proposal.taskList || []; 
 
-      const generatedSchedule = generateScheduleDates(workingDays, startTime, endTime, durationInWeeks, tasksFromJob);
+      // Use jobPost.startDate for generatedSchedule
+      const generatedSchedule = generateScheduleDates(workingDays, startTime, endTime, durationInWeeks, tasksFromJob, jobPost.startDate);
 
       const [startHour, startMin] = startTime.split(':').map(Number);
       const [endHour, endMin] = endTime.split(':').map(Number);
       const hoursPerDay = (endHour + endMin/60) - (startHour + startMin/60);
       const totalHours = hoursPerDay * generatedSchedule.length;
 
-      const startDate = new Date();
-      const endDate = new Date();
+      const startDate = new Date(jobPost.startDate);
+      const endDate = new Date(startDate);
       endDate.setDate(startDate.getDate() + (durationInWeeks * 7));
 
-      const newBooking = await Booking.create({
+      const [newBooking] = await Booking.create([{
         familyId: jobPost.familyId,
         companionId: proposal.companionId,
         jobPostId: jobPost._id,
@@ -278,19 +318,23 @@ const updateProposalStatus = async (req, res) => {
         schedule: generatedSchedule,
         notes: jobPost.description,
         paymentStatus: "unpaid",
-      });
+      }]);
 
       proposal.status = "accepted";
-      await proposal.save();
+      await proposal.save({ session });
 
-      jobPost.status = "filled";
-      await jobPost.save();
+      jobPost.status = "assigned";
+      await jobPost.save({ session });
 
       // Reject all other pending proposals and notify those companions
       await Proposal.updateMany(
         { jobPostId: jobPost._id, _id: { $ne: proposal._id }, status: "pending" },
-        { status: "rejected" }
+        { status: "rejected" },
+        { session }
       );
+
+      await session.commitTransaction();
+      session.endSession();
 
       try {
         const rejected = await Proposal.find({ jobPostId: jobPost._id, status: 'rejected' }).lean();
@@ -338,6 +382,8 @@ const updateProposalStatus = async (req, res) => {
     }
 
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error("Error updating proposal status:", error);
     return res.status(500).json({ status: "error", message: error.message });
   }

@@ -3,6 +3,7 @@ const Family = require("../models/family.schema");
 const messages = require("../utils/messages");
 const { sendNotification } = require('../services/notificationService');
 const Proposal = require("../models/proposal.schema");
+const { checkJobPostsExpiry } = require("../utils/jobExpiryTask");
 const { generateEmbedding } = require("../services/ai/ragService");
 
 // شكل الداتا المرسلة من الفرونت اند
@@ -38,7 +39,10 @@ const createJobPost = async (req, res) => {
       location,
       schedule,
       beneficiaryId,
-      preferredCaregiverGender
+      taskList,
+      preferredGender,
+      preferredCaregiverGender,
+      startDate
     } = req.body;
 
     if (!title || !description || !serviceType || !budgetPerHour || !location || !schedule || !beneficiaryId) {
@@ -82,6 +86,31 @@ const createJobPost = async (req, res) => {
       });
     }
 
+    // Escrow balance validation check
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
+    const hoursPerDay = (endHour + endMin/60) - (startHour + startMin/60);
+    const totalHours = hoursPerDay * workingDays.length * durationInWeeks;
+    const estimatedCost = totalHours * Number(budgetPerHour) * 1.10; // including 10% admin fee
+
+    if ((familyProfile.walletBalance || 0) < estimatedCost) {
+      return res.status(400).json({
+        status: "fail",
+        message: lang === "en"
+          ? "Your current balance is insufficient. Please charge your wallet first before requesting the service."
+          : "رصيدك الحالي لا يكفي، برجاء شحن المحفظة أولاً قبل طلب الخدمة"
+      });
+    }
+
+    let finalPreferredCaregiverGender = preferredCaregiverGender;
+    if (preferredGender) {
+      if (preferredGender === "male" || preferredGender === "female") {
+        finalPreferredCaregiverGender = preferredGender;
+      } else if (preferredGender === "any gender") {
+        finalPreferredCaregiverGender = undefined;
+      }
+    }
+
     let requirementEmbedding = null;
     try {
       requirementEmbedding = await generateEmbedding(`${title} ${description}`);
@@ -96,8 +125,11 @@ const createJobPost = async (req, res) => {
       description,
       serviceType,
       requiredSkills, 
+      taskList,
+      preferredGender,
       budgetPerHour,
-      ...(preferredCaregiverGender ? { preferredCaregiverGender } : {}),
+      startDate: startDate || new Date(),
+      ...(finalPreferredCaregiverGender ? { preferredCaregiverGender: finalPreferredCaregiverGender } : {}),
       schedule: {
         workingDays,
         startTime,
@@ -156,6 +188,10 @@ const getServiceTypes = async (req, res) => {
 const getJobPostsForCompanions = async (req, res) => {
   try {
     const lang = req.lang || "en";
+    
+    // Auto-expire posts matching scheduled time
+    await checkJobPostsExpiry(req.io);
+
     const {
       serviceType,
       skills,
@@ -264,7 +300,6 @@ const getJobPostsForCompanions = async (req, res) => {
 
     const jobs = await JobPost.find(filter)
       .populate("familyId", "name phone avatar location") 
-      .populate("requiredSkills", "nameAr nameEn") 
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);
@@ -302,8 +337,7 @@ const getJobPostById = async (req, res) => {
     const lang = req.lang || "en";
     const { id } = req.params;
     const job = await JobPost.findById(id)
-      .populate("familyId", "name phone avatar location")
-      .populate("requiredSkills", "nameAr nameEn");
+      .populate("familyId", "name phone avatar location");
     if (!job) {
       return res.status(404).json({ 
         status: "fail",
@@ -394,6 +428,99 @@ const getJobPostById = async (req, res) => {
   }
 };
 
+const updateJobPost = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    const { id } = req.params;
+    const { 
+      title, 
+      description, 
+      serviceType, 
+      requiredSkills, 
+      budgetPerHour, 
+      location,
+      schedule,
+      beneficiaryId,
+      taskList,
+      preferredGender,
+      preferredCaregiverGender
+    } = req.body;
+
+    const job = await JobPost.findById(id);
+    if (!job) {
+      return res.status(404).json({ 
+        status: "fail",
+        message: messages.jobPost.notFound[lang]
+      });
+    }
+
+    if (job.familyId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        status: "fail",
+        message: lang === "en" ? "Unauthorized to update this job post" : "غير مصرح لك بتعديل هذا الطلب"
+      });
+    }
+
+    if (title) job.title = title;
+    if (description) job.description = description;
+    if (serviceType) job.serviceType = serviceType;
+    if (requiredSkills) job.requiredSkills = requiredSkills;
+    if (budgetPerHour) job.budgetPerHour = budgetPerHour;
+    if (taskList) job.taskList = taskList;
+    
+    if (preferredGender) {
+      job.preferredGender = preferredGender;
+      if (preferredGender === "male" || preferredGender === "female") {
+        job.preferredCaregiverGender = preferredGender;
+      } else if (preferredGender === "any gender") {
+        job.preferredCaregiverGender = undefined;
+      }
+    } else if (preferredCaregiverGender) {
+      job.preferredCaregiverGender = preferredCaregiverGender;
+    }
+    
+    if (beneficiaryId) {
+      const familyProfile = await Family.findOne({ familyId: req.user._id });
+      if (familyProfile) {
+        const beneficiaryExists = familyProfile.beneficiaries.some(
+          (b) => b._id.toString() === beneficiaryId.toString()
+        );
+        if (beneficiaryExists) {
+          job.beneficiaryId = beneficiaryId;
+        }
+      }
+    }
+
+    if (schedule) {
+      const { workingDays, startTime, endTime, durationInWeeks } = schedule;
+      if (workingDays) job.schedule.workingDays = workingDays;
+      if (startTime) job.schedule.startTime = startTime;
+      if (endTime) job.schedule.endTime = endTime;
+      if (durationInWeeks) job.schedule.durationInWeeks = durationInWeeks;
+    }
+
+    if (location) {
+      if (location.coordinates) {
+        job.location.geo = { type: "Point", coordinates: location.coordinates };
+      }
+      if (location.readableAddress) job.location.readableAddress = location.readableAddress;
+      if (location.city) job.location.city = location.city;
+      if (location.governorate) job.location.governorate = location.governorate;
+    }
+
+    await job.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: lang === "en" ? "Job post updated successfully" : "تم تحديث طلب العمل بنجاح",
+      data: { jobPost: job }
+    });
+  } catch (error) {
+    console.error("Error updating job post:", error);
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
 const deleteJobPost = async (req, res) => {
   try {
     const lang = req.lang || "en";
@@ -431,6 +558,7 @@ const deleteJobPost = async (req, res) => {
   }
 };
 
+
 const queryOrBody = (req) => {
   return req.method === "GET" ? req.query : req.body;
 };
@@ -440,5 +568,6 @@ module.exports = {
   getJobPostsForCompanions,
   getJobPostById,
   getServiceTypes,
+  updateJobPost,
   deleteJobPost
 };

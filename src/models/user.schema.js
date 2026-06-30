@@ -45,6 +45,12 @@ const userSchema = new mongoose.Schema(
       url: { type: String, trim: true },
       public_id: { type: String, trim: true }
     },
+    resetPasswordOtp: {
+      type: String,
+    },
+    resetPasswordOtpExpires: {
+      type: Date,
+    },
     gender: {
       type: String,
       enum: ["male", "female"],

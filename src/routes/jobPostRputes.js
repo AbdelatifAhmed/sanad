@@ -5,6 +5,7 @@ const {
   getJobPostsForCompanions,
   getJobPostById,
   getServiceTypes,
+  updateJobPost,
   deleteJobPost
 } = require("../controllers/jobPostController");
 const { authenticate } = require("../middleware/authMiddleware");
@@ -15,6 +16,13 @@ router.post(
   authenticate,
   authorizeRoles("family", "admin"),
   createJobPost,
+);
+
+router.patch(
+  "/:id",
+  authenticate,
+  authorizeRoles("family", "admin"),
+  updateJobPost,
 );
 
 router.get("/service-types", authenticate, getServiceTypes);

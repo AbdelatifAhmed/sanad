@@ -4,30 +4,72 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const http = require("http");
 const { Server } = require("socket.io");
+const helmet = require("helmet");
 const routes = require("./src/routes");
 const socketManager = require("./src/utils/socketManager");
 const socketAuth = require("./src/middleware/socketMiddleware");
+const registerShiftHandlers = require("./src/sockets/shiftHandler");
 dotenv.config();
 const app = express();
 const cookieParser = require("cookie-parser");
 
-app.use(cookieParser());
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:4200',],
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
-}));
-app.use(express.json({ limit: "10mb" }));
+app.use(helmet());
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
+// Custom recursive NoSQL query injection sanitizer (Express 5 compatible)
+const sanitizeObject = (obj) => {
+  if (obj && typeof obj === "object") {
+    for (const key in obj) {
+      if (key.startsWith("$") || key.includes(".")) {
+        delete obj[key];
+      } else {
+        sanitizeObject(obj[key]);
+      }
+    }
+  }
+};
+
+const customMongoSanitize = (req, res, next) => {
+  if (req.body) sanitizeObject(req.body);
+  if (req.params) sanitizeObject(req.params);
+  if (req.query) {
+    for (const key in req.query) {
+      if (key.startsWith("$") || key.includes(".")) {
+        delete req.query[key];
+      } else if (req.query[key] && typeof req.query[key] === "object") {
+        sanitizeObject(req.query[key]);
+      }
+    }
+  }
+  next();
+};
+
+app.use(customMongoSanitize);
+app.use(cookieParser());
+const allowedOrigins = ["http://localhost:3000", "http://localhost:4200"];
+app.use(
+  cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  }),
+);
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
 });
 
 global.io = io;
@@ -41,34 +83,13 @@ io.on("connection", (socket) => {
 
   if (socket.userId) {
     socket.join(socket.userId.toString());
-    console.log(`User ${socket.userId} automatically joined their personal room.`);
+    console.log(
+      `User ${socket.userId} automatically joined their personal room.`,
+    );
   }
 
-  socket.on("joinBookingRoom", async (bookingId) => {
-    try {
-      const Booking = require("./src/models/booking.schema");
-      const booking = await Booking.findById(bookingId);
-      if (!booking) {
-        socket.emit("error", { message: "Booking not found" });
-        return;
-      }
-
-      const userId = socket.userId;
-
-      if (booking.familyId.toString() === userId.toString() || booking.companionId.toString() === userId.toString()) {
-
-        socket.join(bookingId);
-        console.log(`User ${userId} joined booking room: ${bookingId}`);
-
-        socket.emit("joinedRoom", { bookingId });
-      } else {
-        socket.emit("error", { message: "Unauthorized to join this booking room" });
-      }
-    } catch (err) {
-      console.error("Socket joinBookingRoom error:", err);
-      socket.emit("error", { message: "Internal server error" });
-    }
-  });
+  // Register shift real-time event handlers
+  registerShiftHandlers(io, socket);
 
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.userId}`);
@@ -83,6 +104,10 @@ app.use((req, res, next) => {
 
 app.use("/api", routes);
 connectDB();
+
+// Start Job Post Expiry Background Task
+const { startExpiryTask } = require("./src/utils/jobExpiryTask");
+startExpiryTask(io);
 
 const PORT = process.env.PORT || 5000;
 

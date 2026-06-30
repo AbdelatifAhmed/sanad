@@ -203,11 +203,11 @@ const getCompanionSchedule = async (req, res) => {
 
     const confirmedBookings = await Booking.find({
       companionId: req.user.id,
-      status: { $in: ['approved', 'active'] } 
+      status: { $in: ['pending', 'pending_payment', 'approved', 'active', 'completed'] } 
     })
     .populate({
       path: 'familyId',
-      select: 'name phoneNumber email' 
+      select: 'name phone email avatar' 
     })
     .sort({ startDate: 1 }); 
 

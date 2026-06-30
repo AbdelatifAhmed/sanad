@@ -57,6 +57,38 @@ const messages = {
     logoutSuccess: {
       en: "Logged out successfully.",
       ar: "تم تسجيل الخروج بنجاح."
+    },
+    invalidEmail: {
+      en: "Please provide a valid email address.",
+      ar: "يرجى تقديم عنوان بريد إلكتروني صالح."
+    },
+    weakPassword: {
+      en: "Password must be at least 8 characters long, containing at least one uppercase letter and one number.",
+      ar: "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل، وتحتوي على حرف كبير واحد ورقم واحد على الأقل."
+    },
+    rateLimited: {
+      en: "Too many attempts, please try again later.",
+      ar: "محاولات كثيرة جداً، يرجى المحاولة مرة أخرى لاحقاً."
+    },
+    passwordResetCodeSent: {
+      en: "Password reset code sent to your email.",
+      ar: "تم إرسال رمز إعادة تعيين كلمة المرور إلى بريدك الإلكتروني."
+    },
+    invalidOtp: {
+      en: "Invalid or expired OTP code.",
+      ar: "رمز التحقق غير صالح أو منتهي الصلاحية."
+    },
+    passwordResetSuccess: {
+      en: "Password has been reset successfully.",
+      ar: "تم إعادة تعيين كلمة المرور بنجاح."
+    },
+    passwordChangedSuccess: {
+      en: "Password has been changed successfully.",
+      ar: "تم تغيير كلمة المرور بنجاح."
+    },
+    incorrectCurrentPassword: {
+      en: "Current password is incorrect.",
+      ar: "كلمة المرور الحالية غير صحيحة."
     }
   },
   booking: {
@@ -163,6 +195,18 @@ const messages = {
     bookingNotificationText: {
       en: "Your booking request has been updated.",
       ar: "تم تحديث طلب الحجز الخاص بك."
+    },
+    taskStatusRequired: {
+      en: "isCompleted is required.",
+      ar: "حالة اكتمال المهمة مطلوبة."
+    },
+    bookingOrScheduleNotFound: {
+      en: "Booking or Schedule day not found.",
+      ar: "الحجز أو يوم الجدول غير موجود."
+    },
+    taskStatusUpdated: {
+      en: "Task status updated successfully.",
+      ar: "تم تحديث حالة المهمة بنجاح."
     }
   },
   companion: {

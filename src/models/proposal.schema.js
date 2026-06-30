@@ -28,6 +28,11 @@ const proposalSchema = new mongoose.Schema(
       enum: ["pending", "accepted", "rejected"],
       default: "pending",
     },
+    taskList: [
+      {
+        type: String,
+      },
+    ],
   },
   { timestamps: true },
 );

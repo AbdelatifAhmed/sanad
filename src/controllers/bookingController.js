@@ -7,7 +7,7 @@ const bookingService = require("../services/bookingService");
 const { getSocketIds } = require("../utils/socketManager");
 const Family = require('../models/family.schema');
 const User = require('../models/user.schema');
-const { hasBookingConflict } = require("../utils/checkConflict");
+const { hasBookingConflict, hasComprehensiveConflict } = require("../utils/checkConflict");
 const messages = require("../utils/messages");
 const createBooking = async (req, res) => {
   try {
@@ -60,6 +60,8 @@ const createBooking = async (req, res) => {
       if (itemDate > maxDate) maxDate = itemDate;
     }
 
+    const workingDaysArray = Array.from(extractedWorkingDays);
+
     const familyProfile = await Family.findOne({ familyId });
     if (!familyProfile) {
       return res.status(404).json({ error: messages.booking.profileNotFound[lang] });
@@ -91,17 +93,19 @@ const createBooking = async (req, res) => {
       return res.status(400).json({ error: messages.booking.companionNotFound[lang] });
     }
 
-    const testStartTime = schedule[0].startTime;
-    const testEndTime = schedule[0].endTime;
-    const workingDaysArray = Array.from(extractedWorkingDays);
+    // Escrow balance validation check
+    const totalCost = totalHours * rate * 1.10; // includes 10% admin fee
+    if ((familyProfile.walletBalance || 0) < totalCost) {
+      return res.status(400).json({
+        error: lang === "en"
+          ? "Your current balance is insufficient. Please charge your wallet first before requesting the service."
+          : "رصيدك الحالي لا يكفي، برجاء شحن المحفظة أولاً قبل طلب الخدمة"
+      });
+    }
 
-    const isBusy = await hasBookingConflict(
+    const isBusy = await hasComprehensiveConflict(
       companionId,
-      minDate,
-      maxDate,
-      workingDaysArray,
-      testStartTime,
-      testEndTime
+      schedule
     );
 
     if (isBusy) {
@@ -118,10 +122,11 @@ const createBooking = async (req, res) => {
           return {
             ...item,
             tasksList: taskList.map(t => {
-              if (typeof t === 'string') return { taskDescription: t, isCompleted: false };
+              if (typeof t === 'string') return { title: t, taskDescription: t, isCompleted: false };
               if (typeof t === 'object' && t !== null) {
                 return {
-                  taskDescription: t.taskDescription || t.description || '',
+                  title: t.title || t.taskDescription || t.description || '',
+                  taskDescription: t.taskDescription || t.description || t.title || '',
                   isCompleted: !!t.isCompleted
                 };
               }
@@ -223,7 +228,8 @@ const updateBookingStatus = async (req, res) => {
 
     if (req.user.role !== 'admin') {
       const validTransitions = {
-        pending: ['approved', 'cancelled'],
+        pending: ['pending_payment', 'approved', 'cancelled'],
+        pending_payment: ['approved', 'cancelled'],
         approved: ['active', 'cancelled'],
         active: ['completed', 'cancelled'],
         completed: [],
@@ -237,13 +243,10 @@ const updateBookingStatus = async (req, res) => {
     }
 
     if (status === 'approved' && booking.status === 'pending') {
-      const isBusyNow = await hasBookingConflict(
+      const isBusyNow = await hasComprehensiveConflict(
         booking.companionId,
-        booking.startDate,
-        booking.endDate,
-        booking.workingDays,
-        booking.schedule[0].startTime, 
-        booking.schedule[0].endTime
+        booking.schedule,
+        booking._id
       );
 
       if (isBusyNow) {
@@ -318,10 +321,10 @@ const checkIn = async (req, res) => {
     try {
         const lang = req.lang || "en";
         const { id } = req.params; // Booking ID
-        const { scheduleId } = req.body;
+        const { scheduleId, lat, lng, passcode } = req.body;
         const companionId = req.user._id;
 
-        const result = await bookingService.checkIn(id, scheduleId, companionId);
+        const result = await bookingService.checkIn(id, scheduleId, companionId, { lat, lng, passcode });
 
         await sendNotification(
             result.familyId,
@@ -331,6 +334,15 @@ const checkIn = async (req, res) => {
             "booking",                             
             req.io                                 
         );
+
+        if (req.io) {
+            const scheduleItem = result.booking.schedule.id(scheduleId);
+            req.io.to(`booking_${id}`).emit("check_in", {
+                bookingId: id,
+                scheduleId,
+                checkInTime: scheduleItem ? scheduleItem.checkInTime : new Date()
+            });
+        }
 
         return res.status(200).json({
             status: "success",
@@ -368,6 +380,16 @@ const checkOut = async (req, res) => {
             "booking",
             req.io
         );
+
+        if (req.io) {
+            const scheduleItem = result.booking.schedule.id(scheduleId);
+            req.io.to(`booking_${id}`).emit("check_out", {
+                bookingId: id,
+                scheduleId,
+                checkOutTime: scheduleItem ? scheduleItem.checkOutTime : new Date(),
+                isBookingCompleted: result.status === 'completed'
+            });
+        }
 
         return res.status(200).json({
             status: "success",
@@ -443,13 +465,10 @@ const respondToBooking = async (req, res) => {
     }
 
     if (action === 'accept') {
-      const isBusyNow = await hasBookingConflict(
+      const isBusyNow = await hasComprehensiveConflict(
         booking.companionId,
-        booking.startDate,
-        booking.endDate,
-        booking.workingDays,
-        booking.schedule[0].startTime,
-        booking.schedule[0].endTime
+        booking.schedule,
+        booking._id
       );
 
       if (isBusyNow) {
@@ -459,7 +478,7 @@ const respondToBooking = async (req, res) => {
       }
     }
 
-    booking.status = action === 'accept' ? 'approved' : 'cancelled';
+    booking.status = action === 'accept' ? 'pending_payment' : 'cancelled';
     const updatedBooking = await booking.save();
    
     if (typeof sendNotification === 'function') {
@@ -467,7 +486,7 @@ const respondToBooking = async (req, res) => {
         booking.familyId,
         req.user._id,
         messages.booking.bookingUpdatedNotification[lang],
-        messages.booking.bookingNotificationText[lang] + ` (${action === 'accept' ? 'Approved' : 'Declined'})`,
+        messages.booking.bookingNotificationText[lang] + ` (${action === 'accept' ? 'Accepted (Pending Payment)' : 'Declined'})`,
         'booking',
         req.io,
       );
@@ -486,11 +505,236 @@ const respondToBooking = async (req, res) => {
   }
 };
 
+const updateTaskStatus = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    const { id, scheduleId, taskId } = req.params;
+    const { isCompleted } = req.body;
+    const companionId = req.user._id;
+
+    if (isCompleted === undefined) {
+      return res.status(400).json({ error: messages.booking.taskStatusRequired[lang] });
+    }
+
+    if (req.user.role !== 'companion') {
+      return res.status(403).json({ error: messages.booking.updateStatusRoleLimit[lang] });
+    }
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ error: messages.review.bookingNotFound[lang] });
+    }
+
+    if (booking.companionId.toString() !== companionId.toString()) {
+      return res.status(403).json({ error: messages.booking.updateStatusDenied[lang] });
+    }
+
+    const updatedBooking = await Booking.findOneAndUpdate(
+      { 
+        _id: id,
+        "schedule._id": scheduleId 
+      },
+      {
+        $set: { "schedule.$[sched].tasksList.$[task].isCompleted": isCompleted }
+      },
+      {
+        arrayFilters: [
+          { "sched._id": scheduleId },
+          { "task._id": taskId }
+        ],
+        new: true
+      }
+    );
+
+    if (!updatedBooking) {
+      return res.status(404).json({ error: messages.booking.bookingOrScheduleNotFound[lang] });
+    }
+
+    // Emit real-time WebSocket event
+    if (req.io) {
+      const roomName = `booking_${id}`;
+      req.io.to(roomName).emit('task_updated', {
+        bookingId: id,
+        scheduleId,
+        taskId,
+        isCompleted
+      });
+      console.log(`Socket broadcast: task_updated to room ${roomName} for task ${taskId}`);
+    }
+
+    return res.status(200).json({
+      status: "success",
+      message: messages.booking.taskStatusUpdated[lang],
+      data: { booking: updatedBooking }
+    });
+
+  } catch (error) {
+    console.error("Error updating task status:", error);
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"], message: error.message });
+  }
+};
+
+const getBookingById = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: messages.common.invalidId[lang] });
+    }
+
+    const booking = await Booking.findById(id)
+      .populate("companionId", "name phone email avatar role location")
+      .populate("familyId", "name phone email avatar role location");
+
+    if (!booking) {
+      return res.status(404).json({ error: messages.review.bookingNotFound[lang] });
+    }
+
+    // Security: Only allow the family, companion, or admin to access this booking
+    const userId = req.user._id.toString();
+    const isAuthorized = 
+      req.user.role === 'admin' || 
+      booking.familyId._id.toString() === userId || 
+      booking.companionId._id.toString() === userId;
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: messages.common.forbidden[lang] });
+    }
+
+    // Fetch family profile to get beneficiary details
+    let beneficiary = null;
+    try {
+      const familyProfile = await Family.findOne({ familyId: booking.familyId._id });
+      if (familyProfile && familyProfile.beneficiaries) {
+        beneficiary = familyProfile.beneficiaries.find(
+          (b) => b._id.toString() === booking.beneficiaryId.toString()
+        );
+      }
+    } catch (err) {
+      console.error("Failed to fetch beneficiary details:", err);
+    }
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        ...booking.toObject(),
+        beneficiary
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching booking details:", error);
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"], message: error.message });
+  }
+};
+
+const getMyBookings = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    const { status } = req.query;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
+
+    const query = {};
+    if (req.user.role === 'family') {
+      query.familyId = req.user._id;
+    } else if (req.user.role === 'companion') {
+      query.companionId = req.user._id;
+    } else if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: messages.common.forbidden[lang] });
+    }
+
+    if (status) {
+      const validStatuses = ['pending', 'pending_payment', 'approved', 'active', 'completed', 'cancelled'];
+      if (validStatuses.includes(status)) {
+        query.status = status;
+      }
+    }
+
+    const bookings = await Booking.find(query)
+      .populate("companionId", "name phone email avatar role")
+      .populate("familyId", "name phone email avatar role")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Booking.countDocuments(query);
+
+    return res.status(200).json({
+      status: "success",
+      results: bookings.length,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      },
+      data: {
+        bookings
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching my bookings:", error);
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"], message: error.message });
+  }
+};
+
+const fileComplaint = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    const { id } = req.params;
+    const { description } = req.body;
+
+    if (!description) {
+      return res.status(400).json({
+        status: "error",
+        message: lang === "ar" ? "تفاصيل الشكوى مطلوبة" : "Description is required"
+      });
+    }
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({
+        status: "error",
+        message: lang === "ar" ? "لم يتم العثور على هذا الحجز" : "Booking not found"
+      });
+    }
+
+    // Verify authorized user (only family of this booking can file complaints)
+    if (req.user.role !== "admin" && booking.familyId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        status: "error",
+        message: messages.common.forbidden[lang]
+      });
+    }
+
+    booking.complaints = booking.complaints || [];
+    booking.complaints.push({ description });
+    await booking.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: lang === "ar" ? "تم تسجيل الشكوى بنجاح" : "Complaint registered successfully"
+    });
+  } catch (error) {
+    console.error("Error filing complaint:", error);
+    return res.status(500).json({
+      status: "error",
+      message: messages.common.serverError[req.lang || "en"]
+    });
+  }
+};
+
 module.exports = {
     createBooking,
     updateBookingStatus,
     checkIn,
     checkOut,
     getCompanionRequests,
-    respondToBooking
+    respondToBooking,
+    updateTaskStatus,
+    getBookingById,
+    getMyBookings,
+    fileComplaint
 };

@@ -29,7 +29,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["booking", "tracking", "review", "payment", "system_alert"],
+      enum: ["booking", "tracking", "review", "payment", "system_alert", "proposal", "jobpost"],
       required: true,
     },
     relatedId: {

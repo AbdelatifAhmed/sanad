@@ -65,6 +65,10 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
     workingDays: [String],
+    verificationPasscode: {
+      type: String,
+      default: () => Math.floor(1000 + Math.random() * 9000).toString(),
+    },
     schedule: [
       {
         date: { type: Date, required: true },
@@ -72,12 +76,19 @@ const bookingSchema = new mongoose.Schema(
         endTime: { type: String, required: true }, // صيغة HH:MM
         tasksList: [
           {
-            taskDescription: { type: String, required: true },
+            title: { type: String },
+            taskDescription: { type: String },
             isCompleted: { type: Boolean, default: false },
           },
         ],
         checkInTime: { type: Date },
         checkOutTime: { type: Date },
+        checkInGeo: {
+          lat: { type: Number },
+          lng: { type: Number },
+        },
+        checkInMethod: { type: String }, // 'passcode' or 'geolocation'
+        checkInPasscode: { type: String },
       },
     ],
     notes: {
@@ -92,6 +103,12 @@ const bookingSchema = new mongoose.Schema(
       city: { type: String, trim: true },
       governorate: { type: String, trim: true },
     },
+    complaints: [
+      {
+        description: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true },
 );
