@@ -54,8 +54,13 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json());
-
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
 const server = http.createServer(app);
 
 const io = new Server(server, {

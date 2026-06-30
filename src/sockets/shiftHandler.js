@@ -27,8 +27,7 @@ module.exports = (io, socket) => {
 
       if (isFamily || isCompanion) {
         const roomName = `booking_${bookingId}`;
-        socket.join(roomName);
-        console.log(`User ${userId} joined room: ${roomName}`);
+        await socket.join(roomName);
         
         socket.emit("joinedRoom", { bookingId, roomName });
       } else {
