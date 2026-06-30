@@ -38,8 +38,8 @@ const sendMessage = async (req, res) => {
     const io = req.io;
     if (io) {
       const roomName = `booking_${bookingId.toString()}`;
-      const sockets = await io.in(roomName).fetchSockets();
       io.to(roomName).emit('newMessage', savedMessage);
+      io.to(receiverId.toString()).emit('newMessage', savedMessage);
     }
 
     return res.status(201).json(savedMessage);
@@ -65,12 +65,19 @@ const getChatHistory = async (req, res) => {
       return res.status(403).json({ error: 'Access denied. You are not authorized to view the chat history for this booking.' });
     }
 
+    // Find all bookings between this family and companion to fetch unified history
+    const relatedBookings = await Booking.find({
+      familyId: booking.familyId,
+      companionId: booking.companionId
+    });
+    const bookingIds = relatedBookings.map((b) => b._id);
+
     await ChatMessage.updateMany(
-      { bookingId, receiverId: req.user._id, isRead: false },
+      { bookingId: { $in: bookingIds }, receiverId: req.user._id, isRead: false },
       { $set: { isRead: true } }
     );
 
-    const messages = await ChatMessage.find({ bookingId }).sort({ createdAt: 1 });
+    const messages = await ChatMessage.find({ bookingId: { $in: bookingIds } }).sort({ createdAt: 1 });
 
     return res.status(200).json({
       status: 'success',
@@ -105,26 +112,63 @@ const getConversations = async (req, res) => {
       .populate('companionId', 'name avatar role')
       .sort({ updatedAt: -1 });
 
+    // Group bookings by other user's ID
+    const bookingsGroupedByUser = {};
+    for (const booking of bookings) {
+      const otherUser = role === 'family' ? booking.companionId : booking.familyId;
+      if (!otherUser) continue;
+      
+      const otherUserId = otherUser._id.toString();
+      if (!bookingsGroupedByUser[otherUserId]) {
+        bookingsGroupedByUser[otherUserId] = [];
+      }
+      bookingsGroupedByUser[otherUserId].push(booking);
+    }
+
     const conversations = await Promise.all(
-      bookings.map(async (booking) => {
-        // Find last message
-        const lastMessage = await ChatMessage.findOne({ bookingId: booking._id })
+      Object.keys(bookingsGroupedByUser).map(async (otherUserId) => {
+        const userBookings = bookingsGroupedByUser[otherUserId];
+        
+        const statusPriority = {
+          active: 1,
+          approved: 2,
+          pending_payment: 3,
+          pending: 4,
+          completed: 5,
+          cancelled: 6
+        };
+
+        // Sort: highest priority first, then most recently updated/created if priorities match
+        userBookings.sort((a, b) => {
+          const priorityA = statusPriority[a.status] || 99;
+          const priorityB = statusPriority[b.status] || 99;
+          if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+          }
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+
+        const primaryBooking = userBookings[0];
+        const bookingIds = userBookings.map((b) => b._id);
+
+        // Find last message across all bookings in this user group
+        const lastMessage = await ChatMessage.findOne({ bookingId: { $in: bookingIds } })
           .sort({ createdAt: -1 });
 
-        // Count unread messages received by the current user
+        // Count unread messages received by the current user across all bookings in this group
         const unreadCount = await ChatMessage.countDocuments({
-          bookingId: booking._id,
+          bookingId: { $in: bookingIds },
           receiverId: userId,
           isRead: false
         });
 
-        const otherUser = role === 'family' ? booking.companionId : booking.familyId;
+        const otherUser = role === 'family' ? primaryBooking.companionId : primaryBooking.familyId;
 
         return {
-          bookingId: booking._id.toString(),
-          bookingStatus: booking.status,
-          startDate: booking.startDate,
-          endDate: booking.endDate,
+          bookingId: primaryBooking._id.toString(),
+          bookingStatus: primaryBooking.status,
+          startDate: primaryBooking.startDate,
+          endDate: primaryBooking.endDate,
           otherUser: otherUser ? {
             _id: otherUser._id.toString(),
             name: otherUser.name,
@@ -178,8 +222,15 @@ const markChatAsRead = async (req, res) => {
       return res.status(403).json({ error: 'Access denied.' });
     }
 
+    // Find all bookings between this family and companion
+    const relatedBookings = await Booking.find({
+      familyId: booking.familyId,
+      companionId: booking.companionId
+    });
+    const bookingIds = relatedBookings.map((b) => b._id);
+
     await ChatMessage.updateMany(
-      { bookingId, receiverId: userId, isRead: false },
+      { bookingId: { $in: bookingIds }, receiverId: userId, isRead: false },
       { $set: { isRead: true } }
     );
 
