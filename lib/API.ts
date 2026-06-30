@@ -35,6 +35,11 @@ export const logoutUser = async (): Promise<ApiResponse<null>> => {
   return res.data;
 };
 
+export const updateAuthProfile = async (data: Record<string, unknown>) => {
+  const res = await api.put("/auth/profile", data);
+  return res.data;
+};
+
 // --- AI ROUTER (/ai) ---
 export const familyAIChat = async (data: Record<string, unknown>) => {
   const res = await api.post("/ai/session/family", data);

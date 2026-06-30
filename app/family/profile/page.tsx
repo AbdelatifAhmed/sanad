@@ -1,8 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Image from "next/image";
-import { getAvatarUrl } from "@/lib/avatar";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/services/api";
 import { useFamilyCareRequests } from "@/lib/hooks";
@@ -96,6 +94,8 @@ export default function FamilyProfile() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState<boolean>(false);
 
   // Toast notification state
   const [toast, setToast] = useState<{
@@ -139,6 +139,55 @@ export default function FamilyProfile() {
       message: "Notification preferences updated locally.",
       type: "success"
     });
+  };
+
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setToast({ message: "Image size must be less than 5MB.", type: "error" });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadstart = () => {
+      setUploadingPhoto(true);
+    };
+    reader.onload = async () => {
+      try {
+        const base64String = reader.result as string;
+        const res = await api.put("/auth/profile", { avatar: base64String });
+        
+        if (res.data && res.data.status === "success") {
+          const updatedUser = res.data.user;
+          if (user) {
+            useAuthStore.setState({
+              user: {
+                ...user,
+                avatar: updatedUser.avatar,
+              }
+            });
+          }
+          setToast({ message: "Profile photo updated successfully!", type: "success" });
+        }
+      } catch (err: any) {
+        console.error("Failed to update photo:", err);
+        const msg = err.response?.data?.message || "Failed to update profile photo.";
+        setToast({ message: msg, type: "error" });
+      } finally {
+        setUploadingPhoto(false);
+      }
+    };
+    reader.onerror = () => {
+      setToast({ message: "Failed to read image file.", type: "error" });
+      setUploadingPhoto(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   // Auto-clear toast
@@ -237,6 +286,14 @@ export default function FamilyProfile() {
 
     try {
       setSavingAddress(true);
+      
+      // Update User collection details (name, email, phone)
+      await api.put("/auth/profile", {
+        name: tempProfileName.trim(),
+        email: tempProfileEmail.trim(),
+        phone: tempProfilePhone.trim()
+      });
+
       const res = await api.put("/family/profile", {
         address: {
           city: tempAddress.city.trim(),
@@ -482,16 +539,22 @@ export default function FamilyProfile() {
           {/* 1. Hero Profile Card */}
           <div className="bg-white rounded-2xl p-6 md:p-8 border border-[#eae7e7] shadow-soft flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
+              {/* Hidden file input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handlePhotoChange}
+                accept="image/*"
+                className="hidden"
+              />
+
               {/* Avatar with Camera Icon Overlay */}
-              <div className="relative group cursor-pointer">
-                <div className="w-24 h-24 bg-[#1f8a8a]/10 border-2 border-[#1f8a8a]/20 rounded-full flex items-center justify-center text-[#1f8a8a] text-3xl font-extrabold shadow-sm overflow-hidden relative">
-                  {getAvatarUrl(user?.avatar) ? (
-                    <Image 
-                      src={getAvatarUrl(user?.avatar) || "/avatar_1.jpg"} 
-                      alt="Profile" 
-                      fill 
-                      className="w-full h-full object-cover" 
-                    />
+              <div className="relative group cursor-pointer" onClick={handlePhotoClick}>
+                <div className="w-24 h-24 bg-[#1f8a8a]/10 border-2 border-[#1f8a8a]/20 rounded-full flex items-center justify-center text-[#1f8a8a] text-3xl font-extrabold shadow-sm overflow-hidden">
+                  {uploadingPhoto ? (
+                    <div className="w-6 h-6 border-2 border-[#1f8a8a] border-t-transparent rounded-full animate-spin" />
+                  ) : user?.avatar ? (
+                    <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
                     (profileName || "F").charAt(0).toUpperCase()
                   )}
@@ -529,10 +592,18 @@ export default function FamilyProfile() {
             {/* Photo Actions */}
             <div className="flex items-center gap-3 w-full md:w-auto justify-center md:justify-end">
               <button 
-                onClick={() => setToast({ message: "Upload photo functionality integrated with storage service.", type: "info" })}
-                className="h-[56px] px-6 bg-white hover:bg-slate-50 border-2 border-[#2b2b2b] text-[#2b2b2b] font-bold rounded-xl text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                onClick={handlePhotoClick}
+                disabled={uploadingPhoto}
+                className="h-[56px] px-6 bg-white hover:bg-slate-50 border-2 border-[#2b2b2b] text-[#2b2b2b] font-bold rounded-xl text-sm transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                Change Photo
+                {uploadingPhoto ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-[#2b2b2b] border-t-transparent rounded-full animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  "Change Photo"
+                )}
               </button>
               <button 
                 onClick={handleOpenEditProfileModal}
