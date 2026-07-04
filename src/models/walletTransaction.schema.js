@@ -9,6 +9,11 @@ const walletTransactionSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    bookingId: {
+      type: ObjectId,
+      ref: "Booking",
+      required: false,
+    },
     amount: {
       type: Number,
       required: true,

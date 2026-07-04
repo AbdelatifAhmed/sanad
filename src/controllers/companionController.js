@@ -209,13 +209,46 @@ const getCompanionSchedule = async (req, res) => {
       path: 'familyId',
       select: 'name phone email avatar' 
     })
+    .populate({
+      path: 'jobPostId',
+      select: 'title location'
+    })
     .sort({ startDate: 1 }); 
+
+    // Fetch associated Family profiles to resolve beneficiary names
+    const familyIds = confirmedBookings.map(b => b.familyId?._id).filter(Boolean);
+    const Family = require('../models/family.schema');
+    const familyProfiles = await Family.find({ familyId: { $in: familyIds } });
+
+    // Map beneficiaryId to beneficiary details
+    const beneficiaryMap = {};
+    familyProfiles.forEach(fam => {
+      if (fam.beneficiaries) {
+        fam.beneficiaries.forEach(ben => {
+          beneficiaryMap[ben._id.toString()] = {
+            name: ben.name,
+            age: ben.age,
+            gender: ben.gender
+          };
+        });
+      }
+    });
+
+    const enrichedBookings = confirmedBookings.map(b => {
+      const bObj = b.toObject();
+      if (b.beneficiaryId && beneficiaryMap[b.beneficiaryId.toString()]) {
+        bObj.beneficiary = beneficiaryMap[b.beneficiaryId.toString()];
+      } else {
+        bObj.beneficiary = { name: "Beneficiary" };
+      }
+      return bObj;
+    });
 
     return res.status(200).json({
       status: 'success',
-      results: confirmedBookings.length,
+      results: enrichedBookings.length,
       data: {
-        schedule: confirmedBookings
+        schedule: enrichedBookings
       }
     });
 

@@ -9,7 +9,6 @@ const {
   getCompanionDebtLedger,
   getMyPayments,
   getAdminPayments,
-  confirmCashPayment,
   settleCompanionDebt,
   connectCompanionStripe,
   requestCompanionPayout,
@@ -56,10 +55,6 @@ router.post("/:id/release", isAdmin, releasePayout);
 router.get("/companion/debt", isCompanion, getCompanionDebtLedger);
 router.post("/companion/settle-debt", isCompanion, settleCompanionDebt);
 
-// ============================================================================
-// Companion Cash Confirmation Endpoint
-// ============================================================================
-router.post("/cash/confirm", isCompanion, confirmCashPayment);
 
 // ============================================================================
 // Companion Stripe Connect & Payout Endpoints

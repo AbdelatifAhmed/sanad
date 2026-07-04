@@ -296,7 +296,10 @@ const updateProposalStatus = async (req, res) => {
 
       const [startHour, startMin] = startTime.split(':').map(Number);
       const [endHour, endMin] = endTime.split(':').map(Number);
-      const hoursPerDay = (endHour + endMin/60) - (startHour + startMin/60);
+      let hoursPerDay = (endHour + endMin/60) - (startHour + startMin/60);
+      if (hoursPerDay <= 0) {
+        hoursPerDay += 24;
+      }
       const totalHours = hoursPerDay * generatedSchedule.length;
 
       const startDate = new Date(jobPost.startDate);

@@ -355,6 +355,9 @@ const checkIn = async (req, res) => {
         let errMsg = error.message;
         if (errMsg === "Booking not found") errMsg = messages.review.bookingNotFound[lang];
         else if (errMsg === "Not authorized to check-in for this booking") errMsg = messages.booking.notAuthorizedCheckInOut[lang];
+        else if (errMsg === "Cannot check-in. Payment must be completed before check-in.") {
+            errMsg = lang === "ar" ? "يجب إتمام عملية الدفع قبل تسجيل الحضور." : "Payment must be completed before check-in.";
+        }
         else if (errMsg.startsWith("Cannot check-in")) errMsg = messages.booking.bookingCompletedOrCancelled[lang];
         else if (errMsg === "Schedule day not found") errMsg = messages.booking.scheduleNotFound[lang];
         else if (errMsg === "Already checked in for this schedule day") errMsg = messages.booking.checkInConflict[lang];

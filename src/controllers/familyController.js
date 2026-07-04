@@ -421,10 +421,20 @@ exports.getFamilyWallet = async (req, res) => {
     if (!familyProfile) {
       return res.status(404).json({ status: 'fail', message: 'Profile not found.' });
     }
+
+    const Booking = require('../models/booking.schema');
+    const heldBookings = await Booking.find({
+      familyId: req.user._id,
+      status: { $in: ['approved', 'active'] },
+      paymentStatus: 'paid'
+    });
+    const heldBalance = heldBookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
+
     return res.status(200).json({
       status: 'success',
       data: {
-        walletBalance: familyProfile.walletBalance || 0
+        walletBalance: familyProfile.walletBalance || 0,
+        heldBalance: heldBalance || 0
       }
     });
   } catch (error) {
@@ -435,7 +445,7 @@ exports.getFamilyWallet = async (req, res) => {
 
 exports.topupFamilyWallet = async (req, res) => {
   try {
-    const { amount } = req.body;
+    const { amount, bookingId } = req.body;
     if (!amount || typeof amount !== 'number' || amount <= 0) {
       return res.status(400).json({ status: 'fail', message: 'Invalid top-up amount.' });
     }
@@ -445,11 +455,16 @@ exports.topupFamilyWallet = async (req, res) => {
       return res.status(404).json({ status: 'fail', message: 'Profile not found.' });
     }
 
-    // Call Stripe to initiate payment intent
-    const paymentIntent = await stripeService.createPaymentIntent(amount, "egp", {
+    const metadata = {
       userId: req.user._id.toString(),
-      type: "topup",
-    });
+      type: bookingId ? "booking_topup_and_pay" : "topup",
+    };
+    if (bookingId) {
+      metadata.bookingId = bookingId.toString();
+    }
+
+    // Call Stripe to initiate payment intent
+    const paymentIntent = await stripeService.createPaymentIntent(amount, "egp", metadata);
 
     // Save pending transaction to database
     await WalletTransaction.create({
@@ -479,6 +494,20 @@ exports.topupFamilyWallet = async (req, res) => {
 exports.getFamilyTransactions = async (req, res) => {
   try {
     const transactions = await WalletTransaction.find({ userId: req.user._id })
+      .populate({
+        path: "bookingId",
+        select: "status startDate endDate companionId jobPostId schedule",
+        populate: [
+          {
+            path: "jobPostId",
+            select: "title"
+          },
+          {
+            path: "companionId",
+            select: "name avatar"
+          }
+        ]
+      })
       .sort({ createdAt: -1 });
 
     return res.status(200).json({
@@ -488,6 +517,6 @@ exports.getFamilyTransactions = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching family transactions:', error);
-    return res.status(500).json({ status: 'error', message: error.message });
+    return res.status(500).json({ error: messages.common.serverError[req.lang || "en"] });
   }
 };
