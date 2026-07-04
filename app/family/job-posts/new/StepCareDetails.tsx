@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CareRequestFormData, ServiceType, Beneficiary } from "@/lib/types/care-request";
 import { useFamilyElderlyProfiles } from "@/lib/hooks";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { getAllSkills, SkillItem } from "@/lib/api/companion.api";
 
 type Step1Data = Pick<CareRequestFormData, "title" | "beneficiaryId" | "serviceType" | "description" | "budgetPerHour" | "taskList" | "preferredGender" | "requiredSkills">;
 
@@ -23,8 +24,23 @@ const SERVICE_TYPES: { value: ServiceType; labelKey: "elderlyCare" | "companionC
 export default function StepCareDetails({ defaultValues, onNext }: StepCareDetailsProps) {
   const t = useTranslations("jobPostForm");
   const tBooking = useTranslations("bookingForm");
+  const locale = useLocale();
   const { data: profileData, isLoading: profilesLoading } = useFamilyElderlyProfiles();
   const beneficiaries: Beneficiary[] = profileData?.beneficiaries ?? [];
+
+  const [dbSkills, setDbSkills] = useState<SkillItem[]>([]);
+
+  useEffect(() => {
+    const loadSkills = async () => {
+      try {
+        const list = await getAllSkills();
+        setDbSkills(list || []);
+      } catch (err) {
+        console.error("Failed to load skills from DB:", err);
+      }
+    };
+    loadSkills();
+  }, []);
 
   const [title, setTitle] = useState(defaultValues.title ?? "");
   const [beneficiaryId, setBeneficiaryId] = useState(defaultValues.beneficiaryId);
@@ -291,6 +307,44 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
             {t("skillsAddButton")}
           </button>
         </div>
+
+        {/* Predefined database skills suggestions */}
+        {dbSkills.filter(s => {
+          const name = locale === 'ar' ? s.nameAr : s.nameEn;
+          const matchesQuery = name.toLowerCase().includes(skillInput.toLowerCase());
+          const notSelected = !requiredSkills.includes(name);
+          return matchesQuery && notSelected;
+        }).length > 0 && (
+          <div className="space-y-2 bg-[#eae7e7]/30 p-4 rounded-xl border border-[#bdc9c8]/20 mt-2">
+            <p className="text-[10px] font-bold text-[#3e4949] uppercase tracking-wider">
+              {locale === 'ar' ? "المهارات المقترحة" : "Suggested Skills"}
+            </p>
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+              {dbSkills.filter(s => {
+                const name = locale === 'ar' ? s.nameAr : s.nameEn;
+                const matchesQuery = name.toLowerCase().includes(skillInput.toLowerCase());
+                const notSelected = !requiredSkills.includes(name);
+                return matchesQuery && notSelected;
+              }).map(s => {
+                const name = locale === 'ar' ? s.nameAr : s.nameEn;
+                return (
+                  <button
+                    type="button"
+                    key={s._id}
+                    onClick={() => {
+                      setRequiredSkills((prev) => [...prev, name]);
+                      setSkillInput("");
+                    }}
+                    className="px-3 py-1.5 bg-white hover:bg-[#1f8a8a]/10 hover:text-[#1f8a8a] text-[#3e4949] rounded-full text-xs font-bold border border-[#bdc9c8]/50 transition-colors shadow-sm cursor-pointer"
+                  >
+                    + {name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {requiredSkills.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             {requiredSkills.map((skill, index) => (

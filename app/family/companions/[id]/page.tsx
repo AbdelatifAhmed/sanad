@@ -5,6 +5,7 @@ import CompanionHeader from "@/components/companion/profile-view/CompanionHeader
 import CompanionSkills from "@/components/companion/profile-view/CompanionSkills";
 import CompanionHobbies from "@/components/companion/profile-view/CompanionHobbies";
 import CompanionAvailability from "@/components/companion/profile-view/CompanionAvailability";
+import CompanionReviews from "@/components/companion/profile-view/CompanionReviews";
 import { serverFetch } from "@/lib/serverAuth";
 import { getAvatarUrl } from "@/lib/avatar";
 import { getTranslations, getLocale } from "next-intl/server";
@@ -30,6 +31,15 @@ export default async function CompanionProfilePage({ params }: PageProps) {
 
     if (!companion) {
       throw new Error("Companion not found");
+    }
+
+    let reviewsData = null;
+    try {
+      if (companion.userId?._id) {
+        reviewsData = await serverFetch(`/reviews/companion/${companion.userId._id}`);
+      }
+    } catch (err) {
+      console.error("Error loading companion reviews:", err);
     }
 
     // Dynamic mapping from database schema , to page/components format
@@ -117,6 +127,11 @@ export default async function CompanionProfilePage({ params }: PageProps) {
         {/* Row 4: Availability Schedule */}
         <div className="w-full">
           <CompanionAvailability availability={companion.availability} />
+        </div>
+
+        {/* Row 5: Reviews */}
+        <div className="w-full">
+          <CompanionReviews reviews={reviewsData?.reviews || []} />
         </div>
 
       </div>

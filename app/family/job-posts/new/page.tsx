@@ -26,6 +26,7 @@ const INITIAL_FORM: CareRequestFormData = {
     startTime: "08:00",
     endTime: "16:00",
     durationInWeeks: 4,
+    startDate: new Date().toISOString().split("T")[0],
   },
   locationData: {
     city: "",
@@ -85,6 +86,7 @@ export default function NewCareRequestPage() {
       requiredSkills: final.requiredSkills || [],
       taskList: final.taskList || [],
       preferredGender: final.preferredGender || "any gender",
+      startDate: final.scheduleData.startDate,
       // Schedule
       schedule: {
         workingDays: final.scheduleData.workingDays,

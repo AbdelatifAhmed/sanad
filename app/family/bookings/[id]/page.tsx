@@ -43,7 +43,7 @@ export default function FamilyTrackingPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "wallet" | "cash">("card");
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "wallet">("card");
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
 
@@ -51,12 +51,22 @@ export default function FamilyTrackingPage() {
     try {
       setPaying(true);
       setPayError("");
+      
+      const basePrice = booking.totalHours * booking.hourlyRateAtBooking;
+      const adminFee = basePrice * 0.10;
+      const totalAmount = basePrice + adminFee;
+
+      if (paymentMethod === "card") {
+        router.push(`/family/wallet?amount=${totalAmount.toFixed(2)}&bookingId=${booking._id}`);
+        return;
+      }
+
       const res = await api.post(`/payments/${booking._id}/initiate`, { paymentMethod });
       if (res.data && res.data.status === "success") {
         if (res.data.data.paymentUrl) {
           window.location.href = res.data.data.paymentUrl;
         } else {
-          alert(isRtl ? "تم تأكيد اختيار الدفع النقدي بنجاح. ستبدأ الخدمة الآن." : "Cash payment selected successfully. Service will start now.");
+          alert(isRtl ? "تم تأكيد الدفع بنجاح. ستبدأ الخدمة الآن." : "Payment confirmed successfully. Service will start now.");
           refresh();
         }
       }
@@ -244,7 +254,7 @@ export default function FamilyTrackingPage() {
                   <h3 className="font-bold text-stitch-on-surface text-sm">
                     {isRtl ? "اختر طريقة الدفع المناسبة:" : "Select Payment Method:"}
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
                       onClick={() => setPaymentMethod("card")}
                       className={`p-4 rounded-2xl border transition-all flex flex-col items-center gap-2 font-bold text-xs ${
@@ -267,18 +277,6 @@ export default function FamilyTrackingPage() {
                     >
                       <ShieldCheck className="w-6 h-6 animate-pulse" />
                       <span>{isRtl ? "المحفظة الإلكترونية" : "E-Wallet"}</span>
-                    </button>
-
-                    <button
-                      onClick={() => setPaymentMethod("cash")}
-                      className={`p-4 rounded-2xl border transition-all flex flex-col items-center gap-2 font-bold text-xs ${
-                        paymentMethod === "cash"
-                          ? "bg-teal-50 border-stitch-primary text-stitch-primary shadow-soft"
-                          : "bg-white border-stitch-outline/20 text-stitch-on-surface-variant hover:bg-sand-low"
-                      }`}
-                    >
-                      <UserIcon className="w-6 h-6" />
-                      <span>{isRtl ? "دفع نقدي (كاش)" : "Cash Payment"}</span>
                     </button>
                   </div>
                 </div>
@@ -595,7 +593,7 @@ export default function FamilyTrackingPage() {
             <div className="flex items-center space-x-4">
               {companionUser.avatar ? (
                 <img 
-                  src={companionUser.avatar} 
+                  src={companionUser.avatar.url || companionUser.avatar} 
                   alt={companionUser.name} 
                   className="w-14 h-14 rounded-full object-cover border border-stitch-outline/25"
                 />
