@@ -129,18 +129,21 @@ const getCompanionReviews = async (req, res) => {
     ]);
 
     return res.status(200).json({
-      companionId: id,
-      companionProfileId: companion._id,
-      averageRating: companion.rating,
-      totalReviews: companion.reviewCount,
-      reviews,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        hasMore: page * limit < total,
-      },
+      status: "success",
+      data: {
+        companionId: id,
+        companionProfileId: companion._id,
+        averageRating: companion.rating,
+        totalReviews: companion.reviewCount,
+        reviews,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+          hasMore: page * limit < total,
+        },
+      }
     });
   } catch (error) {
     console.error("Error fetching companion reviews:", error);
