@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { CareRequestFormData, WorkingDay } from "@/lib/types/care-request";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import InlineCalendar from "@/components/shared/InlineCalendar";
 
 type Step2Data = Pick<CareRequestFormData, "scheduleData">;
 
@@ -25,6 +26,8 @@ const DAY_PRESETS: { value: "daily" | "weekdays" | "weekends"; icon: string; day
 export default function StepScheduling({ defaultValues, onNext, onBack }: StepSchedulingProps) {
   const t = useTranslations("jobPostForm");
   const tBooking = useTranslations("bookingForm");
+  const locale = useLocale();
+  const isRtl = locale === "ar";
   
   const s = defaultValues.scheduleData;
 
@@ -32,6 +35,9 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
   const [startTime, setStartTime] = useState(s.startTime);
   const [endTime, setEndTime] = useState(s.endTime);
   const [durationInWeeks, setDurationInWeeks] = useState<number | "">(s.durationInWeeks);
+  const [startDate, setStartDate] = useState<string>(
+    s.startDate || new Date().toISOString().split("T")[0]
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const toggleDay = (day: WorkingDay) => {
@@ -50,18 +56,22 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
     if (!startTime || !endTime) return null;
     const [sh, sm] = startTime.split(":").map(Number);
     const [eh, em] = endTime.split(":").map(Number);
-    const diff = eh * 60 + em - (sh * 60 + sm);
-    return diff > 0 ? diff / 60 : null;
+    let diff = eh * 60 + em - (sh * 60 + sm);
+    if (diff <= 0) {
+      diff += 24 * 60; // Spans across midnight to next day
+    }
+    return diff / 60;
   };
 
   const totalHoursPerDay = calcHours();
 
   const validate = () => {
     const errs: Record<string, string> = {};
+    if (!startDate) errs.startDate = tBooking("validation.dateRequired" as any);
     if (workingDays.length === 0) errs.workingDays = tBooking("validation.workingDaysRequired" as any);
     if (!startTime) errs.startTime = tBooking("validation.startRequired" as any);
     if (!endTime) errs.endTime = tBooking("validation.endRequired" as any);
-    if (startTime && endTime && (calcHours() ?? 0) <= 0)
+    if (startTime && endTime && startTime === endTime)
       errs.endTime = tBooking("validation.endTimeAfterStart" as any);
     if (durationInWeeks === "" || Number(durationInWeeks) < 1)
       errs.durationInWeeks = tBooking("validation.durationRequired" as any);
@@ -77,6 +87,7 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
         startTime,
         endTime,
         durationInWeeks: Number(durationInWeeks),
+        startDate,
       },
     });
   };
@@ -158,33 +169,59 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
         <p className="text-sm text-[#3e4949]">{t("workingHoursDesc")}</p>
       </div>
 
+
+      {/* Start Date Inline Calendar (In its own row/full width with responsive padding) */}
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-[#1b1c1c]">
+          {tBooking("schedule.recurringStartDate")} <span className="text-red-500">*</span>
+        </label>
+        <div className="w-full md:px-16 lg:px-28">
+          <InlineCalendar
+            value={startDate}
+            minDate={new Date().toISOString().split("T")[0]}
+            onChange={(date) => {
+              setStartDate(date);
+              setErrors((er) => ({ ...er, startDate: "" }));
+            }}
+          />
+        </div>
+        {errors.startDate && <p className="text-xs text-red-500">{errors.startDate}</p>}
+      </div>
+
+      {/* Time pickers + Summary stacked tightly in their own row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-end">
-        <div className="flex gap-3 items-end">
-          <div className="flex-1 space-y-1">
-            <span className="text-xs text-[#3e4949]/70 uppercase tracking-wider font-semibold">{t("startTime")}</span>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => { setStartTime(e.target.value); setErrors((er) => ({ ...er, startTime: "" })); }}
-              className="w-full h-14 rounded-xl border border-[#bdc9c8] bg-white px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all text-center"
-            />
-            {errors.startTime && <p className="text-xs text-red-500">{errors.startTime}</p>}
-          </div>
-          <span className="text-[#3e4949] pb-4 text-sm">{t("to")}</span>
-          <div className="flex-1 space-y-1">
-            <span className="text-xs text-[#3e4949]/70 uppercase tracking-wider font-semibold">{t("endTime")}</span>
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => { setEndTime(e.target.value); setErrors((er) => ({ ...er, endTime: "" })); }}
-              className="w-full h-14 rounded-xl border border-[#bdc9c8] bg-white px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all text-center"
-            />
-            {errors.endTime && <p className="text-xs text-red-500">{errors.endTime}</p>}
+        {/* Time range selection */}
+        <div className="space-y-2">
+          <span className="block text-sm font-semibold text-[#1b1c1c]">
+            {t("workingHours")} <span className="text-red-500">*</span>
+          </span>
+          <div className="flex gap-3 items-center">
+            <div className="flex-1 space-y-1">
+              <span className="text-[10px] text-[#3e4949]/70 uppercase tracking-wider font-semibold">{t("startTime")}</span>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => { setStartTime(e.target.value); setErrors((er) => ({ ...er, startTime: "" })); }}
+                className="w-full h-12 rounded-xl border border-[#bdc9c8] bg-white px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all text-center"
+              />
+              {errors.startTime && <p className="text-xs text-red-500">{errors.startTime}</p>}
+            </div>
+            <span className="text-[#3e4949] pt-5 text-sm font-bold">{t("to")}</span>
+            <div className="flex-1 space-y-1">
+              <span className="text-[10px] text-[#3e4949]/70 uppercase tracking-wider font-semibold">{t("endTime")}</span>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => { setEndTime(e.target.value); setErrors((er) => ({ ...er, endTime: "" })); }}
+                className="w-full h-12 rounded-xl border border-[#bdc9c8] bg-white px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all text-center"
+              />
+              {errors.endTime && <p className="text-xs text-red-500">{errors.endTime}</p>}
+            </div>
           </div>
         </div>
 
-        {/* Hours summary */}
-        <div className="bg-[#f6f3f2] p-4 rounded-xl flex items-center gap-3 border border-[#bdc9c8]/20">
+        {/* Hours summary card */}
+        <div className="bg-[#f6f3f2] p-4 rounded-2xl flex items-center gap-3 border border-[#bdc9c8]/20 shadow-sm">
           <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-[#bdc9c8]/30 shrink-0">
             <span className="material-symbols-outlined text-[#1f8a8a]">schedule</span>
           </div>
@@ -192,7 +229,7 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
             <p className="text-sm font-bold text-[#1b1c1c]">
               {totalHoursPerDay ? t("hoursPerDay", { count: totalHoursPerDay }) : t("setHours")}
             </p>
-            <p className="text-xs text-[#3e4949]">
+            <p className="text-xs text-[#3e4949] mt-0.5">
               {totalHoursPerDay && workingDays.length > 0
                 ? t("hoursPerWeek", { count: (totalHoursPerDay * workingDays.length).toFixed(0) })
                 : t("selectDaysTimes")}
@@ -230,7 +267,7 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
           ))}
         </div>
         <div className="relative">
-          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#3e4949] pointer-events-none">
+          <span className={`material-symbols-outlined absolute ${isRtl ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-[#3e4949] pointer-events-none`}>
             timelapse
           </span>
           <input
@@ -243,7 +280,7 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
               setErrors((er) => ({ ...er, durationInWeeks: "" }));
             }}
             placeholder={t("durationPlaceholder")}
-            className="w-full h-14 bg-white border border-[#bdc9c8] rounded-xl pl-12 pr-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
+            className={`w-full h-14 bg-white border border-[#bdc9c8] rounded-xl ${isRtl ? "pr-12 pl-4" : "pl-12 pr-4"} text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all`}
           />
         </div>
         {errors.durationInWeeks && <p className="text-xs text-red-500">{errors.durationInWeeks}</p>}

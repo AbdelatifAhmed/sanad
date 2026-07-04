@@ -87,6 +87,7 @@ export interface BookingScheduleEntry {
   tasksList: ScheduleTaskEntry[];
   checkInTime?: string | Date | null;
   checkOutTime?: string | Date | null;
+  checkInMethod?: string | null;
 }
 
 export interface Booking {
@@ -154,6 +155,7 @@ export interface JobPost {
   schedule: JobPostSchedule;
   location: LocationDetails;
   status: JobPostStatus;
+  startDate?: string | Date;
   createdAt?: string | Date;
   updatedAt?: string | Date;
 }

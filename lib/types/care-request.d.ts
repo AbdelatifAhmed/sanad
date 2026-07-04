@@ -51,6 +51,7 @@ export interface CareRequestFormData {
     startTime: string;
     endTime: string;
     durationInWeeks: number | "";
+    startDate: string;
   };
   // Step 3 – Location
   locationData: {
@@ -88,6 +89,7 @@ export interface JobPost {
     governorate: string;
   };
   status: JobPostStatus;
+  startDate?: string;
   createdAt: string;
   updatedAt: string;
 }

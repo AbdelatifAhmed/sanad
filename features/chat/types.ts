@@ -20,7 +20,6 @@ export interface ChatMessage {
 
 export interface Conversation {
   bookingId: string;
-  bookingStatus: BookingStatus;
   startDate: string;
   endDate: string;
   otherUser: ChatUser | null;

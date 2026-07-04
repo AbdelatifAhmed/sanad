@@ -27,7 +27,7 @@ export default async function OverviewSection({
               <span className="material-symbols-outlined text-stitch-primary bg-stitch-primary/10 p-1.5 rounded-lg text-lg">
                 assignment
               </span>
-              <span className="text-[11px] font-bold tracking-wider text-stitch-on-surface-variant/50 uppercase">
+              <span className="text-[11px] font-bold tracking-wider text-stitch-on-surface-variant/85 uppercase">
                 {t("activeRequests")}
               </span>
             </div>
@@ -36,7 +36,7 @@ export default async function OverviewSection({
             <span className="text-3xl font-bold text-stitch-on-surface">
               {activeRequestsCount}
             </span>
-            <span className="text-xs text-stitch-on-surface-variant/50 font-medium">
+            <span className="text-xs text-stitch-on-surface-variant/85 font-medium">
               {t("activeRequestsDesc")}
             </span>
           </div>
@@ -49,7 +49,7 @@ export default async function OverviewSection({
               <span className="material-symbols-outlined text-stitch-primary bg-stitch-primary/10 p-1.5 rounded-lg text-lg">
                 event
               </span>
-              <span className="text-[11px] font-bold tracking-wider text-stitch-on-surface-variant/50 uppercase">
+              <span className="text-[11px] font-bold tracking-wider text-stitch-on-surface-variant/85 uppercase">
                 {t("upcomingVisits")}
               </span>
             </div>
@@ -59,7 +59,7 @@ export default async function OverviewSection({
               <span className="text-3xl font-bold text-stitch-on-surface">
                 {upcomingVisitsCount}
               </span>
-              <span className="text-xs text-stitch-on-surface-variant/50 font-medium">
+              <span className="text-xs text-stitch-on-surface-variant/85 font-medium">
                 {t("upcomingVisitsDesc")}
               </span>
             </div>

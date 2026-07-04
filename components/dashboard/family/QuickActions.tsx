@@ -11,7 +11,7 @@ export default async function QuickActions() {
       {/* Create Care Request Card */}
       <Link 
         href="/family/job-posts/new" 
-        className="group relative bg-[#015347] hover:bg-[#00473c] p-6 rounded-3xl shadow-soft transition-all duration-300 transform hover:translate-y-[-2px] flex items-center gap-5 text-white overflow-hidden cursor-pointer"
+        className="group relative bg-[#1f8a8a] hover:bg-[#0d8282] p-6 rounded-3xl shadow-soft transition-all duration-300 transform hover:translate-y-[-2px] flex items-center gap-5 text-white overflow-hidden cursor-pointer"
       >
         <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform duration-300">
