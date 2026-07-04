@@ -33,7 +33,7 @@ const bookingSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["cash", "card", "wallet"],
+      enum: ["card", "wallet"],
       default: "card",
     },
     adminFee: {
@@ -83,6 +83,8 @@ const bookingSchema = new mongoose.Schema(
         ],
         checkInTime: { type: Date },
         checkOutTime: { type: Date },
+        payoutReleased: { type: Boolean, default: false },
+        payoutAmount: { type: Number, default: 0 },
         checkInGeo: {
           lat: { type: Number },
           lng: { type: Number },
