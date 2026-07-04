@@ -1,6 +1,7 @@
 const Booking = require("../models/booking.schema");
 const Payment = require("../models/payment.schema");
 const CompanionDebt = require("../models/companionDebt.schema");
+const Companion = require("../models/companion.schema");
 
 function getDistanceInKm(lat1, lon1, lat2, lon2) {
     const R = 6371; // Radius of the earth in km
@@ -26,8 +27,8 @@ const checkIn = async (bookingId, scheduleId, companionId, verification = {}) =>
         throw new Error("Not authorized to check-in for this booking");
     }
 
-    if (['cancelled', 'completed'].includes(booking.status)) {
-        throw new Error(`Cannot check-in. Booking is already ${booking.status}`);
+    if (!['approved', 'active'].includes(booking.status) || booking.paymentStatus !== 'paid') {
+        throw new Error("Cannot check-in. Payment must be completed before check-in.");
     }
 
     const scheduleItem = booking.schedule.id(scheduleId);
@@ -44,33 +45,58 @@ const checkIn = async (bookingId, scheduleId, companionId, verification = {}) =>
     let verified = false;
     let method = "";
 
-    // 1. Verify Passcode
-    if (passcode) {
+    if (passcode !== undefined && passcode !== null && passcode !== '') {
         const targetPasscode = booking.verificationPasscode;
         if (targetPasscode && passcode.toString() === targetPasscode.toString()) {
             verified = true;
             method = "passcode";
             scheduleItem.checkInPasscode = passcode.toString();
+        } else {
+            throw new Error("خطأ في التحقق من الحضور: رمز التحقق (Passcode) غير صحيح");
         }
-    }
+    } else if (lat !== undefined && lng !== undefined) {
+        let coordinates = [];
+        if (booking.location && booking.location.geo && booking.location.geo.coordinates && booking.location.geo.coordinates.length === 2) {
+            coordinates = booking.location.geo.coordinates;
+        } else {
+            const User = require("../models/user.schema");
+            const familyUser = await User.findById(booking.familyId);
+            if (familyUser && familyUser.location && familyUser.location.geo && familyUser.location.geo.coordinates && familyUser.location.geo.coordinates.length === 2) {
+                coordinates = familyUser.location.geo.coordinates;
+            }
+        }
 
-    // 2. Verify Geolocation (within 500m / 0.5km)
-    if (!verified && lat !== undefined && lng !== undefined) {
-        if (booking.location && booking.location.geo && booking.location.geo.coordinates) {
-            const [bookingLng, bookingLat] = booking.location.geo.coordinates;
+        if (coordinates.length === 2) {
+            const [bookingLng, bookingLat] = coordinates;
             if (bookingLat && bookingLng) {
                 const distance = getDistanceInKm(lat, lng, bookingLat, bookingLng);
                 if (distance <= 0.5) { // 500 meters safety limit
                     verified = true;
                     method = "geolocation";
                     scheduleItem.checkInGeo = { lat, lng };
+                } else {
+                    throw new Error("خطأ في التحقق من الحضور: موقعك الجغرافي بعيد جداً عن موقع الرعاية المعتمد");
                 }
+            } else {
+                throw new Error("خطأ في التحقق من الحضور: إحداثيات موقع الرعاية غير مكتملة في الحجز");
             }
+        } else {
+            // Lock caregiver's checked-in coordinates as the authorized booking location coordinates
+            booking.location = {
+                geo: {
+                    type: "Point",
+                    coordinates: [lng, lat]
+                },
+                readableAddress: booking.location?.readableAddress || "الموقع المعتمد عند تسجيل الحضور الأول",
+                city: booking.location?.city || "",
+                governorate: booking.location?.governorate || ""
+            };
+            verified = true;
+            method = "geolocation";
+            scheduleItem.checkInGeo = { lat, lng };
         }
-    }
-
-    if (!verified) {
-        throw new Error("خطأ في التحقق من الحضور: الرمز المدخل غير صحيح أو موقعك الجغرافي بعيد جداً عن موقع الرعاية");
+    } else {
+        throw new Error("خطأ في التحقق من الحضور: يرجى تحديد طريقة التحقق (رمز OTP أو الموقع الجغرافي)");
     }
 
     scheduleItem.checkInTime = new Date();
@@ -118,66 +144,60 @@ const checkOut = async (bookingId, scheduleId, companionId) => {
         }
     }
 
+    // Daily payout release logic
+    if (booking.paymentStatus === 'paid' && !scheduleItem.payoutReleased) {
+        // Calculate session duration in hours
+        let shiftDurationHours = 1;
+        try {
+            const [startH, startM] = scheduleItem.startTime.split(":").map(Number);
+            const [endH, endM] = scheduleItem.endTime.split(":").map(Number);
+            const totalStart = startH * 60 + startM;
+            const totalEnd = endH * 60 + endM;
+            shiftDurationHours = Math.max(0, (totalEnd - totalStart) / 60);
+        } catch (err) {
+            console.error("Failed to parse shift times for payout calculation:", err.message);
+        }
+
+        const sessionEarnings = shiftDurationHours * booking.hourlyRateAtBooking;
+
+        scheduleItem.payoutReleased = true;
+        scheduleItem.payoutAmount = sessionEarnings;
+
+        // Add session earnings to companion's wallet balance
+        const companionProfile = await Companion.findOne({ userId: booking.companionId });
+        if (companionProfile) {
+            companionProfile.walletBalance = (companionProfile.walletBalance || 0) + sessionEarnings;
+            await companionProfile.save({ validateBeforeSave: false });
+        }
+
+        // Record companion payout transaction
+        const WalletTransaction = require("../models/walletTransaction.schema");
+        const payoutTxId = 'payout_' + Math.random().toString(36).substr(2, 9).toUpperCase();
+        await WalletTransaction.create({
+            userId: booking.companionId,
+            bookingId: booking._id,
+            amount: sessionEarnings,
+            type: "payout",
+            status: "completed",
+            transactionId: payoutTxId,
+            descriptionAr: `مستحقات يومية لحجز الرعاية المنزلية (جلسة ${scheduleItem.startTime})`,
+            descriptionEn: `Daily payout for care booking (session ${scheduleItem.startTime})`
+        });
+    }
+
     const allCheckedOut = booking.schedule.every(item => item.checkOutTime);
     if (allCheckedOut) {
         booking.status = 'completed';
 
-        // Release payout for card or wallet payments
+        // Finalize payout state on completion
         if ((booking.paymentMethod === 'card' || booking.paymentMethod === 'wallet') && booking.paymentStatus === 'paid') {
             const payment = await Payment.findOne({ bookingId: booking._id });
             if (payment && payment.status === 'paid' && !payment.payoutReleased) {
                 payment.payoutReleased = true;
-                payment.payoutTransactionId = 'payout_' + Math.random().toString(36).substr(2, 9).toUpperCase();
+                payment.payoutTransactionId = 'payout_final_' + Math.random().toString(36).substr(2, 9).toUpperCase();
                 payment.payoutDate = new Date();
                 await payment.save();
             }
-        }
-        // Handle cash payments and record admin fee platform debt
-        else if (booking.paymentMethod === 'cash') {
-            let payment = await Payment.findOne({ bookingId: booking._id });
-            const basePrice = booking.totalHours * booking.hourlyRateAtBooking;
-            const adminFee = booking.adminFee || (basePrice * 0.10);
-
-            if (!payment) {
-                const transactionId = "txn_" + Math.random().toString(36).substr(2, 9).toUpperCase();
-                payment = new Payment({
-                    bookingId: booking._id,
-                    familyId: booking.familyId,
-                    companionId: booking.companionId,
-                    amount: basePrice,
-                    adminFee: adminFee,
-                    totalAmount: basePrice + adminFee,
-                    paymentMethod: 'cash',
-                    status: 'paid',
-                    transactionId,
-                });
-            } else {
-                payment.status = 'paid';
-            }
-
-            booking.paymentStatus = 'paid';
-
-            if (!payment.debtRecorded) {
-                let companionDebt = await CompanionDebt.findOne({ companionId: booking.companionId });
-                if (!companionDebt) {
-                    companionDebt = new CompanionDebt({
-                        companionId: booking.companionId,
-                        totalDebt: 0,
-                        debtHistory: [],
-                    });
-                }
-                companionDebt.totalDebt += adminFee;
-                companionDebt.debtHistory.push({
-                    bookingId: booking._id,
-                    paymentId: payment._id,
-                    amount: adminFee,
-                    reason: "cash_payment_admin_fee",
-                    recordedAt: new Date(),
-                });
-                await companionDebt.save();
-                payment.debtRecorded = true;
-            }
-            await payment.save();
         }
     }
 
