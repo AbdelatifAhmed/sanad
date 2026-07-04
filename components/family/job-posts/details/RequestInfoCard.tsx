@@ -215,14 +215,14 @@ export default function RequestInfoCard({ job, beneficiary }: RequestInfoCardPro
               <span className="material-symbols-outlined text-[#3e4949] text-lg shrink-0 mt-0.5">calendar_today</span>
               <div>
                 <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest">{t("startDate")}</p>
-                <p className="text-sm font-semibold text-[#1b1c1c]">{formatShortDate(job.createdAt)}</p>
+                <p className="text-sm font-semibold text-[#1b1c1c]">{formatShortDate(job.startDate || job.createdAt)}</p>
               </div>
             </div>
             <div className="flex gap-2.5">
               <span className="material-symbols-outlined text-[#3e4949] text-lg shrink-0 mt-0.5">event_busy</span>
               <div>
                 <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest">{t("endDate")}</p>
-                <p className="text-sm font-semibold text-[#1b1c1c]">{getEndDate(job.createdAt, job.schedule?.durationInWeeks)}</p>
+                <p className="text-sm font-semibold text-[#1b1c1c]">{getEndDate(job.startDate || job.createdAt, job.schedule?.durationInWeeks)}</p>
               </div>
             </div>
           </div>

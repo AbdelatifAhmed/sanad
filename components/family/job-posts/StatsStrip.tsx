@@ -10,10 +10,10 @@ interface StatsStripProps {
 }
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
-  open:     { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
-  filled:   { bg: "bg-blue-50",    text: "text-blue-700",   dot: "bg-blue-500" },
-  closed:   { bg: "bg-[#f0eded]",  text: "text-[#3e4949]",  dot: "bg-[#bdc9c8]" },
-  canceled: { bg: "bg-red-50",     text: "text-red-700",    dot: "bg-red-500" },
+  open:      { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
+  filled:    { bg: "bg-blue-50",    text: "text-blue-700",   dot: "bg-blue-500" },
+  completed: { bg: "bg-[#f0eded]",  text: "text-[#3e4949]",  dot: "bg-[#bdc9c8]" },
+  canceled:  { bg: "bg-red-50",     text: "text-red-700",    dot: "bg-red-500" },
 };
 
 export default function StatsStrip({ jobs, isLoading }: StatsStripProps) {
@@ -22,12 +22,13 @@ export default function StatsStrip({ jobs, isLoading }: StatsStripProps) {
   if (isLoading || jobs.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {(["open", "filled", "closed"] as const).map((status) => {
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      {(["open", "filled", "completed", "canceled"] as const).map((status) => {
         const count = jobs.filter((j) => 
           j.status === status || 
           (status === "filled" && j.status === "assigned") || 
-          (status === "closed" && j.status === "completed")
+          (status === "completed" && j.status === "completed") ||
+          (status === "canceled" && j.status === "canceled")
         ).length;
         const style = STATUS_STYLES[status] ?? STATUS_STYLES.open;
         
