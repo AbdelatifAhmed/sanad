@@ -86,21 +86,6 @@ const createJobPost = async (req, res) => {
       });
     }
 
-    // Escrow balance validation check
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const [endHour, endMin] = endTime.split(':').map(Number);
-    const hoursPerDay = (endHour + endMin/60) - (startHour + startMin/60);
-    const totalHours = hoursPerDay * workingDays.length * durationInWeeks;
-    const estimatedCost = totalHours * Number(budgetPerHour) * 1.10; // including 10% admin fee
-
-    if ((familyProfile.walletBalance || 0) < estimatedCost) {
-      return res.status(400).json({
-        status: "fail",
-        message: lang === "en"
-          ? "Your current balance is insufficient. Please charge your wallet first before requesting the service."
-          : "رصيدك الحالي لا يكفي، برجاء شحن المحفظة أولاً قبل طلب الخدمة"
-      });
-    }
 
     let finalPreferredCaregiverGender = preferredCaregiverGender;
     if (preferredGender) {
@@ -443,7 +428,8 @@ const updateJobPost = async (req, res) => {
       beneficiaryId,
       taskList,
       preferredGender,
-      preferredCaregiverGender
+      preferredCaregiverGender,
+      startDate
     } = req.body;
 
     const job = await JobPost.findById(id);
@@ -467,6 +453,7 @@ const updateJobPost = async (req, res) => {
     if (requiredSkills) job.requiredSkills = requiredSkills;
     if (budgetPerHour) job.budgetPerHour = budgetPerHour;
     if (taskList) job.taskList = taskList;
+    if (startDate) job.startDate = startDate;
     
     if (preferredGender) {
       job.preferredGender = preferredGender;

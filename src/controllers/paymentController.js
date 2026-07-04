@@ -32,7 +32,7 @@ const initiatePayment = async (req, res) => {
     const { id } = req.params;
     const { paymentMethod } = req.body;
 
-    if (!paymentMethod || !["cash", "card", "wallet"].includes(paymentMethod)) {
+    if (!paymentMethod || !["card", "wallet"].includes(paymentMethod)) {
       return res.status(400).json({
         status: "fail",
         message: messages.payment.invalidPaymentMethod[lang],
@@ -124,6 +124,7 @@ const initiatePayment = async (req, res) => {
 
         await WalletTransaction.create([{
           userId: req.user._id,
+          bookingId: booking._id,
           amount: -totalAmount,
           type: "payment",
           status: "completed",
@@ -171,35 +172,6 @@ const initiatePayment = async (req, res) => {
       }
     }
 
-    // For CASH payments, process immediately (no gateway)
-    if (paymentMethod === "cash") {
-      const transactionId = "txn_" + Math.random().toString(36).substr(2, 9).toUpperCase();
-      const payment = await Payment.create({
-        bookingId: booking._id,
-        familyId: booking.familyId,
-        companionId: booking.companionId,
-        amount: basePrice,
-        adminFee,
-        totalAmount,
-        paymentMethod: "cash",
-        status: "pending",
-        transactionId,
-      });
-
-      return res.status(200).json({
-        status: "success",
-        message:
-          lang === "en"
-            ? "Cash payment confirmed. Service will start now."
-            : "تم تأكيد الدفع النقدي. ستبدأ الخدمة الآن.",
-        data: {
-          payment,
-          booking,
-          paymentUrl: null,
-          isCashPayment: true,
-        },
-      });
-    }
 
     // For CARD payment, create Stripe PaymentIntent
     if (paymentMethod === "card") {
@@ -330,6 +302,121 @@ const handlePaymentWebhook = async (req, res) => {
           }
         }
 
+        if (type === "booking_topup_and_pay" && userId && bookingId) {
+          const familyProfile = await Family.findOne({ familyId: userId }).session(session);
+          const booking = await Booking.findById(bookingId).session(session);
+
+          if (familyProfile && booking) {
+            const topupAmount = paymentIntent.amount / 100;
+            
+            // 1. Credit wallet (top-up)
+            familyProfile.walletBalance = (familyProfile.walletBalance || 0) + topupAmount;
+            await familyProfile.save({ session });
+
+            // 2. Complete topup transaction record
+            await WalletTransaction.findOneAndUpdate(
+              { transactionId: paymentIntent.id },
+              { status: "completed" },
+              { session }
+            );
+
+            // 3. Process Wallet Payment
+            const basePrice = booking.totalHours * booking.hourlyRateAtBooking;
+            const adminFee = basePrice * 0.1;
+            const totalAmount = basePrice + adminFee;
+
+            if (familyProfile.walletBalance >= totalAmount) {
+              // Deduct wallet balance
+              familyProfile.walletBalance -= totalAmount;
+              await familyProfile.save({ session });
+
+              // Create payment record
+              await Payment.create([{
+                bookingId: booking._id,
+                familyId: booking.familyId,
+                companionId: booking.companionId,
+                amount: basePrice,
+                adminFee,
+                totalAmount,
+                paymentMethod: "wallet",
+                status: "paid",
+                transactionId: paymentIntent.id,
+              }], { session });
+
+              // Update booking
+              booking.status = "approved";
+              booking.paymentStatus = "paid";
+              booking.paymentMethod = "wallet";
+              await booking.save({ session });
+
+              // Assign job post
+              if (booking.jobPostId) {
+                const jobPost = await JobPost.findById(booking.jobPostId).session(session);
+                if (jobPost) {
+                  jobPost.status = "assigned";
+                  await jobPost.save({ session });
+
+                  await Proposal.updateMany(
+                    {
+                      jobPostId: booking.jobPostId,
+                      companionId: { $ne: booking.companionId },
+                      status: "pending",
+                    },
+                    { status: "rejected" },
+                    { session }
+                  );
+                }
+              }
+
+              // Create debit transaction record
+              await WalletTransaction.create([{
+                userId,
+                bookingId: booking._id,
+                amount: -totalAmount,
+                type: "payment",
+                status: "completed",
+                transactionId: "pay_" + paymentIntent.id,
+                descriptionAr: "دفع مقابل حجز رعاية منزلية من المحفظة (شحن وتلقائي)",
+                descriptionEn: "Payment for home care booking via Wallet (Auto Top-up & Pay)",
+              }], { session });
+
+              await session.commitTransaction();
+
+              // Send notifications
+              try {
+                await sendNotification(
+                  userId,
+                  null,
+                  lang === "en" ? "Wallet Charged Successfully" : "تم شحن المحفظة بنجاح",
+                  lang === "en"
+                    ? `Your wallet has been topped up with $${topupAmount.toFixed(2)}.`
+                    : `تم شحن محفظتك بمبلغ $${topupAmount.toFixed(2)}.`,
+                  "payment",
+                  req.io
+                );
+
+                await sendNotification(
+                  booking.companionId,
+                  userId,
+                  lang === "en" ? "Booking Confirmed & Paid" : "تم تأكيد الحجز والدفع",
+                  lang === "en"
+                    ? `Payment confirmed! You can now start communication with the family.`
+                    : `تم تأكيد الدفع! يمكنك الآن بدء التواصل مع العائلة.`,
+                  "payment",
+                  req.io
+                );
+              } catch (err) {
+                console.error("Failed to send notification:", err.message);
+              }
+
+              return res.status(200).json({ status: "success", message: "Booking topup and pay completed" });
+            } else {
+              await session.commitTransaction();
+              return res.status(200).json({ status: "success", message: "Topup completed but booking unpaid due to insufficient funds" });
+            }
+          }
+        }
+
         if (type === "booking_payment" && bookingId) {
           // Process Booking Payment
           const payment = await Payment.findOne({ stripePaymentIntentId: paymentIntent.id }).session(session);
@@ -364,6 +451,7 @@ const handlePaymentWebhook = async (req, res) => {
               // Create debit transaction record
               await WalletTransaction.create([{
                 userId: booking.familyId,
+                bookingId: booking._id,
                 amount: -payment.totalAmount,
                 type: "payment",
                 status: "completed",
@@ -915,175 +1003,6 @@ const getAdminPayments = async (req, res) => {
   }
 };
 
-const confirmCashPayment = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  try {
-    const lang = req.lang || "en";
-    const { bookingId } = req.body;
-    const companionId = req.user._id;
-
-    if (!bookingId) {
-      await session.abortTransaction();
-      return res.status(400).json({
-        status: "fail",
-        message:
-          lang === "en" ? "Booking ID is required." : "معرف الحجز مطلوب.",
-      });
-    }
-
-    const booking = await Booking.findById(bookingId).session(session);
-    if (!booking) {
-      await session.abortTransaction();
-      return res.status(404).json({
-        status: "fail",
-        message: messages.review.bookingNotFound[lang],
-      });
-    }
-
-    if (booking.companionId.toString() !== companionId.toString()) {
-      await session.abortTransaction();
-      return res.status(403).json({
-        status: "fail",
-        message:
-          lang === "en"
-            ? "Not authorized to confirm cash for this booking."
-            : "غير مصرح لك بتأكيد الدفع النقدي لهذا الحجز.",
-      });
-    }
-
-    if (booking.paymentMethod !== "cash") {
-      await session.abortTransaction();
-      return res.status(400).json({
-        status: "fail",
-        message:
-          lang === "en"
-            ? "This booking is not set to cash payment."
-            : "هذا الحجز غير مخصص للدفع النقدي.",
-      });
-    }
-
-    if (booking.status !== "pending_payment") {
-      await session.abortTransaction();
-      return res.status(400).json({
-        status: "fail",
-        message: messages.payment.bookingNotInPaymentState[lang],
-      });
-    }
-
-    let payment = await Payment.findOne({ bookingId: booking._id }).session(
-      session,
-    );
-    if (!payment) {
-      const basePrice = booking.totalHours * booking.hourlyRateAtBooking;
-      const adminFee = basePrice * 0.1;
-      const totalAmount = basePrice + adminFee;
-      const transactionId =
-        "txn_" + Math.random().toString(36).substr(2, 9).toUpperCase();
-
-      payment = new Payment({
-        bookingId: booking._id,
-        familyId: booking.familyId,
-        companionId: booking.companionId,
-        amount: basePrice,
-        adminFee,
-        totalAmount,
-        paymentMethod: "cash",
-        status: "pending",
-        transactionId,
-      });
-    }
-
-    if (payment.status === "paid") {
-      await session.abortTransaction();
-      return res.status(400).json({
-        status: "fail",
-        message:
-          lang === "en"
-            ? "Payment already confirmed."
-            : "تم تأكيد الدفع بالفعل.",
-      });
-    }
-
-    payment.status = "paid";
-    await payment.save({ session });
-
-    booking.status = "approved";
-    booking.paymentStatus = "paid";
-    await booking.save({ session });
-
-    let companionDebt = await CompanionDebt.findOne({
-      companionId: booking.companionId,
-    }).session(session);
-    if (!companionDebt) {
-      const debtArray = await CompanionDebt.create(
-        [
-          {
-            companionId: booking.companionId,
-            totalDebt: 0,
-            debtHistory: [],
-          },
-        ],
-        { session },
-      );
-      companionDebt = debtArray[0];
-    }
-
-    companionDebt.totalDebt += payment.adminFee;
-    companionDebt.debtHistory.push({
-      bookingId: booking._id,
-      paymentId: payment._id,
-      amount: payment.adminFee,
-      reason: "cash_payment_admin_fee",
-      recordedAt: new Date(),
-    });
-    await companionDebt.save({ session });
-    payment.debtRecorded = true;
-    await payment.save({ session });
-
-    await session.commitTransaction();
-
-    try {
-      await sendNotification(
-        booking.familyId,
-        companionId,
-        lang === "en"
-          ? "Cash Payment Confirmed"
-          : "تم تأكيد استلام المبلغ نقداً",
-        lang === "en"
-          ? `The companion has confirmed receiving the cash payment. Your booking is now approved.`
-          : `أكد المرافق استلام المبلغ نقداً. تم قبول الحجز الخاص بك الآن.`,
-        "payment",
-        req.io,
-      );
-    } catch (err) {
-      console.error(
-        "Failed to send cash confirmation notification:",
-        err.message,
-      );
-    }
-
-    return res.status(200).json({
-      status: "success",
-      message:
-        lang === "en"
-          ? "Cash payment successfully confirmed."
-          : "تم تأكيد الدفع النقدي بنجاح.",
-      data: { payment, booking },
-    });
-  } catch (error) {
-    await session.abortTransaction();
-    console.error("Error confirming cash payment:", error);
-    return res.status(500).json({
-      status: "error",
-      message: messages.common.serverError[req.lang || "en"],
-      error: error.message,
-    });
-  } finally {
-    session.endSession();
-  }
-};
-
 const settleCompanionDebt = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -1307,7 +1226,6 @@ module.exports = {
   getCompanionDebtLedger,
   getMyPayments,
   getAdminPayments,
-  confirmCashPayment,
   settleCompanionDebt,
   connectCompanionStripe,
   requestCompanionPayout,
