@@ -16,12 +16,21 @@ const userSchema = new mongoose.Schema(
     },
     passwordHash: {
       type: String,
-      required: [true, "كلمة المرور مطلوبة"],
+      required: function() {
+        return !this.googleId;
+      },
     },
     phone: {
       type: String,
-      required: [true, "رقم الهاتف مطلوب"],
+      required: function() {
+        return !this.googleId;
+      },
       trim: true,
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
     },
     role: {
       type: String,
