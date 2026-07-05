@@ -1,18 +1,21 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/services/api";
+import { uploadUserAvatar } from "@/lib/api/upload.api";
+import { getAvatarUrl } from "@/lib/avatar";
 import { useFamilyCareRequests } from "@/lib/hooks";
-import { 
-  User, 
-  MapPin, 
-  Plus, 
-  Trash2, 
-  Edit2, 
-  Heart, 
-  ShieldAlert, 
-  X, 
+import {
+  User,
+  MapPin,
+  Plus,
+  Trash2,
+  Edit2,
+  Heart,
+  ShieldAlert,
+  X,
   Info,
   Check,
   ChevronRight,
@@ -39,14 +42,15 @@ interface Beneficiary {
 
 export default function FamilyProfile() {
   const { user } = useAuthStore();
-  
+  const router = useRouter();
+
   // Real-time care requests data fetching
   const { data: requestsData, isLoading: requestsLoading } = useFamilyCareRequests();
   const jobs = Array.isArray(requestsData?.jobPosts)
     ? requestsData.jobPosts
     : Array.isArray(requestsData)
-    ? requestsData
-    : [];
+      ? requestsData
+      : [];
 
   // State variables
   const [profileExists, setProfileExists] = useState<boolean>(false);
@@ -103,6 +107,17 @@ export default function FamilyProfile() {
     type: "success" | "error" | "info";
   } | null>(null);
 
+  // Change Password state
+  const [changePasswordModalOpen, setChangePasswordModalOpen] = useState<boolean>(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState<boolean>(false);
+
+  // Delete Account state
+  const [confirmDeleteAccountOpen, setConfirmDeleteAccountOpen] = useState<boolean>(false);
+  const [deletingAccount, setDeletingAccount] = useState<boolean>(false);
+
   // Quick Settings state (persisted in localStorage)
   const [notifications, setNotifications] = useState({
     email: true,
@@ -154,40 +169,27 @@ export default function FamilyProfile() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadstart = () => {
+    try {
       setUploadingPhoto(true);
-    };
-    reader.onload = async () => {
-      try {
-        const base64String = reader.result as string;
-        const res = await api.put("/auth/profile", { avatar: base64String });
-        
-        if (res.data && res.data.status === "success") {
-          const updatedUser = res.data.user;
-          if (user) {
-            useAuthStore.setState({
-              user: {
-                ...user,
-                avatar: updatedUser.avatar,
-              }
-            });
-          }
-          setToast({ message: "Profile photo updated successfully!", type: "success" });
+      const res = await uploadUserAvatar(file);
+      if (res && res.avatar) {
+        if (user) {
+          useAuthStore.setState({
+            user: {
+              ...user,
+              avatar: res.avatar,
+            }
+          });
         }
-      } catch (err: any) {
-        console.error("Failed to update photo:", err);
-        const msg = err.response?.data?.message || "Failed to update profile photo.";
-        setToast({ message: msg, type: "error" });
-      } finally {
-        setUploadingPhoto(false);
+        setToast({ message: "Profile photo updated successfully!", type: "success" });
       }
-    };
-    reader.onerror = () => {
-      setToast({ message: "Failed to read image file.", type: "error" });
+    } catch (err: any) {
+      console.error("Failed to update photo:", err);
+      const msg = err.response?.data?.message || "Failed to update profile photo.";
+      setToast({ message: msg, type: "error" });
+    } finally {
       setUploadingPhoto(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   // Auto-clear toast
@@ -202,7 +204,7 @@ export default function FamilyProfile() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Fetch profile & beneficiaries
       const res = await api.get("/family/profile");
       if (res.data && res.data.status === "success" && res.data.data) {
@@ -286,7 +288,7 @@ export default function FamilyProfile() {
 
     try {
       setSavingAddress(true);
-      
+
       // Update User collection details (name, email, phone)
       await api.put("/auth/profile", {
         name: tempProfileName.trim(),
@@ -301,7 +303,7 @@ export default function FamilyProfile() {
           fullAddress: tempAddress.fullAddress.trim()
         }
       });
-      
+
       // Backend PUT returns: { message: '...', profile: savedProfile }
       if (res.data && res.data.profile) {
         setProfileExists(true);
@@ -311,12 +313,12 @@ export default function FamilyProfile() {
           fullAddress: res.data.profile.address?.fullAddress || ""
         });
         setBeneficiaries(res.data.profile.beneficiaries || []);
-        
+
         // Update main user details locally
         setProfileName(tempProfileName.trim());
         setProfileEmail(tempProfileEmail.trim());
         setProfilePhone(tempProfilePhone.trim());
-        
+
         // Also update local store parameters if they were edited
         if (user) {
           useAuthStore.setState({
@@ -426,15 +428,15 @@ export default function FamilyProfile() {
       }
 
       const res = await api.put("/family/profile", body);
-      
+
       // Backend PUT returns: { message: '...', profile: savedProfile }
       if (res.data && res.data.profile) {
         setProfileExists(true);
         setBeneficiaries(res.data.profile.beneficiaries || []);
         setModalOpen(false);
         setToast({
-          message: editingMember 
-            ? "Dependent profile updated successfully!" 
+          message: editingMember
+            ? "Dependent profile updated successfully!"
             : "New family dependent registered successfully!",
           type: "success"
         });
@@ -455,7 +457,7 @@ export default function FamilyProfile() {
       const res = await api.put("/family/profile", {
         beneficiaries: [{ _id: id, isDeleted: true }]
       });
-      
+
       // Backend PUT returns: { message: '...', profile: savedProfile }
       if (res.data && res.data.profile) {
         setBeneficiaries(res.data.profile.beneficiaries || []);
@@ -493,6 +495,68 @@ export default function FamilyProfile() {
       setToast({ message: msg, type: "error" });
     } finally {
       setCompletingId(null);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      setToast({ message: "Please fill in all fields.", type: "error" });
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setToast({ message: "New passwords do not match.", type: "error" });
+      return;
+    }
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      setToast({
+        message: "Password must be at least 8 characters long, containing at least one uppercase letter, one lowercase letter, one number, and one symbol.",
+        type: "error"
+      });
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      const res = await api.put("/auth/change-password", {
+        currentPassword,
+        newPassword
+      });
+      if (res.data) {
+        setToast({ message: res.data.message || "Password changed successfully.", type: "success" });
+        setChangePasswordModalOpen(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+      }
+    } catch (err: any) {
+      console.error("Failed to change password:", err);
+      const msg = err.response?.data?.message || err.response?.data?.error || "Failed to change password.";
+      setToast({ message: msg, type: "error" });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setDeletingAccount(true);
+      const res = await api.delete("/auth/delete-account");
+      if (res.data) {
+        setToast({ message: res.data.message || "Account deleted successfully.", type: "success" });
+        // Clear auth store
+        useAuthStore.getState().clearAuth();
+        // Redirect to login page after a short delay
+        setTimeout(() => {
+          router.push("/login");
+        }, 1500);
+      }
+    } catch (err: any) {
+      console.error("Failed to delete account:", err);
+      const msg = err.response?.data?.message || err.response?.data?.error || "Failed to delete account.";
+      setToast({ message: msg, type: "error" });
+      setDeletingAccount(false);
     }
   };
 
@@ -535,7 +599,7 @@ export default function FamilyProfile() {
         </div>
       ) : (
         <div className="space-y-6">
-          
+
           {/* 1. Hero Profile Card */}
           <div className="bg-white rounded-2xl p-6 md:p-8 border border-[#eae7e7] shadow-soft flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
@@ -553,8 +617,8 @@ export default function FamilyProfile() {
                 <div className="w-24 h-24 bg-[#1f8a8a]/10 border-2 border-[#1f8a8a]/20 rounded-full flex items-center justify-center text-[#1f8a8a] text-3xl font-extrabold shadow-sm overflow-hidden">
                   {uploadingPhoto ? (
                     <div className="w-6 h-6 border-2 border-[#1f8a8a] border-t-transparent rounded-full animate-spin" />
-                  ) : user?.avatar ? (
-                    <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                  ) : getAvatarUrl(user?.avatar) ? (
+                    <img src={getAvatarUrl(user?.avatar)!} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
                     (profileName || "F").charAt(0).toUpperCase()
                   )}
@@ -575,15 +639,11 @@ export default function FamilyProfile() {
                     Premium Family Account
                   </span>
                 </div>
-                
+
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-3 text-xs text-[#3e4949] font-semibold">
                   <span className="flex items-center gap-1.5">
                     <MapPin className="w-4 h-4 text-[#1f8a8a]" />
-                    {address.city ? `${address.city}, UK` : "London, UK"}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-[#1f8a8a]" />
-                    Joined January 2024
+                    {address.city ? `${address.city}, Egypt` : "Cairo, Egypt"}
                   </span>
                 </div>
               </div>
@@ -591,7 +651,7 @@ export default function FamilyProfile() {
 
             {/* Photo Actions */}
             <div className="flex items-center gap-3 w-full md:w-auto justify-center md:justify-end">
-              <button 
+              <button
                 onClick={handlePhotoClick}
                 disabled={uploadingPhoto}
                 className="h-[56px] px-6 bg-white hover:bg-slate-50 border-2 border-[#2b2b2b] text-[#2b2b2b] font-bold rounded-xl text-sm transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
@@ -605,7 +665,7 @@ export default function FamilyProfile() {
                   "Change Photo"
                 )}
               </button>
-              <button 
+              <button
                 onClick={handleOpenEditProfileModal}
                 className="h-[56px] px-6 bg-[#1f8a8a] hover:bg-[#166f6f] text-white font-bold rounded-xl text-sm shadow-soft transition-all cursor-pointer flex items-center justify-center gap-2"
               >
@@ -680,10 +740,10 @@ export default function FamilyProfile() {
 
           {/* 3. Mid Section (Two-Column Layout 64% / 34%) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
+
             {/* Left Side: Personal Info & Family Members Grid (span 8/12) */}
             <div className="lg:col-span-8 space-y-6">
-              
+
               {/* Personal Information */}
               <div className="bg-white rounded-2xl p-6 md:p-8 border border-[#eae7e7] shadow-soft">
                 <div className="flex justify-between items-center mb-6 pb-2 border-b border-[#eae7e7]/60">
@@ -793,7 +853,7 @@ export default function FamilyProfile() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {beneficiaries.map((member) => {
                       const isMother = member.name.toLowerCase().includes("margaret") || member.category === "special_needs";
-                      
+
                       return (
                         <div
                           key={member._id}
@@ -811,11 +871,10 @@ export default function FamilyProfile() {
                               </div>
 
                               <span
-                                className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase border ${
-                                  isMother
-                                    ? "bg-[#aeedd5] text-[#316d5b] border-[#aeedd5]" 
+                                className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase border ${isMother
+                                    ? "bg-[#aeedd5] text-[#316d5b] border-[#aeedd5]"
                                     : "bg-slate-100 text-[#3e4949] border-[#eae7e7]"
-                                }`}
+                                  }`}
                               >
                                 {isMother ? "ACTIVE CARE" : "NO ACTIVE CARE"}
                               </span>
@@ -951,7 +1010,7 @@ export default function FamilyProfile() {
                   <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#3e4949]">
                     Completed & Past Services History
                   </h4>
-                  
+
                   {(!bookingsData?.past || bookingsData.past.length === 0) ? (
                     <div className="border-2 border-dashed border-[#bdc9c8]/30 p-10 rounded-[16px] flex flex-col items-center justify-center text-center bg-[#fcf9f8]/20">
                       <p className="text-[#3e4949] text-xs font-semibold">
@@ -987,11 +1046,10 @@ export default function FamilyProfile() {
 
                             <div className="text-right shrink-0">
                               <span
-                                className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
-                                  isCompleted
+                                className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${isCompleted
                                     ? "bg-[#aeedd5] text-[#316d5b] border-[#aeedd5]"
                                     : "bg-red-50 text-red-700 border-red-100"
-                                }`}
+                                  }`}
                               >
                                 {booking.status || "completed"}
                               </span>
@@ -1010,7 +1068,7 @@ export default function FamilyProfile() {
 
             {/* Right Side: Quick Settings (span 4/12) */}
             <div className="lg:col-span-4 space-y-6">
-              
+
               {/* Quick Settings Card */}
               <div className="bg-white rounded-2xl p-6 md:p-8 border border-[#eae7e7] shadow-soft space-y-6">
                 <div>
@@ -1021,8 +1079,8 @@ export default function FamilyProfile() {
 
                 <div className="space-y-4">
                   {/* Change Password row */}
-                  <button 
-                    onClick={() => setToast({ message: "Password reset instructions sent to your email.", type: "success" })}
+                  <button
+                    onClick={() => setChangePasswordModalOpen(true)}
                     className="w-full flex items-center justify-between p-4 bg-slate-50 border border-[#eae7e7] rounded-xl hover:bg-slate-100 transition-all text-left cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">
@@ -1048,7 +1106,7 @@ export default function FamilyProfile() {
                         <h5 className="text-sm font-bold text-[#2b2b2b]">New Applications</h5>
                         <p className="text-[11px] text-[#3e4949]">Get alerts when companions apply</p>
                       </div>
-                      <button 
+                      <button
                         onClick={() => handleToggleNotification("email")}
                         className={`w-11 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${notifications.email ? 'bg-[#1f8a8a]' : 'bg-[#bdc9c8]'}`}
                       >
@@ -1061,7 +1119,7 @@ export default function FamilyProfile() {
                         <h5 className="text-sm font-bold text-[#2b2b2b]">Messages</h5>
                         <p className="text-[11px] text-[#3e4949]">Get text messages for new chats</p>
                       </div>
-                      <button 
+                      <button
                         onClick={() => handleToggleNotification("sms")}
                         className={`w-11 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${notifications.sms ? 'bg-[#1f8a8a]' : 'bg-[#bdc9c8]'}`}
                       >
@@ -1073,8 +1131,8 @@ export default function FamilyProfile() {
                   <div className="border-t border-[#eae7e7]/60 my-4" />
 
                   {/* Delete Account */}
-                  <button 
-                    onClick={() => setToast({ message: "Account deletion requires contacting administrator support.", type: "error" })}
+                  <button
+                    onClick={() => setConfirmDeleteAccountOpen(true)}
                     className="w-full h-[56px] border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1091,13 +1149,13 @@ export default function FamilyProfile() {
       {/* Add / Edit Member Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div 
+          <div
             onClick={() => !savingMember && setModalOpen(false)}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
           />
 
           <div className="bg-white rounded-[24px] shadow-premium border border-[#eae7e7] max-w-lg w-full relative z-10 overflow-hidden transform transition-all max-h-[90vh] flex flex-col font-stitch-body">
-            
+
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-[#eae7e7] flex justify-between items-center bg-[#fcf9f8]">
               <div>
@@ -1120,7 +1178,7 @@ export default function FamilyProfile() {
             {/* Scrollable Form Body */}
             <form onSubmit={handleSaveMember} className="overflow-y-auto flex-1 p-6 space-y-4 scrollbar-none">
               <div className="grid grid-cols-2 gap-4">
-                
+
                 {/* Name */}
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-[#3e4949] mb-2">
@@ -1177,22 +1235,20 @@ export default function FamilyProfile() {
                   <button
                     type="button"
                     onClick={() => setFormGender("male")}
-                    className={`h-12 rounded-xl border text-xs font-bold transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 ${
-                      formGender === "male"
+                    className={`h-12 rounded-xl border text-xs font-bold transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 ${formGender === "male"
                         ? "bg-[#aeedd5] border-[#1f8a8a] text-[#316d5b]"
                         : "bg-white border-[#eae7e7] text-[#3e4949] hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     👴 Male
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormGender("female")}
-                    className={`h-12 rounded-xl border text-xs font-bold transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 ${
-                      formGender === "female"
+                    className={`h-12 rounded-xl border text-xs font-bold transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 ${formGender === "female"
                         ? "bg-[#aeedd5] border-[#1f8a8a] text-[#316d5b]"
                         : "bg-white border-[#eae7e7] text-[#3e4949] hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     👵 Female
                   </button>
@@ -1264,13 +1320,13 @@ export default function FamilyProfile() {
       {/* Edit Profile Modal */}
       {editProfileModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div 
+          <div
             onClick={() => !savingAddress && setEditProfileModalOpen(false)}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
           />
 
           <div className="bg-white rounded-[24px] shadow-premium border border-[#eae7e7] max-w-lg w-full relative z-10 overflow-hidden transform transition-all max-h-[90vh] flex flex-col font-stitch-body">
-            
+
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-[#eae7e7] flex justify-between items-center bg-[#fcf9f8]">
               <div>
@@ -1293,7 +1349,7 @@ export default function FamilyProfile() {
             {/* Scrollable Form Body */}
             <form onSubmit={handleSaveProfile} className="overflow-y-auto flex-1 p-6 space-y-4 scrollbar-none">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
+
                 {/* Full Name */}
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-[#3e4949] mb-2">
@@ -1362,7 +1418,7 @@ export default function FamilyProfile() {
                     type="text"
                     value={tempAddress.area}
                     onChange={(e) => setTempAddress({ ...tempAddress, area: e.target.value })}
-                    placeholder="Kensington"
+                    placeholder="Heliopolis"
                     className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
                     required
                   />
@@ -1377,7 +1433,7 @@ export default function FamilyProfile() {
                     rows={3}
                     value={tempAddress.fullAddress}
                     onChange={(e) => setTempAddress({ ...tempAddress, fullAddress: e.target.value })}
-                    placeholder="24 Kensington Court Gardens, Kensington High St, London W8 5QF, UK"
+                    placeholder="12 El-Galaa St, Heliopolis, Cairo, Egypt"
                     className="w-full p-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30 resize-none leading-relaxed"
                     required
                   />
@@ -1417,7 +1473,7 @@ export default function FamilyProfile() {
       {/* Delete Confirmation Dialog */}
       {confirmDeleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div 
+          <div
             onClick={() => !deletingId && setConfirmDeleteId(null)}
             className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
           />
@@ -1451,6 +1507,153 @@ export default function FamilyProfile() {
                   </>
                 ) : (
                   "Yes, Remove"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {changePasswordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            onClick={() => !changingPassword && setChangePasswordModalOpen(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+          />
+
+          <div className="bg-white rounded-[24px] shadow-premium border border-[#eae7e7] max-w-md w-full relative z-10 overflow-hidden transform transition-all flex flex-col font-stitch-body">
+
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-[#eae7e7] flex justify-between items-center bg-[#fcf9f8]">
+              <div>
+                <h3 className="font-stitch-display text-base font-bold text-[#1b1c1c]">
+                  Change Password
+                </h3>
+                <p className="text-[11px] text-[#3e4949] mt-0.5 font-medium">
+                  Provide your current password and set a new one.
+                </p>
+              </div>
+              <button
+                disabled={changingPassword}
+                onClick={() => setChangePasswordModalOpen(false)}
+                className="p-1.5 hover:bg-slate-100 rounded-full text-[#6e7979] hover:text-[#2b2b2b] transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#3e4949] mb-2">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#3e4949] mb-2">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#3e4949] mb-2">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b]"
+                  required
+                />
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex gap-3 pt-4 border-t border-[#eae7e7] mt-6">
+                <button
+                  type="button"
+                  disabled={changingPassword}
+                  onClick={() => setChangePasswordModalOpen(false)}
+                  className="flex-1 h-12 bg-white hover:bg-slate-50 text-[#3e4949] border border-[#eae7e7] rounded-xl text-xs font-bold transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={changingPassword}
+                  className="flex-1 h-12 bg-[#1f8a8a] hover:bg-[#166f6f] text-white rounded-xl text-xs font-bold shadow-soft transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {changingPassword ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    "Update Password"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Confirmation Dialog */}
+      {confirmDeleteAccountOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            onClick={() => !deletingAccount && setConfirmDeleteAccountOpen(false)}
+            className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+          />
+          <div className="bg-white p-6 rounded-[24px] border border-[#eae7e7] shadow-premium max-w-sm w-full relative z-10 text-center animate-scale-in font-stitch-body">
+            <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <h3 className="font-stitch-display text-base font-bold text-[#1b1c1c]">
+              Delete Account Permanently?
+            </h3>
+            <p className="text-[#3e4949] text-xs mt-2 leading-relaxed font-medium">
+              Are you sure you want to delete your account? This will permanently remove your profile, family data, and all bookings. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                disabled={deletingAccount}
+                onClick={() => setConfirmDeleteAccountOpen(false)}
+                className="flex-1 h-12 bg-white hover:bg-slate-50 border border-[#eae7e7] rounded-xl text-xs font-bold text-[#3e4949] transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={deletingAccount}
+                onClick={handleDeleteAccount}
+                className="flex-1 h-12 bg-red-600 hover:bg-red-700 disabled:bg-red-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {deletingAccount ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Yes, Delete Account"
                 )}
               </button>
             </div>

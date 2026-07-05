@@ -88,8 +88,8 @@ export default function RegisterPage() {
           <Image
             src={
               role === "companion"
-                ? "/images/companion-hero.jpg"
-                : "/images/family-hero.jpg"
+                ? "/hero-companion.png"
+                : "/hero-family.png"
             }
             alt="Registration hero"
             fill

@@ -14,8 +14,17 @@ import {
 import { api } from "@/lib/services/api";
 import { useAuthStore } from "@/store/authStore";
 import Image from "next/image";
+import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 
 export default function LoginPage() {
+  return (
+    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "542081770205-vt7vuo4u66v9rlphbjj3fn7m073pcugr.apps.googleusercontent.com"}>
+      <LoginContent />
+    </GoogleOAuthProvider>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -29,6 +38,50 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [serverError, setServerError] = useState("");
+
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      setServerError("");
+      try {
+        const response = await api.post(
+          "/auth/google-login",
+          {
+            accessToken: tokenResponse.access_token,
+          },
+          {
+            withCredentials: true,
+          }
+        );
+        const data = response.data;
+
+        setSuccess(true);
+        if (data.accessToken) {
+          localStorage.setItem("token", data.accessToken);
+          localStorage.setItem("user", JSON.stringify(data.user));
+          useAuthStore.getState().setAuth(data.user, data.accessToken);
+        }
+
+        setTimeout(() => {
+          const role = data.user.role;
+          if (data.isNewUser) {
+            router.push(role === "companion" ? "/companion/profile" : "/family/profile");
+          } else {
+            router.push(role === "companion" ? "/companion/dashboard" : "/family/dashboard");
+          }
+        }, 1500);
+      } catch (err: any) {
+        const message = err.response?.data?.message || err.response?.data?.error || err.message || "Google Sign-In failed. Please try again.";
+        setServerError(message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: (error) => {
+      console.error("Google login failed:", error);
+      setServerError("Google Sign-In failed. Please try again.");
+    }
+  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -252,6 +305,7 @@ export default function LoginPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     type="button"
+                    onClick={() => handleGoogleLogin()}
                     className="flex justify-center items-center h-12 border border-outline-variant rounded-xl bg-white hover:bg-sand-low transition-colors duration-200 text-gray-700 font-bold text-sm cursor-pointer"
                   >
                     <svg className="w-5 h-5 mr-2 text-red-500" fill="currentColor" viewBox="0 0 24 24">
