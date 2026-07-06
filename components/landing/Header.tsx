@@ -127,7 +127,7 @@ export default function Header() {
   );
 
   return (
-    <header className="bg-stitch-surface/85 backdrop-blur-md sticky top-0 z-50 border-b border-stitch-outline/20 font-stitch-body">
+    <header className="bg-stitch-surface/40 backdrop-blur-xl sticky top-0 z-50 border-b border-stitch-outline/10 shadow-[0_4px_30px_rgba(0,0,0,0.02)] font-stitch-body transition-all duration-300">
       <div className="flex justify-between items-center h-20 px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto">
         <Link className="flex items-center" href="/">
           <Image

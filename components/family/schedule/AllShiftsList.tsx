@@ -78,7 +78,7 @@ export default function AllShiftsList({
                 </div>
 
                 <Link
-                  href={`/family/bookings/${shift.bookingId}`}
+                  href={`/family/bookings/${shift.bookingId}?from=schedule`}
                   className="px-3.5 py-1.5 bg-[#f5f2eb] hover:bg-[#eae7e7]/50 text-[#3e4949] font-semibold rounded-xl text-xs transition-all border border-[#eae7e7] cursor-pointer"
                 >
                   {t("details")}

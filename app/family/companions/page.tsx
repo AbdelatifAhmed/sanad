@@ -100,7 +100,7 @@ export default function FamilyCompanionsPage() {
   const t = useTranslations("companionsPage");
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
 
   // Debounce the search term so we don't hit the backend on every keystroke
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -150,6 +150,7 @@ export default function FamilyCompanionsPage() {
       hourlyRate: c.hourlyRate ?? 0,
       bio: c.bio ?? "",
       specialization: c.specialization ?? "",
+      skills: c.skills ?? [],
     }));
   }, [data, t]);
 
@@ -255,6 +256,7 @@ export default function FamilyCompanionsPage() {
                 hourlyRate={companion.hourlyRate}
                 bio={companion.bio}
                 specialization={companion.specialization}
+                skills={companion.skills}
                 viewMode={viewMode}
               />
             ))}

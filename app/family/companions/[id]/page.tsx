@@ -109,6 +109,7 @@ export default async function CompanionProfilePage({ params }: PageProps) {
             id={id}
             hourlyRate={companion.hourlyRate}
             name={name}
+            companionUserId={companion.userId?._id || ""}
           />
         </div>
 
@@ -120,7 +121,7 @@ export default async function CompanionProfilePage({ params }: PageProps) {
         {/* Row 3: Skills, Certifications (Verified Credentials) & Hobbies Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <CompanionSkills skills={skillsList} />
-          <CompanionCertifications documents={companion.documents} />
+          <CompanionCertifications documents={companion.documents} verificationStatus={companion.verificationStatus} />
           <CompanionHobbies hobbies={hobbiesList} />
         </div>
 

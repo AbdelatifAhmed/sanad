@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/services/api";
 import { useFamilyCareRequests } from "@/lib/hooks";
+import { uploadUserAvatar } from "@/lib/api/upload.api";
+import { getAvatarUrl } from "@/lib/avatar";
 import { 
   User, 
   MapPin, 
@@ -62,6 +64,7 @@ export default function FamilyProfile() {
   const [bookingsData, setBookingsData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [joinedAt, setJoinedAt] = useState<string>("");
 
   // Address/Profile editing states
   const [savingAddress, setSavingAddress] = useState<boolean>(false);
@@ -110,6 +113,16 @@ export default function FamilyProfile() {
     push: true
   });
 
+  const displayLocation = address.city
+    ? address.city
+    : user?.location?.city
+    ? `${user.location.city}${user.location.governorate ? `, ${user.location.governorate}` : ""}`
+    : "";
+
+  const joinDate = joinedAt
+    ? new Date(joinedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    : "";
+
   // Load user data on store load
   useEffect(() => {
     if (user) {
@@ -154,40 +167,27 @@ export default function FamilyProfile() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadstart = () => {
+    try {
       setUploadingPhoto(true);
-    };
-    reader.onload = async () => {
-      try {
-        const base64String = reader.result as string;
-        const res = await api.put("/auth/profile", { avatar: base64String });
-        
-        if (res.data && res.data.status === "success") {
-          const updatedUser = res.data.user;
-          if (user) {
-            useAuthStore.setState({
-              user: {
-                ...user,
-                avatar: updatedUser.avatar,
-              }
-            });
-          }
-          setToast({ message: "Profile photo updated successfully!", type: "success" });
+      const result = await uploadUserAvatar(file);
+      if (result && result.avatar) {
+        if (user) {
+          useAuthStore.setState({
+            user: {
+              ...user,
+              avatar: result.avatar,
+            }
+          });
         }
-      } catch (err: any) {
-        console.error("Failed to update photo:", err);
-        const msg = err.response?.data?.message || "Failed to update profile photo.";
-        setToast({ message: msg, type: "error" });
-      } finally {
-        setUploadingPhoto(false);
+        setToast({ message: "Profile photo updated successfully!", type: "success" });
       }
-    };
-    reader.onerror = () => {
-      setToast({ message: "Failed to read image file.", type: "error" });
+    } catch (err: any) {
+      console.error("Failed to update photo:", err);
+      const msg = err.response?.data?.message || "Failed to update profile photo.";
+      setToast({ message: msg, type: "error" });
+    } finally {
       setUploadingPhoto(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   // Auto-clear toast
@@ -214,6 +214,7 @@ export default function FamilyProfile() {
             area: profile.address?.area || "",
             fullAddress: profile.address?.fullAddress || ""
           });
+          setJoinedAt(profile.familyId?.createdAt || "");
         } else {
           setProfileExists(false);
           // Pre-populate address from user location object if it exists
@@ -553,10 +554,10 @@ export default function FamilyProfile() {
                 <div className="w-24 h-24 bg-[#1f8a8a]/10 border-2 border-[#1f8a8a]/20 rounded-full flex items-center justify-center text-[#1f8a8a] text-3xl font-extrabold shadow-sm overflow-hidden">
                   {uploadingPhoto ? (
                     <div className="w-6 h-6 border-2 border-[#1f8a8a] border-t-transparent rounded-full animate-spin" />
-                  ) : user?.avatar ? (
-                    <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                  ) : getAvatarUrl(user?.avatar) ? (
+                    <img src={getAvatarUrl(user?.avatar) || ""} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    (profileName || "F").charAt(0).toUpperCase()
+                    (profileName || "FA").slice(0, 2).toUpperCase()
                   )}
                 </div>
                 <div className="absolute bottom-0 right-0 bg-[#1f8a8a] hover:bg-[#166f6f] text-white p-2 rounded-full border-2 border-white shadow-md transition-all">
@@ -568,23 +569,23 @@ export default function FamilyProfile() {
               <div>
                 <div className="flex flex-col sm:flex-row items-center gap-2.5">
                   <h2 className="font-stitch-display text-2xl font-bold text-[#1b1c1c] leading-tight">
-                    {profileName || "Sarah Jenkins"}
+                    {profileName || ""}
                   </h2>
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#aeedd5] text-[#316d5b] text-[10px] font-extrabold rounded-full uppercase tracking-wider border border-[#aeedd5]">
-                    <Check className="w-3 h-3" />
-                    Premium Family Account
-                  </span>
                 </div>
                 
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-3 text-xs text-[#3e4949] font-semibold">
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4 text-[#1f8a8a]" />
-                    {address.city ? `${address.city}, UK` : "London, UK"}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-[#1f8a8a]" />
-                    Joined January 2024
-                  </span>
+                  {displayLocation && (
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-[#1f8a8a]" />
+                      {displayLocation}
+                    </span>
+                  )}
+                  {joinDate && (
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-[#1f8a8a]" />
+                      Joined {joinDate}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -905,8 +906,8 @@ export default function FamilyProfile() {
                           >
                             <div className="flex items-center gap-4">
                               <div className="w-12 h-12 bg-emerald-600/10 border border-emerald-200 text-emerald-700 rounded-xl flex items-center justify-center font-bold text-lg overflow-hidden shrink-0">
-                                {booking.companionId?.avatar ? (
-                                  <img src={booking.companionId.avatar} alt={booking.companionId?.name} className="w-full h-full object-cover" />
+                                {getAvatarUrl(booking.companionId?.avatar) ? (
+                                  <img src={getAvatarUrl(booking.companionId.avatar) || ""} alt={booking.companionId?.name} className="w-full h-full object-cover" />
                                 ) : (
                                   (booking.companionId?.name || "C").charAt(0).toUpperCase()
                                 )}
@@ -969,8 +970,8 @@ export default function FamilyProfile() {
                           >
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-slate-200 text-[#3e4949] rounded-lg flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
-                                {booking.companionId?.avatar ? (
-                                  <img src={booking.companionId.avatar} alt={booking.companionId?.name} className="w-full h-full object-cover" />
+                                {getAvatarUrl(booking.companionId?.avatar) ? (
+                                  <img src={getAvatarUrl(booking.companionId.avatar) || ""} alt={booking.companionId?.name} className="w-full h-full object-cover" />
                                 ) : (
                                   (booking.companionId?.name || "C").charAt(0).toUpperCase()
                                 )}

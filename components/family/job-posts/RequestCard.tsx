@@ -24,13 +24,13 @@ const getServiceLabelKey = (type: string) => {
   }
 };
 
-const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
-  open:      { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
-  filled:    { bg: "bg-blue-50",    text: "text-blue-700",   dot: "bg-blue-500" },
-  assigned:  { bg: "bg-blue-50",    text: "text-blue-700",   dot: "bg-blue-500" },
-  closed:    { bg: "bg-[#f0eded]",  text: "text-[#3e4949]",  dot: "bg-[#bdc9c8]" },
-  completed: { bg: "bg-[#f0eded]",  text: "text-[#3e4949]",  dot: "bg-[#bdc9c8]" },
-  canceled:  { bg: "bg-red-50",     text: "text-red-700",    dot: "bg-red-500" },
+const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string; border: string }> = {
+  open:      { bg: "bg-white", text: "text-emerald-700", dot: "bg-emerald-500", border: "border border-emerald-200" },
+  filled:    { bg: "bg-white", text: "text-blue-700",    dot: "bg-blue-500",    border: "border border-blue-200"    },
+  assigned:  { bg: "bg-white", text: "text-blue-700",    dot: "bg-blue-500",    border: "border border-blue-200"    },
+  closed:    { bg: "bg-white", text: "text-[#3e4949]",   dot: "bg-[#bdc9c8]",  border: "border border-[#bdc9c8]"   },
+  completed: { bg: "bg-white", text: "text-[#3e4949]",   dot: "bg-[#bdc9c8]",  border: "border border-[#bdc9c8]"   },
+  canceled:  { bg: "bg-white", text: "text-red-700",     dot: "bg-red-500",     border: "border border-red-200"     },
 };
 
 function formatDate(iso: string, locale: string) {
@@ -84,7 +84,7 @@ export default function RequestCard({ job }: { job: JobPost }) {
               <p className="text-xs text-[#3e4949] mt-0.5">{label}</p>
             </div>
             <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shrink-0 ${statusStyle.bg} ${statusStyle.text}`}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shrink-0 ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
               {tList(job.status)}

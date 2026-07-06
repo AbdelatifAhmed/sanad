@@ -46,7 +46,14 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
   const [beneficiaryId, setBeneficiaryId] = useState(defaultValues.beneficiaryId);
   const [serviceType, setServiceType] = useState<ServiceType>(defaultValues.serviceType);
   const [description, setDescription] = useState(defaultValues.description);
-  const [budgetPerHour, setBudgetPerHour] = useState<number | "">(defaultValues.budgetPerHour);
+  
+  // Storing formatted budget with commas in local input state
+  const [budgetPerHourStr, setBudgetPerHourStr] = useState<string>(() => {
+    const val = defaultValues.budgetPerHour;
+    if (val === undefined || val === null || val === "") return "";
+    return String(val).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  });
+
   const [taskList, setTaskList] = useState<string[]>(defaultValues.taskList || []);
   const [taskInput, setTaskInput] = useState("");
   const [preferredGender, setPreferredGender] = useState<"any gender" | "male" | "female">(
@@ -56,6 +63,11 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
   const [skillInput, setSkillInput] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const getNumericBudget = () => {
+    const clean = budgetPerHourStr.replace(/,/g, "");
+    return clean ? Number(clean) : "";
+  };
+
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!title.trim()) errs.title = t("titleRequired");
@@ -63,7 +75,9 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
       errs.beneficiary = t("beneficiaryRequired");
     if (!serviceType) errs.serviceType = t("careTypeRequired");
     if (!description.trim()) errs.description = t("descriptionRequired");
-    if (budgetPerHour === "" || Number(budgetPerHour) < 1)
+    
+    const numericBudget = getNumericBudget();
+    if (numericBudget === "" || numericBudget < 1)
       errs.budgetPerHour = t("budgetRequired");
     return errs;
   };
@@ -71,7 +85,16 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
   const handleNext = () => {
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
-    onNext({ title, beneficiaryId, serviceType, description, budgetPerHour, taskList, preferredGender, requiredSkills });
+    onNext({ 
+      title, 
+      beneficiaryId, 
+      serviceType, 
+      description, 
+      budgetPerHour: getNumericBudget(), 
+      taskList, 
+      preferredGender, 
+      requiredSkills 
+    });
   };
 
   return (
@@ -88,6 +111,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
           id="request_title"
           type="text"
           value={title}
+          autoFocus
           onChange={(e) => { setTitle(e.target.value); setErrors((er) => ({ ...er, title: "" })); }}
           placeholder={t("titlePlaceholder")}
           className={`w-full h-14 bg-white border rounded-xl px-4 text-sm outline-none transition-all ${
@@ -213,24 +237,28 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
       {/* Budget per hour */}
       <div className="space-y-2">
         <label className="block text-sm font-semibold text-[#1b1c1c]" htmlFor="budget">
-          {t("budgetPerHour")} ({t("currency")}) <span className="text-red-500">*</span>
+          {t("budgetPerHour")} ({locale === "ar" ? "بالجنيه المصري" : "Egyptian Pounds"}) <span className="text-red-500">*</span>
         </label>
         <div className="relative">
-          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#3e4949] pointer-events-none">
+          <span className="material-symbols-outlined absolute left-4 rtl:left-auto rtl:right-4 top-1/2 -translate-y-1/2 text-[#3e4949] pointer-events-none">
             payments
           </span>
           <input
             id="budget"
-            type="number"
-            min={1}
-            value={budgetPerHour}
+            type="text"
+            value={budgetPerHourStr}
             onChange={(e) => {
-              setBudgetPerHour(e.target.value === "" ? "" : Number(e.target.value));
+              const clean = e.target.value.replace(/\D/g, "");
+              const formatted = clean ? Number(clean).toLocaleString("en-US") : "";
+              setBudgetPerHourStr(formatted);
               setErrors((er) => ({ ...er, budgetPerHour: "" }));
             }}
             placeholder={t("budgetPlaceholder")}
-            className="w-full h-14 bg-white border border-[#bdc9c8] rounded-xl pl-12 pr-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
+            className="w-full h-14 bg-white border border-[#bdc9c8] rounded-xl pl-12 pr-24 rtl:pl-24 rtl:pr-12 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all"
           />
+          <span className="absolute right-4 rtl:right-auto rtl:left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[#1f8a8a] bg-[#1f8a8a]/5 px-2 py-1 rounded-lg">
+            {locale === "ar" ? "جنيه مصري / ساعة" : "EGP / hr"}
+          </span>
         </div>
         {errors.budgetPerHour && <p className="text-xs text-red-500">{errors.budgetPerHour}</p>}
       </div>
@@ -419,7 +447,7 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
                 <button
                   type="button"
                   onClick={() => setTaskList((prev) => prev.filter((_, i) => i !== index))}
-                  className="text-red-500 hover:text-red-700 p-1 flex items-center"
+                  className="text-gray-400 hover:text-gray-600 p-1 flex items-center transition-colors"
                 >
                   <span className="material-symbols-outlined text-sm font-bold">delete</span>
                 </button>

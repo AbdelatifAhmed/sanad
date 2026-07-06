@@ -24,9 +24,13 @@ export const ConversationsSidebar: React.FC<ConversationsSidebarProps> = ({
   const t = useTranslations("chat");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredConversations = conversations.filter((c) =>
-    c.otherUser?.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredConversations = conversations.filter((c) => {
+    const matchesSearch = c.otherUser?.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    // Show conversation if it has messages OR if it is the currently selected conversation
+    return c.lastMessage !== null || c.bookingId === activeBookingId;
+  });
 
   return (
     <div className="flex flex-col h-full bg-stitch-surface border-e border-stitch-outline/10">
