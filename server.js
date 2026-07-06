@@ -9,6 +9,7 @@ const routes = require("./src/routes");
 const socketManager = require("./src/utils/socketManager");
 const socketAuth = require("./src/middleware/socketMiddleware");
 const registerShiftHandlers = require("./src/sockets/shiftHandler");
+const registerAdminMessageHandlers = require("./src/sockets/adminMessageHandler");
 dotenv.config();
 const app = express();
 const cookieParser = require("cookie-parser");
@@ -91,9 +92,12 @@ io.on("connection", (socket) => {
   // Register shift real-time event handlers
   registerShiftHandlers(io, socket);
 
+  // Register admin messaging real-time event handlers
+  registerAdminMessageHandlers(io, socket);
+
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.userId}`);
-    socketManager.removeUser(socket.userId);
+    socketManager.removeUser(socket.userId, socket.id);
   });
 });
 
