@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useBookingRealtime } from "../../../../hooks/useBookingRealtime";
 import { PostShiftReviewModal } from "../../../../components/review/PostShiftReviewModal";
+import ComplaintModal from "@/components/family/bookings/list/ComplaintModal";
 import { 
   Clock, 
   MapPin, 
@@ -33,6 +34,37 @@ export default function FamilyTrackingPage() {
   const booking = rawBooking as any;
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
+  const [hasClosedAutoModal, setHasClosedAutoModal] = useState(false);
+  const [isFromSchedule, setIsFromSchedule] = useState(false);
+
+  // Complaint modal states
+  const [isComplaintOpen, setIsComplaintOpen] = useState(false);
+  const [complaintText, setComplaintText] = useState("");
+  const [complaintTitle, setComplaintTitle] = useState("");
+  const [submittingComplaint, setSubmittingComplaint] = useState(false);
+  const [complaintSuccess, setComplaintSuccess] = useState(false);
+
+  const submitComplaint = async () => {
+    if (!complaintText) return;
+    try {
+      setSubmittingComplaint(true);
+      await api.post(`/bookings/${booking._id}/complaints`, {
+        title: complaintTitle,
+        description: complaintText
+      });
+      setComplaintSuccess(true);
+      refresh();
+      setTimeout(() => {
+        setIsComplaintOpen(false);
+        setComplaintSuccess(false);
+        setComplaintTitle("");
+      }, 2000);
+    } catch (err) {
+      alert(isRtl ? "فشل تقديم الشكوى، يرجى المحاولة لاحقاً." : "Failed to submit complaint, please try again.");
+    } finally {
+      setSubmittingComplaint(false);
+    }
+  };
 
   const locale = useLocale();
   const isRtl = locale === "ar";
@@ -43,7 +75,16 @@ export default function FamilyTrackingPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "wallet" | "cash">("card");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get("from") === "schedule") {
+        setIsFromSchedule(true);
+      }
+    }
+  }, []);
+
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "wallet">("card");
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
 
@@ -51,12 +92,22 @@ export default function FamilyTrackingPage() {
     try {
       setPaying(true);
       setPayError("");
+      
+      const basePrice = booking.totalHours * booking.hourlyRateAtBooking;
+      const adminFee = basePrice * 0.10;
+      const totalAmount = basePrice + adminFee;
+
+      if (paymentMethod === "card") {
+        router.push(`/family/wallet?amount=${totalAmount.toFixed(2)}&bookingId=${booking._id}`);
+        return;
+      }
+
       const res = await api.post(`/payments/${booking._id}/initiate`, { paymentMethod });
       if (res.data && res.data.status === "success") {
         if (res.data.data.paymentUrl) {
           window.location.href = res.data.data.paymentUrl;
         } else {
-          alert(isRtl ? "تم تأكيد اختيار الدفع النقدي بنجاح. ستبدأ الخدمة الآن." : "Cash payment selected successfully. Service will start now.");
+          alert(isRtl ? "تم تأكيد الدفع بنجاح. ستبدأ الخدمة الآن." : "Payment confirmed successfully. Service will start now.");
           refresh();
         }
       }
@@ -95,10 +146,10 @@ export default function FamilyTrackingPage() {
 
   // Auto trigger the review modal once the booking is completed
   useEffect(() => {
-    if (booking?.status === "completed" && !hasReviewed) {
+    if (booking?.status === "completed" && !booking?.isReviewed && !hasReviewed && !hasClosedAutoModal) {
       setIsReviewOpen(true);
     }
-  }, [booking?.status, hasReviewed]);
+  }, [booking?.status, booking?.isReviewed, hasReviewed, hasClosedAutoModal]);
 
   // Calculate task progress
   const taskStats = useMemo(() => {
@@ -142,6 +193,25 @@ export default function FamilyTrackingPage() {
     return { text: "Inactive", color: "bg-sand-low text-stitch-on-surface-variant border border-stitch-outline/20" };
   }, [booking, activeSchedule]);
 
+  const backUrl = useMemo(() => {
+    if (isFromSchedule) {
+      return "/family/schedule";
+    }
+    if (!booking) return "/family/bookings";
+    if (booking.status === "completed" || booking.status === "cancelled") {
+      return "/family/bookings?tab=past";
+    }
+    const todayStr = new Date().toDateString();
+    const hasActiveToday = booking.schedule?.some((slot: any) => {
+      const slotDateStr = new Date(slot.date).toDateString();
+      return slotDateStr === todayStr && slot.checkInTime && !slot.checkOutTime;
+    });
+    if (booking.status === "active" || hasActiveToday) {
+      return "/family/bookings?tab=active";
+    }
+    return "/family/bookings?tab=upcoming";
+  }, [booking, isFromSchedule]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-sand text-stitch-on-surface flex flex-col items-center justify-center p-6">
@@ -177,7 +247,7 @@ export default function FamilyTrackingPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Link 
-              href="/family/bookings" 
+              href={backUrl} 
               className="p-2 bg-white hover:bg-sand-low rounded-full border border-stitch-outline/20 transition-all text-stitch-on-surface-variant hover:text-stitch-on-surface shadow-soft"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -188,15 +258,52 @@ export default function FamilyTrackingPage() {
             </div>
           </div>
 
-          {booking.status === "completed" && (
-            <button
-              onClick={() => setIsReviewOpen(true)}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stitch-on-surface font-bold rounded-xl text-xs transition-all flex items-center space-x-1.5 shadow-soft border border-amber-600/10"
-            >
-              <Star className="w-4 h-4 fill-stitch-on-surface text-stitch-on-surface" />
-              <span>Review Shift</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {booking.status === "completed" && (
+              <>
+                {/* Complaint Button */}
+                {booking.complaints && booking.complaints.length > 0 ? (
+                  <button
+                    disabled
+                    className="px-4 py-2 bg-slate-100 text-slate-400 border border-slate-200 font-bold rounded-xl text-xs flex items-center space-x-1.5 shadow-soft cursor-not-allowed opacity-75"
+                  >
+                    <AlertCircle className="w-4 h-4 text-slate-400" />
+                    <span>{isRtl ? "الشكوى قيد المراجعة" : "Complaint Under Review"}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setComplaintText("");
+                      setComplaintTitle("");
+                      setComplaintSuccess(false);
+                      setIsComplaintOpen(true);
+                    }}
+                    className="px-4 py-2 bg-rose-500 hover:bg-rose-600 border border-rose-600/10 text-white font-bold rounded-xl text-xs transition-all flex items-center space-x-1.5 shadow-soft"
+                  >
+                    <AlertCircle className="w-4 h-4 text-white" />
+                    <span>{isRtl ? "تقديم شكوى" : "File Complaint"}</span>
+                  </button>
+                )}
+
+                {/* Review Button */}
+                <button
+                  onClick={() => setIsReviewOpen(true)}
+                  className={`px-4 py-2 text-stitch-on-surface font-bold rounded-xl text-xs transition-all flex items-center space-x-1.5 shadow-soft border ${
+                    booking?.isReviewed || hasReviewed
+                      ? "bg-slate-100 hover:bg-slate-200 border-slate-350"
+                      : "bg-amber-500 hover:bg-amber-400 border-amber-600/10"
+                  }`}
+                >
+                  <Star className={`w-4 h-4 ${booking?.isReviewed || hasReviewed ? "fill-amber-400 text-amber-400" : "fill-stitch-on-surface text-stitch-on-surface"}`} />
+                  <span>
+                    {booking?.isReviewed || hasReviewed
+                      ? (isRtl ? "عرض تقييمك" : "View Your Review")
+                      : (isRtl ? "تقييم الخدمة" : "Review Shift")}
+                  </span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Live Tracking Status Banner */}
@@ -244,7 +351,7 @@ export default function FamilyTrackingPage() {
                   <h3 className="font-bold text-stitch-on-surface text-sm">
                     {isRtl ? "اختر طريقة الدفع المناسبة:" : "Select Payment Method:"}
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
                       onClick={() => setPaymentMethod("card")}
                       className={`p-4 rounded-2xl border transition-all flex flex-col items-center gap-2 font-bold text-xs ${
@@ -267,18 +374,6 @@ export default function FamilyTrackingPage() {
                     >
                       <ShieldCheck className="w-6 h-6 animate-pulse" />
                       <span>{isRtl ? "المحفظة الإلكترونية" : "E-Wallet"}</span>
-                    </button>
-
-                    <button
-                      onClick={() => setPaymentMethod("cash")}
-                      className={`p-4 rounded-2xl border transition-all flex flex-col items-center gap-2 font-bold text-xs ${
-                        paymentMethod === "cash"
-                          ? "bg-teal-50 border-stitch-primary text-stitch-primary shadow-soft"
-                          : "bg-white border-stitch-outline/20 text-stitch-on-surface-variant hover:bg-sand-low"
-                      }`}
-                    >
-                      <UserIcon className="w-6 h-6" />
-                      <span>{isRtl ? "دفع نقدي (كاش)" : "Cash Payment"}</span>
                     </button>
                   </div>
                 </div>
@@ -387,17 +482,11 @@ export default function FamilyTrackingPage() {
                                      </button>
                                    ) : (
                                      <button
-                                       onClick={async () => {
-                                         const desc = window.prompt(isRtl ? "تفاصيل الشكوى / تفاصيل التأخير:" : "Complaint Details / Delay details:");
-                                         if (desc) {
-                                           try {
-                                             await api.post(`/bookings/${booking._id}/complaints`, { description: desc });
-                                             alert(isRtl ? "تم تقديم شكوى للمنصة بنجاح. سيتم التواصل معك قريباً." : "Complaint submitted successfully. Our support team will follow up with you.");
-                                             refresh();
-                                           } catch (e) {
-                                             alert(isRtl ? "فشل تقديم الشكوى، يرجى المحاولة لاحقاً." : "Failed to submit complaint, please try again.");
-                                           }
-                                         }
+                                       onClick={() => {
+                                         setComplaintText("");
+                                         setComplaintTitle("");
+                                         setComplaintSuccess(false);
+                                         setIsComplaintOpen(true);
                                        }}
                                        className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
                                      >
@@ -595,7 +684,7 @@ export default function FamilyTrackingPage() {
             <div className="flex items-center space-x-4">
               {companionUser.avatar ? (
                 <img 
-                  src={companionUser.avatar} 
+                  src={companionUser.avatar.url || companionUser.avatar} 
                   alt={companionUser.name} 
                   className="w-14 h-14 rounded-full object-cover border border-stitch-outline/25"
                 />
@@ -616,15 +705,13 @@ export default function FamilyTrackingPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {companionUser.phone && (
-                <a 
-                  href={`tel:${companionUser.phone}`}
-                  className="flex items-center space-x-2 px-4 py-2.5 bg-stitch-primary hover:bg-stitch-primary/95 text-white rounded-xl text-xs font-bold transition-all border border-stitch-primary/10 shadow-soft"
-                >
-                  <Phone className="w-4 h-4" />
-                  <span>Call Companion</span>
-                </a>
-              )}
+              <Link 
+                href={`/family/messages?companionId=${companionUser._id || companionUser.id}`}
+                className="flex items-center space-x-2 px-4 py-2.5 bg-stitch-primary hover:bg-stitch-primary/95 text-white rounded-xl text-xs font-bold transition-all border border-stitch-primary/10 shadow-soft"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>{isRtl ? "مراسلة المرافق" : "Message Companion"}</span>
+              </Link>
             </div>
           </div>
         )}
@@ -637,11 +724,26 @@ export default function FamilyTrackingPage() {
         isOpen={isReviewOpen}
         onClose={() => {
           setIsReviewOpen(false);
-          setHasReviewed(true);
+          setHasClosedAutoModal(true);
         }}
         onSuccess={() => {
           setHasReviewed(true);
+          refresh();
         }}
+        reviewDetails={booking?.reviewDetails}
+      />
+
+      {/* Complaint Modal Trigger */}
+      <ComplaintModal
+        isOpen={isComplaintOpen}
+        submitting={submittingComplaint}
+        success={complaintSuccess}
+        text={complaintText}
+        onChangeText={setComplaintText}
+        titleText={complaintTitle}
+        onChangeTitleText={setComplaintTitle}
+        onSubmit={submitComplaint}
+        onClose={() => setIsComplaintOpen(false)}
       />
     </div>
   );

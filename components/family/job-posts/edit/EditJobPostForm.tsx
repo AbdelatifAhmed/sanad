@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { ServiceType, WorkingDay, Beneficiary } from "@/lib/types/care-request";
+import InlineCalendar from "@/components/shared/InlineCalendar";
 
 interface EditJobPostFormProps {
   jobData: any;
@@ -61,6 +62,7 @@ export default function EditJobPostForm({
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("16:00");
   const [durationInWeeks, setDurationInWeeks] = useState<number | "">(4);
+  const [startDate, setStartDate] = useState<string>("");
 
   // Location states
   const [city, setCity] = useState("");
@@ -87,6 +89,12 @@ export default function EditJobPostForm({
         setStartTime(jobData.schedule.startTime || "08:00");
         setEndTime(jobData.schedule.endTime || "16:00");
         setDurationInWeeks(jobData.schedule.durationInWeeks || 4);
+      }
+
+      if (jobData.startDate) {
+        setStartDate(new Date(jobData.startDate).toISOString().split("T")[0]);
+      } else {
+        setStartDate(new Date().toISOString().split("T")[0]);
       }
 
       if (jobData.location) {
@@ -128,6 +136,7 @@ export default function EditJobPostForm({
     if (budgetPerHour === "" || Number(budgetPerHour) < 1) {
       errs.budgetPerHour = t("budgetRequired");
     }
+    if (!startDate) errs.startDate = tBooking("validation.dateRequired");
     if (workingDays.length === 0) errs.workingDays = tBooking("validation.workingDaysRequired");
     if (!startTime) errs.startTime = tBooking("validation.startRequired");
     if (!endTime) errs.endTime = tBooking("validation.endRequired");
@@ -158,6 +167,7 @@ export default function EditJobPostForm({
       requiredSkills,
       taskList,
       preferredGender,
+      startDate,
       schedule: {
         workingDays,
         startTime,
@@ -417,7 +427,26 @@ export default function EditJobPostForm({
 
         <div className="border-t border-[#bdc9c8]/30 pt-6">
           <h3 className="text-lg font-bold text-[#1f8a8a] mb-4">{t("workingHours")}</h3>
-          
+
+
+                    {/* Start Date Inline Calendar */}
+          <div className="space-y-2 mb-4">
+            <label className="block text-sm font-bold text-[#1b1c1c]">
+              {tBooking("schedule.recurringStartDate")} *
+            </label>
+            <div className="w-full md:px-16 lg:px-28">
+              <InlineCalendar
+                value={startDate}
+                minDate={new Date().toISOString().split("T")[0]}
+                onChange={(date) => {
+                  setStartDate(date);
+                  setErrors((prev) => ({ ...prev, startDate: "" }));
+                }}
+              />
+            </div>
+            {errors.startDate && <p className="text-xs text-red-500">{errors.startDate}</p>}
+          </div>
+
           {/* Weekdays */}
           <div className="space-y-2 mb-4">
             <label className="block text-sm font-bold text-[#1b1c1c]">{t("workingDays")} *</label>

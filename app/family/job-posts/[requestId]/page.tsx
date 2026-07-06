@@ -119,8 +119,14 @@ export default function FamilyRequestDetailsPage() {
     router.push(`/family/companions/${companionId}`);
   };
 
-  const handleMessage = () => {
-    router.push("/family/messages");
+  const handleMessage = (proposal?: Proposal) => {
+    if (proposal?._id) {
+      router.push(`/family/messages?proposalId=${proposal._id}`);
+    } else if (acceptedProposal?._id) {
+      router.push(`/family/messages?proposalId=${acceptedProposal._id}`);
+    } else {
+      router.push("/family/messages");
+    }
   };
 
   if (jobLoading) return <PageSkeleton />;
@@ -297,13 +303,117 @@ export default function FamilyRequestDetailsPage() {
       <ConfirmModal
         isOpen={!!acceptTarget}
         title={t("confirmAcceptTitle")}
-        message={t("confirmAcceptMsg")}
         confirmLabel={t("yesAccept")}
         confirmClassName="bg-[#1f8a8a] text-white hover:bg-[#0d8282]"
         isLoading={updating}
         onConfirm={handleConfirmAccept}
         onCancel={() => setAcceptTarget(null)}
-      />
+      >
+        {acceptTarget && (() => {
+          const durationInWeeks = job?.schedule?.durationInWeeks || 1;
+          const workingDays = job?.schedule?.workingDays || [];
+          const startTime = job?.schedule?.startTime || "00:00";
+          const endTime = job?.schedule?.endTime || "00:00";
+
+          const [startHour, startMin] = startTime.split(':').map(Number);
+          const [endHour, endMin] = endTime.split(':').map(Number);
+          let hoursPerDay = (endHour + endMin/60) - (startHour + startMin/60);
+          if (hoursPerDay <= 0) {
+            hoursPerDay += 24;
+          }
+          const totalHours = hoursPerDay * workingDays.length * durationInWeeks;
+
+          const proposedRate = acceptTarget.proposedRate || 0;
+          const basePrice = proposedRate * totalHours;
+          const adminFee = basePrice * 0.10;
+          const totalPrice = basePrice + adminFee;
+
+          const budgetPerHour = job?.budgetPerHour || 0;
+          const initialBasePrice = budgetPerHour * totalHours;
+          const initialAdminFee = initialBasePrice * 0.10;
+          const initialTotalPrice = initialBasePrice + initialAdminFee;
+
+          const difference = totalPrice - initialTotalPrice;
+
+          return (
+            <div className="mt-3 space-y-4 text-right" dir={locale === "ar" ? "rtl" : "ltr"}>
+              <p className="text-sm text-[#3e4949]">
+                {locale === "ar" 
+                  ? "أنت على وشك قبول عرض المرافق لبدء الخدمة. يرجى مراجعة تفاصيل التكلفة أدناه:" 
+                  : "You are about to accept the caregiver's proposal. Please review the pricing details below:"}
+              </p>
+
+              <div className="bg-[#f6f3f2] p-4 rounded-xl border border-[#eae7e7] space-y-2 text-xs">
+                <div className="flex justify-between font-medium">
+                  <span className="text-[#3e4949]">{locale === "ar" ? "سعر الساعة المقترح:" : "Proposed Hourly Rate:"}</span>
+                  <span className="font-bold">{proposedRate} {locale === "ar" ? "ج.م" : "EGP"}</span>
+                </div>
+                <div className="flex justify-between font-medium">
+                  <span className="text-[#3e4949]">{locale === "ar" ? "إجمالي ساعات العمل المجدولة:" : "Total Scheduled Hours:"}</span>
+                  <span className="font-bold">{totalHours} {locale === "ar" ? "ساعة" : "hrs"}</span>
+                </div>
+                <div className="flex justify-between font-medium">
+                  <span className="text-[#3e4949]">{locale === "ar" ? "التكلفة الأساسية للخدمة:" : "Base Service Cost:"}</span>
+                  <span className="font-bold">{basePrice.toFixed(2)} {locale === "ar" ? "ج.م" : "EGP"}</span>
+                </div>
+                <div className="flex justify-between font-medium">
+                  <span className="text-[#3e4949]">{locale === "ar" ? "رسوم الخدمة الإدارية (10%):" : "Platform Admin Fee (10%):"}</span>
+                  <span className="font-bold">{adminFee.toFixed(2)} {locale === "ar" ? "ج.م" : "EGP"}</span>
+                </div>
+                <div className="border-t border-[#bdc9c8] pt-2 flex justify-between font-extrabold text-[#1f8a8a] text-sm">
+                  <span>{locale === "ar" ? "إجمالي التكلفة المطلوبة للحجز:" : "Total Escrow Amount:"}</span>
+                  <span>{totalPrice.toFixed(2)} {locale === "ar" ? "ج.م" : "EGP"}</span>
+                </div>
+              </div>
+
+              {/* Budget Comparison Alerts */}
+              {difference > 0 ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-start gap-2">
+                  <span className="material-symbols-outlined text-amber-600 shrink-0 text-sm mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+                  <div className="text-right">
+                    <span className="font-bold">
+                      {locale === "ar" ? "هذا العرض أعلى من ميزانيتك المقترحة!" : "This proposal is above your initial budget!"}
+                    </span>
+                    <p className="mt-0.5">
+                      {locale === "ar" 
+                        ? `الفارق هو +${difference.toFixed(2)} ج.م إجمالياً (+${(proposedRate - budgetPerHour).toFixed(2)} ج.م/ساعة).`
+                        : `The difference is +${difference.toFixed(2)} EGP in total (+${(proposedRate - budgetPerHour).toFixed(2)} EGP/hr).`}
+                    </p>
+                  </div>
+                </div>
+              ) : difference < 0 ? (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-[#1f8a8a] text-xs flex items-start gap-2">
+                  <span className="material-symbols-outlined text-emerald-600 shrink-0 text-sm mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                  <div className="text-right">
+                    <span className="font-bold">
+                      {locale === "ar" ? "هذا العرض يوفر لك المال!" : "This proposal saves you money!"}
+                    </span>
+                    <p className="mt-0.5">
+                      {locale === "ar"
+                        ? `العرض أقل بـ ${Math.abs(difference).toFixed(2)} ج.م إجمالياً من ميزانيتك المقترحة.`
+                        : `The proposal is ${Math.abs(difference).toFixed(2)} EGP lower than your proposed budget.`}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-xs flex items-start gap-2">
+                  <span className="material-symbols-outlined text-blue-600 shrink-0 text-sm mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
+                  <div className="text-right">
+                    <span className="font-bold">
+                      {locale === "ar" ? "السعر مطابق تماماً لميزانيتك المقترحة!" : "This proposal matches your budget!"}
+                    </span>
+                    <p className="mt-0.5">
+                      {locale === "ar"
+                        ? "العرض يطابق ميزانيتك المقترحة تماماً بسعر الساعة."
+                        : "The proposal rate perfectly matches your requested budget."}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </ConfirmModal>
 
       <ConfirmModal
         isOpen={!!rejectTarget}

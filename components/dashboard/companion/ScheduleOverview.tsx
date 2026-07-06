@@ -30,6 +30,21 @@ export interface Booking {
   startDate: string;
   endDate: string;
   schedule: ScheduleSlot[];
+  jobPostId?: {
+    _id: string;
+    title: string;
+    location?: {
+      readableAddress?: string;
+      city?: string;
+      governorate?: string;
+    } | null;
+  } | null;
+  hourlyRateAtBooking?: number;
+  beneficiary?: {
+    name: string;
+    age?: number;
+    gender?: string;
+  } | null;
 }
 
 interface FlatScheduleItem {
@@ -47,6 +62,9 @@ interface FlatScheduleItem {
   tasks: TaskItem[];
   status: string;
   durationMin: number;
+  visitTitle: string;
+  beneficiaryName: string;
+  hourlyRate: number;
 }
 
 interface ScheduleOverviewProps {
@@ -154,6 +172,9 @@ export async function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewP
           tasks: slot.tasksList || [],
           status: booking.status,
           durationMin: calculateDuration(slot.startTime, slot.endTime),
+          visitTitle: booking.jobPostId?.location?.readableAddress || booking.jobPostId?.title || (locale === "ar" ? "زيارة رعاية منزلية" : "Home Care Visit"),
+          beneficiaryName: booking.beneficiary?.name || (locale === "ar" ? "المستفيد" : "Beneficiary"),
+          hourlyRate: booking.hourlyRateAtBooking || 0,
         });
       });
     });
@@ -277,10 +298,23 @@ export async function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewP
                       </div>
                     </div>
 
-                    <div className="sm:self-center">
-                      <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${getBadgeStyles(item.tasks[0]?.taskDescription || t("generalCare"))}`}>
-                        {item.tasks[0]?.taskDescription || t("generalCare")}
+                    <div className="sm:self-center flex flex-col items-end gap-1.5 font-stitch-body max-w-full sm:max-w-[40%]">
+                      {/* Visit Title */}
+                      <span className="text-xs font-extrabold text-[#012d1d] bg-stitch-primary/10 px-3 py-1.5 rounded-xl text-right inline-block break-words w-full">
+                        {item.visitTitle}
                       </span>
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5 justify-end">
+                        {/* Beneficiary Name */}
+                        <span className="text-[11px] font-bold text-stitch-on-surface-variant/85 flex items-center gap-0.5">
+                          <span className="material-symbols-outlined text-sm leading-none">person</span>
+                          {item.beneficiaryName}
+                        </span>
+                        <span className="text-gray-300 text-xs">|</span>
+                        {/* Session Earnings */}
+                        <span className="text-[11px] font-extrabold text-[#316d5b] bg-[#aeedd5]/30 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                          <span>{locale === "ar" ? `${((item.durationMin / 60) * item.hourlyRate).toFixed(0)} ج.م` : `${((item.durationMin / 60) * item.hourlyRate).toFixed(0)} EGP`}</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -351,10 +385,23 @@ export async function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewP
                       </div>
                     </div>
 
-                    <div className="sm:self-center">
-                      <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${getBadgeStyles(item.tasks[0]?.taskDescription || t("generalCare"))}`}>
-                        {item.tasks[0]?.taskDescription || t("generalCare")}
+                    <div className="sm:self-center flex flex-col items-end gap-1.5 font-stitch-body max-w-full sm:max-w-[40%]">
+                      {/* Visit Title */}
+                      <span className="text-xs font-extrabold text-[#012d1d] bg-stitch-primary/10 px-3 py-1.5 rounded-xl text-right inline-block break-words w-full">
+                        {item.visitTitle}
                       </span>
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5 justify-end">
+                        {/* Beneficiary Name */}
+                        <span className="text-[11px] font-bold text-stitch-on-surface-variant/85 flex items-center gap-0.5">
+                          <span className="material-symbols-outlined text-sm leading-none">person</span>
+                          {item.beneficiaryName}
+                        </span>
+                        <span className="text-gray-300 text-xs">|</span>
+                        {/* Session Earnings */}
+                        <span className="text-[11px] font-extrabold text-[#316d5b] bg-[#aeedd5]/30 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                          <span>{locale === "ar" ? `${((item.durationMin / 60) * item.hourlyRate).toFixed(0)} ج.م` : `${((item.durationMin / 60) * item.hourlyRate).toFixed(0)} EGP`}</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -435,14 +482,20 @@ export async function ScheduleOverview({ schedule, viewMode }: ScheduleOverviewP
                         )}
                       </div>
 
-                      {/* Divider / Tasks Badge */}
-                      <div className="flex flex-col items-center gap-2 pt-1 border-t border-gray-50">
-                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full text-center ${getBadgeStyles(item.tasks[0]?.taskDescription || t("generalCare"))}`}>
-                          {item.tasks[0]?.taskDescription || t("generalCare")}
+                      {/* Divider / Session Info */}
+                      <div className="flex flex-col items-center gap-1.5 pt-2 border-t border-gray-100 font-stitch-body w-full">
+                        {/* Visit Title */}
+                        <span className="text-[11px] font-extrabold text-[#012d1d] bg-stitch-primary/10 px-2.5 py-1 rounded-lg text-center break-words w-full">
+                          {item.visitTitle}
                         </span>
-                        <span className="text-[10px] text-stitch-on-surface-variant/40 font-semibold flex items-center gap-0.5 mt-0.5">
-                          <span className="material-symbols-outlined text-xs leading-none">schedule</span>
-                          {t("minutes", { count: item.durationMin })}
+                        {/* Beneficiary Name */}
+                        <span className="text-[10px] font-bold text-stitch-on-surface-variant/85 flex items-center gap-0.5 justify-center">
+                          <span className="material-symbols-outlined text-[12px] leading-none">person</span>
+                          {item.beneficiaryName}
+                        </span>
+                        {/* Session Earnings */}
+                        <span className="text-[10px] font-extrabold text-[#316d5b] bg-[#aeedd5]/30 px-2 py-0.5 rounded-full flex items-center gap-0.5 justify-center">
+                          <span>{locale === "ar" ? `${((item.durationMin / 60) * item.hourlyRate).toFixed(0)} ج.م` : `${((item.durationMin / 60) * item.hourlyRate).toFixed(0)} EGP`}</span>
                         </span>
                       </div>
                     </div>

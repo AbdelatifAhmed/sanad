@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { useSearchParams, useRouter } from "next/navigation";
 import { api } from "../../../lib/services/api";
 import {
   Wallet,
@@ -14,6 +15,7 @@ import {
   CreditCard,
   History,
   TrendingUp,
+  ShieldCheck,
   X
 } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
@@ -33,6 +35,30 @@ interface Transaction {
   descriptionAr: string;
   descriptionEn: string;
   status: "pending" | "completed" | "failed";
+  bookingId?: {
+    _id: string;
+    status: "pending" | "pending_payment" | "approved" | "active" | "completed" | "cancelled";
+    startDate: string;
+    endDate: string;
+    companionId: {
+      _id: string;
+      name: string;
+      avatar?: any;
+    } | null;
+    jobPostId: {
+      _id: string;
+      title: string;
+    } | null;
+    schedule?: Array<{
+      _id: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      checkOutTime?: string | null;
+      payoutReleased?: boolean;
+      payoutAmount?: number;
+    }> | null;
+  } | null;
 }
 
 function StripeChargeForm({
@@ -40,15 +66,19 @@ function StripeChargeForm({
   onClose,
   isRtl,
   t,
+  prefilledAmount,
+  bookingId,
 }: {
   onSuccess: (amount: number) => void;
   onClose: () => void;
   isRtl: boolean;
   t: any;
+  prefilledAmount?: string;
+  bookingId?: string | null;
 }) {
   const stripe = useStripe();
   const elements = useElements();
-  const [chargeAmount, setChargeAmount] = useState("");
+  const [chargeAmount, setChargeAmount] = useState(prefilledAmount || "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -68,7 +98,7 @@ function StripeChargeForm({
       setError(null);
 
       // 1. Create PaymentIntent in backend
-      const res = await api.post("/family/wallet/topup", { amount: amountNum });
+      const res = await api.post("/family/wallet/topup", { amount: amountNum, bookingId: bookingId || undefined });
       const { clientSecret } = res.data?.data || {};
 
       if (!clientSecret) {
@@ -139,7 +169,7 @@ function StripeChargeForm({
               onChange={(e) => setChargeAmount(e.target.value)}
               placeholder="100.00"
               required
-              disabled={submitting}
+              disabled={submitting || !!bookingId}
               className="w-full h-12 bg-[#f6f3f2]/50 border border-[#bdc9c8] rounded-2xl px-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all font-bold"
             />
           </div>
@@ -201,8 +231,13 @@ export default function FamilyWalletDashboard() {
   const t = useTranslations("wallet");
   const locale = useLocale();
   const isRtl = locale === "ar";
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const amountParam = searchParams ? searchParams.get("amount") : null;
+  const bookingIdParam = searchParams ? searchParams.get("bookingId") : null;
 
   const [balance, setBalance] = useState<number>(0);
+  const [heldBalance, setHeldBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showChargeModal, setShowChargeModal] = useState(false);
@@ -217,6 +252,7 @@ export default function FamilyWalletDashboard() {
 
       if (walletRes.data?.data) {
         setBalance(walletRes.data.data.walletBalance || 0);
+        setHeldBalance(walletRes.data.data.heldBalance || 0);
       }
       if (txnsRes.data?.data?.transactions) {
         setTransactions(txnsRes.data.data.transactions);
@@ -232,9 +268,18 @@ export default function FamilyWalletDashboard() {
     fetchWalletData();
   }, []);
 
+  useEffect(() => {
+    if (amountParam && bookingIdParam) {
+      setShowChargeModal(true);
+    }
+  }, [amountParam, bookingIdParam]);
+
   const handleChargeSuccess = async (amount: number) => {
     setShowChargeModal(false);
     await fetchWalletData();
+    if (bookingIdParam) {
+      router.push(`/family/bookings/${bookingIdParam}`);
+    }
   };
 
   if (loading) {
@@ -294,6 +339,30 @@ export default function FamilyWalletDashboard() {
                 {t("addFunds")}
               </button>
             </div>
+
+            {/* Held Escrow Balance Card */}
+            <div className="relative rounded-3xl overflow-hidden shadow-soft border border-[#eae7e7] bg-white p-6 md:p-8 space-y-4">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-550/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5 text-amber-600 animate-pulse" />
+                </div>
+                <h3 className="font-bold text-[#1b1c1c] text-sm uppercase tracking-wider">
+                  {isRtl ? "الرصيد المحجوز" : "Held Balance (Escrow)"}
+                </h3>
+              </div>
+
+              <div>
+                <div className="text-3xl md:text-4xl font-bold text-amber-650 tracking-tight font-stitch-display">
+                  {heldBalance.toFixed(2)} <span className="text-sm font-semibold">{t("egp")}</span>
+                </div>
+                <p className="text-xs text-[#3e4949]/70 mt-1">
+                  {isRtl 
+                    ? "المبالغ المحجوزة للخدمات القائمة وتحت التنفيذ حالياً" 
+                    : "Funds locked securely for active/approved bookings"}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Transactions list */}
@@ -320,6 +389,37 @@ export default function FamilyWalletDashboard() {
                     failed: "bg-rose-50 text-rose-700 border-rose-100",
                   };
 
+                  const displayDescription = txn.bookingId?.jobPostId?.title
+                    ? (isRtl ? `دفع لحجز الطلب: ${txn.bookingId.jobPostId.title}` : `Payment for: ${txn.bookingId.jobPostId.title}`)
+                    : (isRtl ? txn.descriptionAr : txn.descriptionEn);
+
+                  let subDetailText = "";
+                  if (txn.bookingId) {
+                    const companionName = txn.bookingId.companionId?.name;
+                    const schedule = txn.bookingId.schedule || [];
+                    const releasedAmount = schedule
+                      .filter((slot: any) => slot.payoutReleased)
+                      .reduce((sum: number, slot: any) => sum + (slot.payoutAmount || 0), 0);
+                    const totalShifts = schedule.length;
+                    const completedShifts = schedule.filter((slot: any) => slot.checkOutTime).length;
+
+                    if (txn.bookingId.status === "completed" || (releasedAmount > 0 && releasedAmount >= Math.abs(txn.amount))) {
+                      subDetailText = isRtl 
+                        ? `تم تحويل كامل المبلغ للمرافق: ${companionName || "المرافق"}` 
+                        : `Fully released to companion: ${companionName || "Companion"}`;
+                    } else if (txn.bookingId.status === "cancelled") {
+                      subDetailText = isRtl ? "تم الإلغاء والاسترداد" : "Cancelled & refunded";
+                    } else if (releasedAmount > 0) {
+                      subDetailText = isRtl 
+                        ? `تم تحويل ${releasedAmount.toFixed(0)} ج.م للمرافق (${completedShifts}/${totalShifts} زيارات)` 
+                        : `${releasedAmount.toFixed(0)} EGP released to companion (${completedShifts}/${totalShifts} visits)`;
+                    } else {
+                      subDetailText = isRtl 
+                        ? `محجوز بالكامل في الضمان (المرافق: ${companionName || "مجدول"})` 
+                        : `Fully held in escrow (Companion: ${companionName || "Scheduled"})`;
+                    }
+                  }
+
                   return (
                     <div
                       key={txn._id}
@@ -335,19 +435,39 @@ export default function FamilyWalletDashboard() {
                         </div>
                         <div className="space-y-0.5 text-right">
                           <h4 className="font-bold text-[#1b1c1c] text-sm">
-                            {isRtl ? txn.descriptionAr : txn.descriptionEn}
+                            {displayDescription}
                           </h4>
-                          <div className="flex items-center gap-2 text-xs text-[#3e4949]/70">
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-[#3e4949]/70">
                             <span>{dateStr}</span>
                             <span className="text-[#eae7e7]">|</span>
-                            <span className={`px-1.5 py-0.5 rounded border text-[10px] uppercase font-bold ${statusColors[txn.status]}`}>
-                              {txn.status}
+                            <span className={`px-1.5 py-0.5 rounded border text-[10px] uppercase font-bold ${
+                              txn.bookingId?.status === "cancelled"
+                                ? "bg-rose-50 text-rose-700 border-rose-100"
+                                : statusColors[txn.status]
+                            }`}>
+                              {txn.bookingId?.status === "cancelled"
+                                ? (isRtl ? "مسترد / ملغي" : "REFUNDED")
+                                : txn.status}
                             </span>
+                            {subDetailText && (
+                              <>
+                                <span className="text-[#eae7e7]">|</span>
+                                <span className={`font-semibold text-[10px] ${
+                                  txn.bookingId?.status === "completed"
+                                    ? "text-emerald-700"
+                                    : txn.bookingId?.status === "cancelled"
+                                    ? "text-rose-700 font-bold"
+                                    : "text-amber-700"
+                                }`}>
+                                  {subDetailText}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
                       <div className={`font-mono font-bold text-sm ${isDeposit ? "text-emerald-600" : "text-[#1b1c1c]"}`}>
-                        {isDeposit ? "+" : "-"} {txn.amount.toFixed(2)} {t("egp")}
+                        {isDeposit ? "+" : "-"} {Math.abs(txn.amount).toFixed(2)} {t("egp")}
                       </div>
                     </div>
                   );
@@ -387,6 +507,8 @@ export default function FamilyWalletDashboard() {
                 onClose={() => setShowChargeModal(false)}
                 isRtl={isRtl}
                 t={t}
+                prefilledAmount={amountParam || undefined}
+                bookingId={bookingIdParam}
               />
             </Elements>
           </div>

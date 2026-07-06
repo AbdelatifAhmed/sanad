@@ -43,9 +43,9 @@ interface RegisterState {
     hobbies: string[];
     availability: Array<{ day: string; slots: string[] }>;
     documents: {
-      nationalIdUrl?: { url: string; public_id: string };
-      criminalRecordUrl?: { url: string; public_id: string };
-      syndicateCardUrl?: { url: string; public_id: string };
+      nationalIdCard?: { url: string; public_id: string };
+      criminalRecord?: { url: string; public_id: string };
+      syndicateCard?: { url: string; public_id: string };
     };
   };
 

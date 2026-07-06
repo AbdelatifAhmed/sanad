@@ -9,8 +9,10 @@ const navItems: SidebarItem[] = [
   { labelKey: "calendar", href: "/companion/schedule", icon: "calendar_today" },
   { labelKey: "messages", href: "/companion/messages", icon: "chat_bubble" },
   { labelKey: "activeShift", href: "/companion/shift", icon: "play_circle" },
+  { labelKey: "notifications", href: "/companion/notifications", icon: "notifications" },
   { labelKey: "wallet", href: "/companion/wallet", icon: "wallet" },
   { labelKey: "profile", href: "/companion/profile", icon: "person" },
+  { label: "Contact Admin", href: "/companion/support", icon: "support_agent" },
 ];
 
 export default function CompanionLayout({

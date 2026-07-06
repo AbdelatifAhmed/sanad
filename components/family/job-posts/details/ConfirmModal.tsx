@@ -6,12 +6,13 @@ import { useTranslations } from "next-intl";
 interface ConfirmModalProps {
   isOpen: boolean;
   title: string;
-  message: string;
+  message?: string;
   confirmLabel: string;
   confirmClassName?: string;
   isLoading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  children?: React.ReactNode;
 }
 
 export default function ConfirmModal({
@@ -23,6 +24,7 @@ export default function ConfirmModal({
   isLoading,
   onConfirm,
   onCancel,
+  children,
 }: ConfirmModalProps) {
   const t = useTranslations("jobPostDetails");
 
@@ -38,7 +40,8 @@ export default function ConfirmModal({
           </div>
           <div>
             <h3 className="font-bold text-[#1b1c1c] text-base">{title}</h3>
-            <p className="text-sm text-[#3e4949] mt-1">{message}</p>
+            {message && <p className="text-sm text-[#3e4949] mt-1">{message}</p>}
+            {children}
           </div>
         </div>
         <div className="flex gap-3 mt-6">

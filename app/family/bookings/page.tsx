@@ -9,6 +9,7 @@ import {
   HelpCircle
 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 // Decoupled sub-components and pagination
 import BookingCard from "@/components/family/bookings/list/BookingCard";
@@ -68,9 +69,14 @@ export default function FamilyBookingsConsole() {
   const locale = useLocale();
   const isRtl = locale === "ar";
 
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") as "upcoming" | "active" | "past";
+
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<BookingItem[]>([]);
-  const [activeTab, setActiveTab] = useState<"upcoming" | "active" | "past">("upcoming");
+  const [activeTab, setActiveTab] = useState<"upcoming" | "active" | "past">(
+    initialTab && ["upcoming", "active", "past"].includes(initialTab) ? initialTab : "upcoming"
+  );
   
   // Complaint dialog state
   const [complaintBookingId, setComplaintBookingId] = useState<string | null>(null);

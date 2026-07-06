@@ -9,12 +9,14 @@ interface CompanionBookingCardProps {
   id: string;
   hourlyRate: number;
   name: string;
+  companionUserId: string;
 }
 
 export default function CompanionBookingCard({
   id,
   hourlyRate,
   name,
+  companionUserId,
 }: CompanionBookingCardProps) {
   const t = useTranslations("companionProfile");
   
@@ -49,10 +51,13 @@ export default function CompanionBookingCard({
           <Calendar className="w-4.5 h-4.5" />
           {t("requestCare")}
         </Link>
-        <button className="w-full bg-[#f4f3f0] hover:bg-gray-100 text-gray-800 py-3.5 rounded-xl font-bold transition-all text-sm flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer">
+        <Link 
+          href={`/family/messages?companionId=${companionUserId}`}
+          className="w-full bg-[#f4f3f0] hover:bg-gray-100 text-gray-800 py-3.5 rounded-xl font-bold transition-all text-sm flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+        >
           <MessageSquare className="w-4.5 h-4.5 text-gray-600" />
           {t("messageCompanion", { name: firstName })}
-        </button>
+        </Link>
       </div>
     </div>
   );

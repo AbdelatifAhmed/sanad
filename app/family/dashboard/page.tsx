@@ -43,7 +43,7 @@ export default async function FamilyDashboard() {
   }
 
   const userName = stats?.user?.name ? stats.user.name.split(" ")[0] : "Sarah";
-  const userAvatar = getAvatarUrl(stats?.user?.avatar, "/avatar_1.jpg");
+  const userAvatar = stats?.user?.avatar || null;
 
   return (
     <div className="max-w-6xl w-full mx-auto space-y-8 pb-12 animate-fade-in select-none">

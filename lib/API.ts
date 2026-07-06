@@ -11,6 +11,7 @@ import type {
   SendProposalBody,
   UpdateProposalStatusBody,
   PayBookingBody,
+  ApiPagination,
 } from "@/types";
 import { api } from "./services/api";
 
@@ -269,9 +270,21 @@ export const deleteReview = async (id: string) => {
 };
 
 // --- NOTIFICATIONS ROUTER (/notifications) ---
-export const getUserNotifications = async (): Promise<NotificationItem[]> => {
-  const res = await api.get<ApiResponse<NotificationItem[]>>("/notifications");
-  return res.data.data as NotificationItem[];
+export interface GetNotificationsResponse {
+  notifications: NotificationItem[];
+  unreadCount: number;
+  pagination: ApiPagination;
+}
+
+export const getUserNotifications = async (
+  page = 1,
+  limit = 15,
+  unreadOnly = false
+): Promise<GetNotificationsResponse> => {
+  const res = await api.get<ApiResponse<GetNotificationsResponse>>(
+    `/notifications?page=${page}&limit=${limit}&unreadOnly=${unreadOnly}`
+  );
+  return res.data.data as GetNotificationsResponse;
 };
 
 export const markAllNotificationsAsRead = async () => {

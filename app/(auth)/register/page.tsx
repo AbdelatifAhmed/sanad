@@ -3,7 +3,7 @@
 import React, { useMemo, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Headphones } from "lucide-react";
+import { Headphones, ArrowLeft } from "lucide-react";
 import { useRegisterStore } from "@/store/registerStore";
 
 // Steps
@@ -18,6 +18,7 @@ import ReviewStep from "@/components/auth/ReviewStep";
 export default function RegisterPage() {
   const step = useRegisterStore((state) => state.step);
   const role = useRegisterStore((state) => state.role);
+  const prevStep = useRegisterStore((state) => state.prevStep);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -79,22 +80,22 @@ export default function RegisterPage() {
 
   return (
     <div
-      className="relative min-h-screen flex flex-col md:flex-row font-body bg-sand"
+      className="h-screen flex flex-col md:flex-row font-body bg-sand overflow-hidden"
       dir="ltr"
     >
-      {/* Left Side: Branding / Hero */}
-      <section className="relative w-full md:w-[40%] min-h-75 md:min-h-screen flex flex-col justify-between p-8 md:p-10 overflow-hidden shrink-0">
+      {/* Left Side: Branding / Hero – fixed, never affected by scroll */}
+      <section className="relative hidden md:flex md:w-[40%] h-full flex-col justify-between p-8 md:p-10 overflow-hidden shrink-0">
         <div className="absolute inset-0 z-0">
           <Image
             src={
               role === "companion"
-                ? "/images/companion-hero.jpg"
-                : "/images/family-hero.jpg"
+                ? "/hero-caregiver.png"
+                : "/hero_care.jpg"
             }
             alt="Registration hero"
             fill
             priority
-            className="object-cover transition-all duration-700 ease-in-out"
+            className="object-cover"
           />
           <div className="absolute inset-0 bg-linear-to-t from-sand via-sand/45 to-sand/10" />
           <div className="absolute inset-0 bg-primary/10 mix-blend-multiply" />
@@ -124,15 +125,17 @@ export default function RegisterPage() {
         </div>
       </section>
 
-      {/* Right Side: Form */}
-      <section className="w-full md:w-[60%] flex items-center justify-center py-16 px-6 md:px-16 overflow-y-auto bg-white/50 backdrop-blur-sm">
+      {/* Right Side: Form – internal scroll, isolated from hero */}
+      <section className="flex-1 flex items-center justify-center py-8 px-6 md:px-16 overflow-y-auto h-full bg-white/50 backdrop-blur-sm">
         <div className="w-full max-w-xl">
-          <div className="bg-white rounded-3xl border border-sand-high p-8 md:p-10 custom-shadow space-y-8 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-sand-high p-6 md:p-7 custom-shadow space-y-5 animate-fade-in">
             {/* Stepper indicator */}
             <div className="flex justify-between items-center mb-4">
-              <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
-                Step {step} of 6
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                  Step {step} of 6
+                </span>
+              </div>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <div
@@ -166,19 +169,6 @@ export default function RegisterPage() {
               </p>
             )}
 
-            {role === "companion" && step === 1 && (
-              <div className="mt-6 p-4 rounded-2xl bg-gray-50 border border-gray-200/50 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-stitch-on-secondary-container flex items-center justify-center text-[#2c6956] shrink-0">
-                  <Headphones className="w-5 h-5" />
-                </div>
-                <div className="text-left">
-                  <p className="text-xs font-bold text-gray-800">Need help?</p>
-                  <p className="text-[11px] text-gray-500 font-medium">
-                    Contact our recruitment team at support@sanad.care
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </section>

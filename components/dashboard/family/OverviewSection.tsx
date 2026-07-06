@@ -21,54 +21,50 @@ export default async function OverviewSection({
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Active Requests Card */}
-        <div className="bg-white p-6 rounded-2xl border border-stitch-outline/10 shadow-soft flex flex-col justify-between h-[150px]">
-          <div className="space-y-1">
+        <div className="bg-white p-6 rounded-3xl border border-sand-high/60 shadow-soft flex items-center justify-between gap-6 transition-all duration-300 hover:shadow-md">
+          <div className="space-y-2 flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-stitch-primary bg-stitch-primary/10 p-1.5 rounded-lg text-lg">
+              <span className="material-symbols-outlined text-stitch-primary bg-stitch-primary/10 p-2 rounded-xl text-xl shrink-0">
                 assignment
               </span>
-              <span className="text-[11px] font-bold tracking-wider text-stitch-on-surface-variant/50 uppercase">
+              <span className="text-sm font-bold text-[#012d1d] truncate">
                 {t("activeRequests")}
               </span>
             </div>
-          </div>
-          <div className="flex items-center gap-2 mt-auto">
-            <span className="text-3xl font-bold text-stitch-on-surface">
-              {activeRequestsCount}
-            </span>
-            <span className="text-xs text-stitch-on-surface-variant/50 font-medium">
+            <p className="text-xs text-gray-500 font-semibold leading-relaxed">
               {t("activeRequestsDesc")}
-            </span>
+            </p>
+          </div>
+          <div className="text-5xl md:text-6xl font-black text-stitch-primary shrink-0 transition-transform duration-300 hover:scale-105 select-none">
+            {activeRequestsCount}
           </div>
         </div>
 
         {/* Upcoming Visits Card */}
-        <div className="bg-white p-6 rounded-2xl border border-stitch-outline/10 shadow-soft flex flex-col justify-between h-[150px]">
-          <div className="space-y-1">
+        <div className="bg-white p-6 rounded-3xl border border-sand-high/60 shadow-soft flex items-center justify-between gap-6 transition-all duration-300 hover:shadow-md">
+          <div className="space-y-2 flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-stitch-primary bg-stitch-primary/10 p-1.5 rounded-lg text-lg">
+              <span className="material-symbols-outlined text-stitch-primary bg-stitch-primary/10 p-2 rounded-xl text-xl shrink-0">
                 event
               </span>
-              <span className="text-[11px] font-bold tracking-wider text-stitch-on-surface-variant/50 uppercase">
+              <span className="text-sm font-bold text-[#012d1d] truncate">
                 {t("upcomingVisits")}
               </span>
             </div>
-          </div>
-          <div className="flex items-center justify-between mt-auto w-full">
-            <div className="flex items-center gap-2">
-              <span className="text-3xl font-bold text-stitch-on-surface">
-                {upcomingVisitsCount}
-              </span>
-              <span className="text-xs text-stitch-on-surface-variant/50 font-medium">
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-gray-500 font-semibold leading-relaxed">
                 {t("upcomingVisitsDesc")}
-              </span>
+              </p>
+              {upcomingVisitsCount > 0 && (
+                <span className="bg-[#aeedd5]/30 text-[#316d5b] text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#316d5b] animate-pulse" />
+                  {nextVisitLabel}
+                </span>
+              )}
             </div>
-            {upcomingVisitsCount > 0 && (
-              <span className="bg-[#aeedd5]/30 text-[#316d5b] text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#316d5b] animate-pulse" />
-                {nextVisitLabel}
-              </span>
-            )}
+          </div>
+          <div className="text-5xl md:text-6xl font-black text-stitch-primary shrink-0 transition-transform duration-300 hover:scale-105 select-none">
+            {upcomingVisitsCount}
           </div>
         </div>
       </div>

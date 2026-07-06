@@ -202,42 +202,7 @@ export default function CompanionShiftPage() {
   // Handle Companion Check-out
   const handleCheckOut = async () => {
     if (!booking || !activeSchedule) return;
-    
-    // Check if this is the final cash shift and is unpaid
-    const isLastShift = booking.schedule && booking.schedule.filter(s => !s.checkOutTime).length <= 1;
-    const isCashUnpaid = booking.paymentMethod === "cash" && booking.paymentStatus === "unpaid";
-    
-    if (isCashUnpaid && isLastShift) {
-      setShowCashModal(true);
-    } else {
-      await checkOutBooking();
-    }
-  };
-
-  const handleConfirmCashAndCheckout = async () => {
-    try {
-      setActionLoading(true);
-      setActionError(null);
-      
-      // 1. Confirm cash payment
-      await api.post("/payments/cash/confirm", { bookingId });
-      
-      // 2. Perform check-out
-      const res = await api.post(`/bookings/${bookingId}/check-out`, {
-        scheduleId: activeSchedule?._id
-      });
-      
-      if (res.data && res.data.data) {
-        setBooking(res.data.data.booking);
-      }
-      
-      setShowCashModal(false);
-    } catch (err: any) {
-      console.error("Cash confirmation and check-out error:", err);
-      setActionError(err.response?.data?.message || err.message || "Failed to confirm cash and check out");
-    } finally {
-      setActionLoading(false);
-    }
+    await checkOutBooking();
   };
 
   // Toggle Task Status
@@ -557,7 +522,7 @@ export default function CompanionShiftPage() {
                     </strong>
                   </div>
                   <span className="text-[10px] text-stitch-primary font-semibold bg-teal-50 px-2.5 py-1 rounded-full border border-teal-100">
-                    GPS Logged
+                    {activeSchedule.checkInMethod === "passcode" ? "Passcode Verified" : "GPS Verified"}
                   </span>
                 </div>
 
@@ -677,52 +642,7 @@ export default function CompanionShiftPage() {
 
       </div>
 
-      {/* Cash Collection Modal */}
-      {showCashModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in font-stitch-body">
-          <div className="bg-white border border-stitch-outline/20 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-premium relative space-y-6 text-right" dir="rtl">
-            <div className="w-16 h-16 bg-amber-550 border border-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto">
-              <AlertCircle className="w-8 h-8" />
-            </div>
-            
-            <div className="space-y-2 text-center">
-              <h3 className="text-xl font-bold text-stitch-on-surface">
-                تأكيد تحصيل المبلغ النقدي
-              </h3>
-              <p className="text-sm text-stitch-on-surface-variant leading-relaxed">
-                هذا هو الشفت الأخير للحجز النقدي. يرجى تأكيد استلام إجمالي المبلغ المستحق من العائلة:
-              </p>
-              <div className="text-2xl font-black text-stitch-primary font-mono py-2 bg-sand-low rounded-2xl border border-stitch-outline/20">
-                EGP {booking?.totalPrice}
-              </div>
-              <p className="text-xs text-red-650 font-medium leading-relaxed">
-                * عند التأكيد، سيتم احتساب نسبة عمولة المنصة (10%) كمديونية على محفظتك الشخصية. يرجى التأكد من استلام كامل المبلغ قبل المتابعة.
-              </p>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                onClick={() => setShowCashModal(false)}
-                disabled={actionLoading}
-                className="py-3 bg-sand-low hover:bg-sand-high text-stitch-on-surface-variant font-bold rounded-xl transition-all border border-stitch-outline/20 disabled:opacity-50 text-sm"
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={handleConfirmCashAndCheckout}
-                disabled={actionLoading}
-                className="py-3 bg-stitch-primary hover:bg-stitch-primary/95 text-white font-bold rounded-xl transition-all shadow-soft disabled:opacity-50 flex items-center justify-center space-x-2 text-sm"
-              >
-                {actionLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <span>تأكيد واستلام</span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

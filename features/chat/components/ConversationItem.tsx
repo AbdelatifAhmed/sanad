@@ -19,7 +19,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
 }) => {
   const locale = useLocale();
   const t = useTranslations("chat");
-  const { otherUser, lastMessage, unreadCount, bookingStatus } = conversation;
+  const { otherUser, lastMessage, unreadCount } = conversation;
 
   // Formatting helpers
   const formatMsgTime = (isoString?: string) => {
@@ -41,22 +41,6 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
       .slice(0, 2)
       .join("")
       .toUpperCase();
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
-      case "approved":
-        return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
-      case "completed":
-        return "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20";
-      case "pending":
-      case "pending_payment":
-        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
-      default:
-        return "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20";
-    }
   };
 
   const isRtl = locale === "ar";
@@ -87,12 +71,8 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             {otherUser ? getInitials(otherUser.name) : "?"}
           </div>
         )}
-        
-        {/* Connection status or Active indicator */}
-        <div className={`absolute -bottom-1 -end-1 w-3.5 h-3.5 rounded-full border-2 border-stitch-surface ${
-          bookingStatus === "active" ? "bg-emerald-500" : "bg-neutral-400"
-        }`} />
       </div>
+
 
       {/* Info Container */}
       <div className="flex-1 min-w-0">
@@ -130,11 +110,6 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
 
           {/* Badges Container */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Booking status badge */}
-            <span className={`text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full border ${getStatusColor(bookingStatus)}`}>
-              {t(`bookingStatus_${bookingStatus}` as any) || bookingStatus}
-            </span>
-
             {/* Unread badge */}
             {unreadCount > 0 && (
               <span className="bg-stitch-primary text-white text-[10px] font-bold min-w-5 h-5 rounded-full flex items-center justify-center px-1 border border-stitch-surface animate-pulse">

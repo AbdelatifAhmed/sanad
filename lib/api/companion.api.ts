@@ -75,7 +75,7 @@ export const getCompanionReviews = async (companionId: string, page = 1, limit =
     const res = await api.get(`/reviews/companion/${companionId}`, {
       params: { page, limit }
     });
-    return res.data;
+    return res.data.data;
   } catch (error) {
     console.error("Error fetching companion reviews:", error);
     throw error;
