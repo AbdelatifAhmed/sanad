@@ -1,97 +1,157 @@
 const path = require("path");
-// Configure environment variables from server root .env file
 require("dotenv").config({ path: path.join(__dirname, "../../../.env") });
 
 const mongoose = require("mongoose");
+const { z } = require("zod");
 const connectDB = require("../../config/db");
 const User = require("../../models/user.schema");
-const Companion = require("../../models/companion.schema");
 const SessionManager = require("./sessionManager");
+const llm = require("../../config/llm");
 const guardianShieldAgent = require("./agents/guardianShieldAgent");
-const familyAgent = require("./agents/familyAgent");
-const companionAgent = require("./agents/companionAgent");
 const { orchestrateAiChat } = require("./orchestrator");
+const {
+  extractFamilySearchQuery,
+  searchFamilyCompanions,
+} = require("./tools/familySearchTool");
+const {
+  getUpcomingFamilyBookings,
+  getCompanionActiveBookings,
+  auditCompanionScheduleConflict,
+} = require("./tools/calendarTool");
+
+const print = (title, value) => {
+  console.log(`\n=== ${title} ===`);
+  console.log(typeof value === "string" ? value : JSON.stringify(value, null, 2));
+};
+
+const getOrCreateFamilyUser = async () => {
+  let user = await User.findOne({ role: "family" });
+  if (user) return user;
+
+  return User.create({
+    name: "AI Smoke Family",
+    email: `ai-smoke-family-${Date.now()}@example.com`,
+    passwordHash: "$2b$10$abcdefghijklmnopqrstuv",
+    phone: "01000000000",
+    role: "family",
+    location: {
+      geo: { type: "Point", coordinates: [31.2357, 30.0444] },
+      readableAddress: "Maadi, Cairo",
+      city: "Cairo",
+      governorate: "Cairo",
+    },
+  });
+};
 
 async function runTests() {
   console.log("Connecting to database...");
   await connectDB();
 
   try {
-    // 1. Find a test user or create a temporary one
-    let user = await User.findOne();
-    if (!user) {
-      console.log("No user found, creating a mock test user...");
-      user = await User.create({
-        name: "Test User",
-        email: `test-${Date.now()}@example.com`,
-        passwordHash: "$2b$10$abcdefghijklmnopqrstuv",
-        phone: "01000000000",
-        role: "family",
-        location: {
-          geo: { type: "Point", coordinates: [31.2357, 30.0444] },
-          readableAddress: "Maadi, Cairo",
-          city: "Cairo",
-          governorate: "Cairo"
-        }
+    const familyUser = await getOrCreateFamilyUser();
+    const companionUser = await User.findOne({ role: "companion" });
+
+    print("0. Dynamic LLM Config", {
+      activeModel: llm.models?.[0],
+      fallbackModels: llm.models,
+      timeoutMs: llm.timeoutMs,
+    });
+
+    const echoSchema = z.object({
+      ok: z.boolean(),
+      intent: z.string(),
+    });
+    const structuredEcho = await llm.withStructuredOutput(echoSchema).invoke([
+      { role: "system", content: "Return JSON confirming the AI gateway is reachable." },
+      { role: "user", content: "Say ok true and intent smoke_test." },
+    ]);
+    print("1. LLM Structured Output", structuredEcho);
+
+    await SessionManager.clearSession(familyUser._id, "family_assistant");
+    await SessionManager.addMessage(familyUser._id, "family", "user", "Hello there");
+    await SessionManager.addMessage(familyUser._id, "family", "ai", "Hello! How can I help?");
+    const history = await SessionManager.getFormattedHistory(familyUser._id, "family");
+    print("2. SessionManager", history.map((msg) => ({
+      type: msg.constructor.name,
+      content: msg.content,
+    })));
+
+    const cleanAudit = await guardianShieldAgent.analyzeMessage("I need a nurse for my father.");
+    const unsafeAudit = await guardianShieldAgent.analyzeMessage("Call me on 01023456789 and I will pay cash outside Sanad.");
+    print("3. GuardianShield", { cleanAudit, unsafeAudit });
+
+    const searchQuery = "عايز مرافق رخيص شاطر في الزهايمر ومتاح يوم الخميس ومناسب لميزانية 80 جنيه في القاهرة";
+    const extracted = await extractFamilySearchQuery(searchQuery, "ar");
+    print("4. Family Search Extraction", extracted);
+
+    const searchResult = await searchFamilyCompanions({
+      query: searchQuery,
+      filters: extracted,
+      limit: 5,
+    });
+    print("5. Family Hybrid Search", {
+      filters: searchResult.filters,
+      count: searchResult.companions.length,
+      sample: searchResult.companions.slice(0, 2),
+    });
+
+    const familyBookings = await getUpcomingFamilyBookings(familyUser._id);
+    print("6. Family Calendar Fetch", {
+      count: familyBookings.length,
+      sample: familyBookings.slice(0, 2),
+    });
+
+    if (companionUser) {
+      const companionBookings = await getCompanionActiveBookings(companionUser._id);
+      const conflictAudit = await auditCompanionScheduleConflict(companionUser._id, {
+        day: "Thursday",
+        startTime: "10:00",
+        endTime: "12:00",
       });
+      print("7. Companion Schedule Audit", {
+        companionUserId: companionUser._id,
+        activeBookings: companionBookings.length,
+        hasConflict: conflictAudit.hasConflict,
+        messageAr: conflictAudit.messageAr,
+        messageEn: conflictAudit.messageEn,
+      });
+    } else {
+      print("7. Companion Schedule Audit", "Skipped: no companion user found in database.");
     }
-    const testUserId = user._id;
-    console.log(`Using test userId: ${testUserId} (role: ${user.role})`);
 
-    // 2. Test SessionManager
-    console.log("\n=== 1. Testing SessionManager ===");
-    const agentType = "family_assistant";
-    await SessionManager.clearSession(testUserId, agentType);
-    console.log("Cleared old session.");
+    const platformQa = await orchestrateAiChat(
+      familyUser._id,
+      "ما هي قواعد تسجيل الحضور والانصراف في سند؟",
+      "family_assistant",
+      "ar"
+    );
+    print("8. Orchestrator Platform Q&A", platformQa);
 
-    await SessionManager.addMessage(testUserId, agentType, "user", "Hello there");
-    await SessionManager.addMessage(testUserId, agentType, "ai", "Hello! How can I help you?");
-    
-    const history = await SessionManager.getFormattedHistory(testUserId, agentType);
-    console.log(`Retrieved history length: ${history.length}`);
-    console.log("History messages:", history.map(h => ({ role: h.constructor.name, content: h.content })));
+    const familySearchChat = await orchestrateAiChat(
+      familyUser._id,
+      searchQuery,
+      "family_assistant",
+      "ar"
+    );
+    print("9. Orchestrator Family Search", {
+      responseType: familySearchChat.responseType,
+      reply: familySearchChat.reply,
+      activeFilters: familySearchChat.activeFilters,
+      resultCount: familySearchChat.results.length,
+    });
 
-    // 3. Test GuardianShieldAgent
-    console.log("\n=== 2. Testing GuardianShieldAgent (Leakage Detection) ===");
-    const cleanText = "Hello, I am looking for a nurse.";
-    const unsafeText1 = "Call me directly at 01123456789 to agree offline.";
-    const unsafeText2 = "Let's do cash payment outside the platform to avoid fees.";
+    const violation = await orchestrateAiChat(
+      familyUser._id,
+      "رقمي 01023456789 وكلم المرافق خارج التطبيق",
+      "family_assistant",
+      "ar"
+    );
+    print("10. Orchestrator Safety Violation", violation);
 
-    const shieldClean = await guardianShieldAgent.analyzeMessage(cleanText);
-    console.log("Clean text audit:", shieldClean);
-
-    const shieldUnsafe1 = await guardianShieldAgent.analyzeMessage(unsafeText1);
-    console.log("Unsafe text 1 audit (Phone):", shieldUnsafe1);
-
-    const shieldUnsafe2 = await guardianShieldAgent.analyzeMessage(unsafeText2);
-    console.log("Unsafe text 2 audit (Cash Bypass):", shieldUnsafe2);
-
-    // 4. Test FamilyAgent
-    console.log("\n=== 3. Testing FamilyAgent (Structured Extraction) ===");
-    const familyQuery = "I need a female caregiver in Nasr City Cairo for Alzheimer care, my budget is 70 per hour.";
-    const familyResult = await familyAgent.execute(familyQuery, [], "en");
-    console.log("FamilyAgent structured output:", JSON.stringify(familyResult, null, 2));
-
-    // 5. Test CompanionAgent
-    console.log("\n=== 4. Testing CompanionAgent (Shift Guidelines & matching) ===");
-    const companionQuery = "How should I handle a night shift patient with dementia?";
-    const companionResult = await companionAgent.execute(companionQuery, [], "en", testUserId);
-    console.log("CompanionAgent output:", JSON.stringify(companionResult, null, 2));
-
-    // 6. Test Orchestrator
-    console.log("\n=== 5. Testing Central Orchestrator ===");
-    console.log("Sending clean family request through Orchestrator...");
-    const orchCleanResult = await orchestrateAiChat(testUserId, "Hello, can you help me find a companion?", "family_assistant", "en");
-    console.log("Orchestrator clean response:", orchCleanResult);
-
-    console.log("\nSending violation family request through Orchestrator...");
-    const orchUnsafeResult = await orchestrateAiChat(testUserId, "My number is 01023456789. Call me directly.", "family_assistant", "en");
-    console.log("Orchestrator violation response:", orchUnsafeResult);
-
-    console.log("\nAll tests completed successfully!");
-
+    console.log("\nAI smoke test completed.");
   } catch (error) {
-    console.error("Test execution failed:", error);
+    console.error("AI smoke test failed:", error);
+    process.exitCode = 1;
   } finally {
     await mongoose.disconnect();
     console.log("Disconnected from database.");

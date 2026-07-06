@@ -34,11 +34,7 @@ For any review/text comment:
 3. Write a brief summary explaining your findings.
 `;
 
-/**
- * Audit review text and update its DB record asynchronously.
- * @param {string} reviewId - The Mongo ID of the Review.
- * @param {string} commentText - The comment content to audit.
- */
+
 const auditReview = async (reviewId, commentText) => {
   if (!commentText || !commentText.trim()) return;
 

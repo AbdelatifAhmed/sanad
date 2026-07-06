@@ -1,15 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const aiController = require('../controllers/aiController');
-const familySearchController = require('../controllers/ai/familySearch.controller');
+const smartSearchController = require('../controllers/ai/smartSearchController');
 const carePlanController = require('../controllers/ai/carePlan.controller');
 const adminAuditController = require('../controllers/ai/adminAudit.controller');
+const { handleChatMessage } = require('../controllers/ai/assistant.controller');
 const { authenticate } = require('../middleware/authMiddleware');
+const { aiShield } = require('../middleware/aiShield');
 
 router.post('/session/family', authenticate, aiController.handleFamilyChat);
 router.post('/session/companion', authenticate, aiController.handleCompanionChat);
+router.post('/chat/message', authenticate, aiShield, handleChatMessage);
 router.post('/search/companions', authenticate, aiController.smartSearch);
-router.post('/family/browse-search', authenticate, familySearchController.browseSearch);
+router.post('/family/browse-search', authenticate, aiShield, smartSearchController.browseSearch);
 router.post('/family/generate-care-plan', authenticate, carePlanController.generateCarePlan);
 router.get('/admin/analyze-reviews', authenticate, adminAuditController.analyzeReviews);
 router.post('/admin/auto-verify-docs', authenticate, adminAuditController.autoVerifyDocs);

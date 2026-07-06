@@ -326,6 +326,11 @@ const getVerifiedCompanions = async (req, res) => {
       query.specialization = req.query.specialization;
     }
 
+    // CompanionType filter
+    if (req.query.companionType) {
+      query.companionType = req.query.companionType;
+    }
+
     // Hourly Rate filter
     if (req.query.rate) {
       if (req.query.rate === "0-100") {
@@ -345,6 +350,21 @@ const getVerifiedCompanions = async (req, res) => {
       }
     }
 
+    // Gender filter
+    if (req.query.gender) {
+      const matchingUsersByGender = await User.find({ gender: req.query.gender }).select('_id');
+      const userIdsByGender = matchingUsersByGender.map(u => u._id);
+      
+      if (query.userId) {
+        // Intersect if already exists
+        const existingIds = query.userId.$in.map(id => id.toString());
+        const newIds = userIdsByGender.filter(id => existingIds.includes(id.toString()));
+        query.userId = { $in: newIds };
+      } else {
+        query.userId = { $in: userIdsByGender };
+      }
+    }
+
     // Search filter (name, bio)
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, 'i');
@@ -357,10 +377,23 @@ const getVerifiedCompanions = async (req, res) => {
       }).select('_id');
       
       const userIds = matchingUsers.map(u => u._id);
-      query.$or = [
-        { userId: { $in: userIds } },
-        { bio: searchRegex }
-      ];
+      
+      if (query.userId) {
+         // Intersect
+         const existingIds = query.userId.$in.map(id => id.toString());
+         const newIds = userIds.filter(id => existingIds.includes(id.toString()));
+         // OR with bio
+         query.$or = [
+           { userId: { $in: newIds } },
+           { bio: searchRegex, userId: query.userId }
+         ];
+         delete query.userId;
+      } else {
+         query.$or = [
+           { userId: { $in: userIds } },
+           { bio: searchRegex }
+         ];
+      }
     }
 
     const total = await Companion.countDocuments(query);

@@ -3,65 +3,119 @@ require("dotenv").config({ path: path.join(__dirname, "../../../.env") });
 
 const mongoose = require("mongoose");
 const connectDB = require("../../config/db");
-const familyAgent = require("./agents/familyAgent");
-const auditAgent = require("./agents/auditAgent");
+const User = require("../../models/user.schema");
+const Skill = require("../../models/skills.schema");
+const aiController = require("../../controllers/aiController");
+const familySearchController = require("../../controllers/ai/familySearch.controller");
+const carePlanController = require("../../controllers/ai/carePlan.controller");
+
+const makeMockRes = (label) => {
+  const res = {
+    statusCode: 200,
+    body: null,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      this.body = payload;
+      console.log(`\n=== ${label} ===`);
+      console.log(JSON.stringify({ statusCode: this.statusCode, payload }, null, 2));
+      return this;
+    },
+  };
+  return res;
+};
+
+const getOrCreateFamilyUser = async () => {
+  let user = await User.findOne({ role: "family" });
+  if (user) return user;
+
+  return User.create({
+    name: "AI Endpoint Family",
+    email: `ai-endpoint-family-${Date.now()}@example.com`,
+    passwordHash: "$2b$10$abcdefghijklmnopqrstuv",
+    phone: "01000000000",
+    role: "family",
+    location: {
+      readableAddress: "Maadi, Cairo",
+      city: "Cairo",
+      governorate: "Cairo",
+    },
+  });
+};
 
 async function runTests() {
   console.log("Connecting to database...");
   await connectDB();
 
   try {
-    // 1. Test Care Plan Generation
-    console.log("\n=== Testing Care Plan Generation ===");
-    const description = "My grandfather suffers from severe Alzheimer's disease. He needs daily cognitive monitoring, help with physical exercises to keep active, and basic assistance in eating and taking his pills.";
-    const mockSkills = [
-      { _id: "65f12a1a1a1a1a1a1a1a1a1a", nameEn: "Dementia & Alzheimer's Care", nameAr: "رعاية الزهايمر", category: "medical" },
-      { _id: "65f12b2b2b2b2b2b2b2b2b2b", nameEn: "Physical Therapy Support", nameAr: "مساعدة العلاج الطبيعي", category: "therapy" },
-      { _id: "65f12c3c3c3c3c3c3c3c3c3c", nameEn: "Wound Dressing", nameAr: "غيار الجروح", category: "medical" }
-    ];
+    const familyUser = await getOrCreateFamilyUser();
+    const companionUser = await User.findOne({ role: "companion" });
 
-    const planResult = await familyAgent.generateCarePlan(description, mockSkills, "en");
-    console.log("Care Plan Output:", JSON.stringify(planResult, null, 2));
+    await aiController.handleFamilyChat(
+      {
+        user: { id: familyUser._id, _id: familyUser._id },
+        body: {
+          lang: "ar",
+          message: "ما هي خدمات سند وقواعد الدفع الآمن؟",
+        },
+        headers: { "accept-language": "ar" },
+      },
+      makeMockRes("1. POST /api/ai/session/family - Platform Q&A")
+    );
 
-    // 2. Test Batch Auditing Reviews
-    console.log("\n=== Testing Batch Reviews Auditing ===");
-    const mockReviews = [
-      { _id: "65f222222222222222222222", comment: "The helper was very gentle and professional. Highly recommended!", rating: 5 },
-      { _id: "65f333333333333333333333", comment: "Alert: The nurse did not show up on time and left my disabled mother unattended. This is gross neglect!", rating: 1 }
-    ];
+    await familySearchController.browseSearch(
+      {
+        user: { id: familyUser._id, _id: familyUser._id },
+        body: {
+          query: "محتاج مرافقة سيدة في القاهرة خبرة زهايمر يوم الخميس وسعرها أقل من 100 جنيه",
+          limit: 5,
+        },
+        headers: { "accept-language": "ar" },
+      },
+      makeMockRes("2. POST /api/ai/family/browse-search")
+    );
 
-    const auditResult = await auditAgent.batchAuditReviews(mockReviews);
-    console.log("Batch Audits Output:", JSON.stringify(auditResult, null, 2));
+    if (companionUser) {
+      await aiController.handleCompanionChat(
+        {
+          user: { id: companionUser._id, _id: companionUser._id },
+          body: {
+            lang: "ar",
+            message: "جالي طلب جديد يوم الخميس من 10:00 إلى 12:00، هل مناسب لجدولي؟",
+          },
+          headers: { "accept-language": "ar" },
+        },
+        makeMockRes("3. POST /api/ai/session/companion - Schedule Audit")
+      );
+    } else {
+      console.log("\n=== 3. POST /api/ai/session/companion - Schedule Audit ===");
+      console.log("Skipped: no companion user found in database.");
+    }
 
-    // 3. Test Auto Verification of Documents
-    console.log("\n=== Testing Auto Document Verification (OCR Alignment) ===");
-    const mockCompanionMatched = {
-      userId: { name: "Abdellatif Mohamed", phone: "01023456789", email: "abdellatif@example.com" },
-      documents: {
-        nationalIdCard: { url: "https://cloudinary.com/sanad/national_id_abdellatif.jpg" },
-        criminalRecord: { url: "https://cloudinary.com/sanad/criminal_record_abdellatif.jpg" }
-      }
-    };
+    const skills = await Skill.find().limit(5).lean();
+    await carePlanController.generateCarePlan(
+      {
+        user: { id: familyUser._id, _id: familyUser._id },
+        body: {
+          description:
+            "My grandfather has Alzheimer's and needs reminders for medicine, calm supervision, eating help, and light mobility support.",
+          availableSkills: skills,
+        },
+        lang: "en",
+        headers: { "accept-language": "en" },
+      },
+      makeMockRes("4. POST /api/ai/family/generate-care-plan")
+    );
 
-    const mockCompanionMismatch = {
-      userId: { name: "John Doe", phone: "01523456789", email: "john@example.com" },
-      documents: {
-        nationalIdCard: { url: "https://cloudinary.com/sanad/national_id_abdellatif.jpg" }, // Mismatching name on ID
-        criminalRecord: { url: "https://cloudinary.com/sanad/criminal_record_abdellatif.jpg" }
-      }
-    };
-
-    const verifyMatched = await auditAgent.autoVerifyDocuments(mockCompanionMatched);
-    console.log("Verification of Matched Companion:", JSON.stringify(verifyMatched, null, 2));
-
-    const verifyMismatched = await auditAgent.autoVerifyDocuments(mockCompanionMismatch);
-    console.log("Verification of Mismatched Companion:", JSON.stringify(verifyMismatched, null, 2));
-
-  } catch (err) {
-    console.error("New features test run error:", err);
+    console.log("\nAI endpoint smoke test completed.");
+  } catch (error) {
+    console.error("AI endpoint smoke test failed:", error);
+    process.exitCode = 1;
   } finally {
     await mongoose.disconnect();
-    console.log("Disconnected from DB.");
+    console.log("Disconnected from database.");
   }
 }
 
