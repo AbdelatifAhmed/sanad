@@ -1,5 +1,6 @@
 import RoleGuard from "@/components/auth/RoleGuard";
 import Sidebar, { SidebarItem } from "@/components/layouts/Sidebar";
+import GlobalAIAssistant from "@/components/ai/GlobalAIAssistant";
 
 const navItems: SidebarItem[] = [
   { labelKey: "dashboard", href: "/family/dashboard", icon: "home" },
@@ -26,9 +27,10 @@ export default function FamilyLayout({
           navItems={navItems}
         />
         {/* Added pb-24 on mobile to prevent the bottom nav bar from covering main content */}
-        <main className="flex-1 p-6 md:p-8 pb-24 md:pb-8 h-screen overflow-y-auto bg-sand/40">
+        <main className="flex-1 p-6 md:p-8 pb-24 md:pb-8 h-screen overflow-y-auto bg-sand/40 relative">
           {children}
         </main>
+        <GlobalAIAssistant userRole="Family" />
       </div>
     </RoleGuard>
   );

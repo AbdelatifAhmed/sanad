@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CareRequestFormData, ServiceType, Beneficiary } from "@/lib/types/care-request";
 import { useFamilyElderlyProfiles } from "@/lib/hooks";
 import { useTranslations } from "next-intl";
+import CarePlanAssistant from "@/components/ai/CarePlanAssistant";
 
 type Step1Data = Pick<CareRequestFormData, "title" | "beneficiaryId" | "serviceType" | "description" | "budgetPerHour" | "taskList" | "preferredGender" | "requiredSkills">;
 
@@ -190,6 +191,17 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
           onChange={(e) => { setDescription(e.target.value); setErrors((er) => ({ ...er, description: "" })); }}
           placeholder={t("descriptionPlaceholder")}
           className="w-full bg-white border border-[#bdc9c8] rounded-xl p-4 text-sm focus:ring-2 focus:ring-[#1f8a8a]/20 focus:border-[#1f8a8a] outline-none transition-all resize-none"
+        />
+        <CarePlanAssistant
+          description={description}
+          onApply={({ taskList: aiTasks, requiredSkills: aiSkills }) => {
+            if (aiTasks?.length) {
+              setTaskList((prev) => Array.from(new Set([...prev, ...aiTasks])));
+            }
+            if (aiSkills?.length) {
+              setRequiredSkills((prev) => Array.from(new Set([...prev, ...aiSkills])));
+            }
+          }}
         />
         {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
       </div>

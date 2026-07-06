@@ -56,6 +56,20 @@ export const aiSmartSearch = async (data: Record<string, unknown>) => {
   return res.data.data;
 };
 
+export const browseSearchCompanions = async (data: Record<string, unknown>, locale = "ar") => {
+  const res = await api.post("/ai/family/browse-search", data, {
+    headers: { "Accept-Language": locale },
+  });
+  return res.data.data;
+};
+
+export const generateCarePlan = async (data: Record<string, unknown>, locale = "ar") => {
+  const res = await api.post("/ai/family/generate-care-plan", data, {
+    headers: { "Accept-Language": locale },
+  });
+  return res.data.data;
+};
+
 export const clearAIChatSession = async () => {
   const res = await api.delete("/ai/session");
   return res.data;
