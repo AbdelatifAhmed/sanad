@@ -1,6 +1,7 @@
 const User = require('../../models/user.schema');
 const Companion = require('../../models/companion.schema');
 const Booking = require('../../models/booking.schema');
+const Notification = require('../../models/notification.schema');
 
 /**
  * GET /api/admin/activity
@@ -33,7 +34,7 @@ const getActivityFeed = async (req, res) => {
     const dateFilter = fromDate ? { createdAt: { $gte: fromDate } } : {};
 
     // ── Fetch source data in parallel ────────────────────────────────────────
-    const [users, companions, bookings] = await Promise.all([
+    const [users, companions, bookings, resubmissionNotifications] = await Promise.all([
       // All non-admin users (registrations + profile changes tracked via updatedAt)
       (category === 'all' || category === 'registration' || category === 'profile')
         ? User.find({
@@ -59,6 +60,17 @@ const getActivityFeed = async (req, res) => {
           })
           .populate('familyId',   'name role')
           .populate('companionId', 'name role')
+          .lean()
+        : Promise.resolve([]),
+
+      // Resubmission notifications — used to inject distinct resubmission activity events
+      (category === 'all' || category === 'verification')
+        ? Notification.find({
+            title: 'Caregiver Resubmitted Documents 📋',
+            type:  'system_alert',
+            ...dateFilter
+          })
+          .populate('senderId', 'name')
           .lean()
         : Promise.resolve([]),
     ]);
@@ -89,7 +101,10 @@ const getActivityFeed = async (req, res) => {
         badgeClass:  'bg-primary/10 text-primary border-primary/20',
         timestamp:   u.createdAt,
         exactDate:   u.createdAt,
-        navigateTo:  actorRole === 'family' ? `/families/${u._id}` : `/caregivers`,
+        navigateTo:  actorRole === 'family'
+          ? `/families/${u._id}`
+          : `/caregivers?id=${u._id}`,
+        entityId:    u._id.toString(),
       });
     }
 
@@ -108,6 +123,8 @@ const getActivityFeed = async (req, res) => {
       };
 
       const meta = statusMeta[c.verificationStatus] || statusMeta.pending;
+      // c.userId holds the User document (populated); use its _id for navigation
+      const caregiverUserId = c.userId?._id?.toString() || c.userId?.toString();
 
       events.push({
         id:          `comp-ver-${c._id}`,
@@ -126,7 +143,39 @@ const getActivityFeed = async (req, res) => {
         badgeClass:  meta.badge,
         timestamp:   c.updatedAt,
         exactDate:   c.updatedAt,
-        navigateTo:  '/caregivers',
+        navigateTo:  caregiverUserId ? `/caregivers?id=${caregiverUserId}` : '/caregivers',
+        entityId:    caregiverUserId || c._id.toString(),
+      });
+    }
+
+    // ── Resubmission events (caregiver uploaded docs after under_review) ──────
+    // Each resubmission creates a notification sent to admins — we use those
+    // notification records as the source of truth for this distinct event type.
+    for (const notif of resubmissionNotifications) {
+      if (role !== 'all' && role !== 'companion') continue;
+
+      const actorName = notif.senderId?.name || 'A Caregiver';
+      const actorUserId = notif.senderId?._id?.toString() || notif.senderId?.toString();
+
+      events.push({
+        id:          `resubmit-${notif._id}`,
+        category:    'verification',
+        type:        'documents_resubmitted',
+        title:       'Documents Resubmitted',
+        description: `${actorName} resubmitted requested documents — status changed from Under Review to Pending.`,
+        actorName,
+        actorRole:   'companion',
+        relatedId:   actorUserId || '',
+        relatedModel:'Companion',
+        icon:        'upload_file',
+        iconBg:      'bg-teal-100',
+        iconColor:   'text-teal-700',
+        badgeLabel:  'Resubmission',
+        badgeClass:  'bg-teal-50 text-teal-700 border-teal-200',
+        timestamp:   notif.createdAt,
+        exactDate:   notif.createdAt,
+        navigateTo:  actorUserId ? `/caregivers?id=${actorUserId}` : '/caregivers',
+        entityId:    actorUserId || '',
       });
     }
 
@@ -171,7 +220,8 @@ const getActivityFeed = async (req, res) => {
         badgeClass:  meta.badge,
         timestamp:   b.updatedAt,
         exactDate:   b.updatedAt,
-        navigateTo:  `/families/${b.familyId?._id}`,
+        navigateTo:  `/bookings?id=${b._id}`,
+        entityId:    b._id.toString(),
       });
     }
 

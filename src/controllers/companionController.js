@@ -399,6 +399,7 @@ const getVerifiedCompanions = async (req, res) => {
     const total = await Companion.countDocuments(query);
     const companions = await Companion.find(query)
       .populate('userId', 'name email phone avatar location')
+      .populate('skills', 'nameAr nameEn category')
       .skip(skip)
       .limit(limit);
 

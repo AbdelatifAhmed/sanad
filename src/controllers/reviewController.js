@@ -54,6 +54,13 @@ const createReview = async (req, res) => {
         .json({ error: messages.review.bookingNotCompleted[lang] });
     }
 
+    const existingReview = await Review.findOne({ bookingId });
+    if (existingReview) {
+      return res
+        .status(400)
+        .json({ error: messages.review.duplicateReview[lang] });
+    }
+
     const companionProfile = await Companion.findOne({
       userId: booking.companionId,
     }).lean();
