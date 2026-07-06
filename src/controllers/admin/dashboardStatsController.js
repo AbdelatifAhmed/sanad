@@ -34,12 +34,13 @@ const getAdminDashboardStats = async (req, res) => {
       ])
     ]);
 
-    const companions = { total: 0, verified: 0, pending: 0, rejected: 0 };
+    const companions = { total: 0, verified: 0, pending: 0, under_review: 0, rejected: 0 };
     companionsStats.forEach(item => {
       const status = item._id || 'pending';
-      if (status === 'verified') companions.verified = item.count;
-      else if (status === 'pending') companions.pending = item.count;
-      else if (status === 'rejected') companions.rejected = item.count;
+      if (status === 'verified')     companions.verified     = item.count;
+      else if (status === 'pending') companions.pending      = item.count;
+      else if (status === 'under_review') companions.under_review = item.count;
+      else if (status === 'rejected') companions.rejected    = item.count;
       companions.total += item.count;
     });
 
@@ -63,9 +64,10 @@ const getAdminDashboardStats = async (req, res) => {
           completedServices: bookings.completed
         },
         companionsBreakdown: {
-          verified: companions.verified,
+          verified:          companions.verified,
           pendingOnboarding: companions.pending,
-          rejected: companions.rejected
+          underReview:       companions.under_review,
+          rejected:          companions.rejected
         },
         bookingsBreakdown: {
           pendingApproval: bookings.pending,

@@ -1,6 +1,7 @@
 const Companion = require("../../models/companion.schema");
 const User = require("../../models/user.schema");
 const Notification = require("../../models/notification.schema");
+const Payment = require("../../models/payment.schema");
 const messages = require("../../utils/messages");
 
 const getPendingCompanions = async (req, res) => {
@@ -174,8 +175,87 @@ const verifyCompanion = async (req, res) => {
   }
 };
 
+/**
+ * GET /admin/companions/:id/wallet
+ * Returns wallet summary for a specific companion (admin only).
+ */
+const getCompanionWallet = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Accept both the Companion._id and the User._id
+    // (the directory page stores userId._id in the URL param)
+    let companion = await Companion.findById(id).select(
+      "walletBalance userId stripeConnectId"
+    );
+
+    if (!companion) {
+      // Fallback: caller may have passed the User's _id
+      companion = await Companion.findOne({ userId: id }).select(
+        "walletBalance userId stripeConnectId"
+      );
+    }
+
+    if (!companion) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Companion not found",
+      });
+    }
+
+    // Aggregate total earnings from paid payments linked to this companion's userId
+    const earningsAgg = await Payment.aggregate([
+      {
+        $match: {
+          companionId: companion.userId,
+          status: "paid",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalEarnings: { $sum: "$amount" },
+          pendingPayout: {
+            $sum: {
+              $cond: [{ $eq: ["$payoutReleased", false] }, "$amount", 0],
+            },
+          },
+          lastPayoutDate: { $max: "$payoutDate" },
+        },
+      },
+    ]);
+
+    const agg = earningsAgg[0] || {
+      totalEarnings: 0,
+      pendingPayout: 0,
+      lastPayoutDate: null,
+    };
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        currentBalance: companion.walletBalance || 0,
+        totalEarnings: agg.totalEarnings,
+        pendingBalance: agg.pendingPayout,
+        lastWithdrawalDate: agg.lastPayoutDate || null,
+        walletStatus: companion.walletBalance >= 0 ? "active" : "frozen",
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching companion wallet:", error);
+    return res.status(500).json({
+      status: "error",
+      message: messages.common.serverError
+        ? messages.common.serverError[req.lang || "en"]
+        : "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getPendingCompanions,
   getCompanions,
-  verifyCompanion
+  verifyCompanion,
+  getCompanionWallet,
 };
