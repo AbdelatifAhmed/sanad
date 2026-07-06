@@ -1,6 +1,6 @@
 export default function TrustSafety() {
   return (
-    <section className="py-24 bg-stitch-on-surface text-white px-margin-mobile md:px-margin-desktop font-stitch-body">
+    <section className="py-24 bg-[#012d1d] text-white px-margin-mobile md:px-margin-desktop font-stitch-body">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-16">
         <div className="flex-1">
           <h2 className="text-4xl font-bold mb-8 font-stitch-display">Safety is Our Top Priority</h2>
@@ -29,7 +29,7 @@ export default function TrustSafety() {
 
             {/* Safety Point 3 */}
             <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-full bg-stitch-primary/20 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-full bg-[#1f8a8a]/20 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-stitch-primary">chat</span>
               </div>
               <div>
@@ -42,19 +42,19 @@ export default function TrustSafety() {
 
         {/* Profile Card Mockup */}
         <div className="flex-1 bg-white/5 p-8 rounded-[32px] border border-white/10 w-full max-w-md">
-          <div className="bg-white rounded-2xl p-6 text-stitch-on-surface shadow-premium max-w-sm mx-auto">
+          <div className="bg-white rounded-2xl p-6 text-slate-800 shadow-premium max-w-sm mx-auto">
             <div className="flex items-center gap-4 mb-4">
               <div className="w-12 h-12 rounded-full bg-stitch-secondary-container"></div>
               <div className="flex-1">
-                <div className="h-4 w-32 bg-stitch-on-surface/5 rounded mb-2"></div>
-                <div className="h-3 w-20 bg-stitch-on-surface/5 rounded"></div>
+                <div className="h-4 w-32 bg-slate-100 rounded mb-2"></div>
+                <div className="h-3 w-20 bg-slate-100 rounded"></div>
               </div>
             </div>
             
             <div className="space-y-3">
-              <div className="h-3 w-full bg-stitch-on-surface/5 rounded"></div>
-              <div className="h-3 w-full bg-stitch-on-surface/5 rounded"></div>
-              <div className="h-3 w-2/3 bg-stitch-on-surface/5 rounded"></div>
+              <div className="h-3 w-full bg-slate-100 rounded"></div>
+              <div className="h-3 w-full bg-slate-100 rounded"></div>
+              <div className="h-3 w-2/3 bg-slate-100 rounded"></div>
             </div>
             
             <div className="mt-6 flex items-center justify-between border-t border-stitch-outline/10 pt-4">

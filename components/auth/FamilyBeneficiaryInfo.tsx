@@ -55,22 +55,15 @@ export default function FamilyBeneficiaryInfo() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold text-primary">Beneficiary Information</h2>
-        <p className="text-sm text-gray-500 font-medium leading-relaxed text-left">
-          Tell us about the person who needs companion care services.
-        </p>
-      </div>
-
-      <div className="space-y-4">
+    <div className="space-y-4">
+      <div className="space-y-3">
         {familyData.beneficiaries.map((b, idx) => (
-          <div key={idx} className="flex items-center justify-between p-4 bg-white border border-sand-high rounded-2xl custom-shadow animate-fade-in">
+          <div key={idx} className="flex items-center justify-between p-3.5 bg-white border border-sand-high rounded-2xl custom-shadow animate-fade-in">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-primary">
                 <User className="w-5 h-5" />
               </div>
-              <div>
+              <div className="text-left">
                 <p className="text-sm font-bold text-gray-800">{b.name}</p>
                 <p className="text-[10px] text-gray-400 font-bold uppercase">
                   {b.age} years • {b.category === 'elderly' ? 'Elderly' : 'Special Needs'}
@@ -88,38 +81,38 @@ export default function FamilyBeneficiaryInfo() {
         ))}
 
         {isAdding ? (
-          <form onSubmit={handleSubmit(addBeneficiary)} className="bg-white rounded-3xl border border-sand-high p-6 space-y-6 animate-fade-in shadow-sm">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5 text-left">
+          <form onSubmit={handleSubmit(addBeneficiary)} className="bg-white rounded-3xl border border-sand-high p-4 space-y-3.5 animate-fade-in shadow-sm">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1 text-left">
                 <label className="text-xs font-bold text-gray-700">Name</label>
                 <input
                   {...register("name")}
-                  className="w-full px-4 py-3 bg-gray-50 border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium"
+                  className="w-full px-4 py-2 bg-gray-50 border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium"
                   placeholder="Full Name"
                 />
                 {errors.name && <p className="text-red-500 text-[10px] font-semibold">{errors.name.message}</p>}
               </div>
 
-              <div className="space-y-1.5 text-left">
+              <div className="space-y-1 text-left">
                 <label className="text-xs font-bold text-gray-700">Age</label>
                 <input
                   {...register("age", { valueAsNumber: true })}
                   type="number"
-                  className="w-full px-4 py-3 bg-gray-50 border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium"
+                  className="w-full px-4 py-2 bg-gray-50 border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium"
                   placeholder="Age"
                 />
                 {errors.age && <p className="text-red-500 text-[10px] font-semibold">{errors.age.message}</p>}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5 text-left">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1 text-left">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Gender</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setValue("gender", "male")}
-                    className={`py-2.5 rounded-xl border-2 transition-all font-bold text-xs ${
+                    className={`py-2 rounded-xl border-2 transition-all font-bold text-xs ${
                       gender === "male" ? "border-button bg-button/5 text-button" : "border-gray-100 bg-white text-gray-400"
                     }`}
                   >
@@ -128,7 +121,7 @@ export default function FamilyBeneficiaryInfo() {
                   <button
                     type="button"
                     onClick={() => setValue("gender", "female")}
-                    className={`py-2.5 rounded-xl border-2 transition-all font-bold text-xs ${
+                    className={`py-2 rounded-xl border-2 transition-all font-bold text-xs ${
                       gender === "female" ? "border-button bg-button/5 text-button" : "border-gray-100 bg-white text-gray-400"
                     }`}
                   >
@@ -137,13 +130,13 @@ export default function FamilyBeneficiaryInfo() {
                 </div>
               </div>
 
-              <div className="space-y-1.5 text-left">
+              <div className="space-y-1 text-left">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Category</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setValue("category", "elderly")}
-                    className={`py-2.5 rounded-xl border-2 transition-all font-bold text-[10px] ${
+                    className={`py-2 rounded-xl border-2 transition-all font-bold text-[10px] ${
                       category === "elderly" ? "border-button bg-button/5 text-button" : "border-gray-100 bg-white text-gray-400"
                     }`}
                   >
@@ -152,7 +145,7 @@ export default function FamilyBeneficiaryInfo() {
                   <button
                     type="button"
                     onClick={() => setValue("category", "special_needs")}
-                    className={`py-2.5 rounded-xl border-2 transition-all font-bold text-[10px] ${
+                    className={`py-2 rounded-xl border-2 transition-all font-bold text-[10px] ${
                       category === "special_needs" ? "border-button bg-button/5 text-button" : "border-gray-100 bg-white text-gray-400"
                     }`}
                   >
@@ -162,13 +155,13 @@ export default function FamilyBeneficiaryInfo() {
               </div>
             </div>
 
-            <div className="space-y-1.5 text-left">
+            <div className="space-y-1 text-left">
               <label className="text-xs font-bold text-gray-700">Condition Details</label>
               <textarea
                 {...register("conditionDetails")}
-                rows={3}
-                className="w-full px-4 py-3 bg-gray-50 border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium resize-none leading-relaxed"
-                placeholder="Describe their daily needs, mobility, or medical conditions..."
+                rows={2}
+                className="w-full px-4 py-2 bg-gray-50 border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium resize-none leading-relaxed"
+                placeholder="Describe daily needs, mobility, or medical conditions..."
               />
               {errors.conditionDetails && <p className="text-red-500 text-[10px] font-semibold">{errors.conditionDetails.message}</p>}
             </div>
@@ -176,7 +169,7 @@ export default function FamilyBeneficiaryInfo() {
             <div className="flex gap-3">
               <button
                 type="submit"
-                className="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-sm hover:opacity-95 transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 bg-primary text-white py-2 rounded-xl font-bold text-sm hover:opacity-95 transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Add Beneficiary
@@ -185,7 +178,7 @@ export default function FamilyBeneficiaryInfo() {
                 <button
                   type="button"
                   onClick={() => setIsAdding(false)}
-                  className="px-4 py-3 border border-gray-200 text-gray-500 rounded-xl font-bold text-sm hover:bg-gray-50 transition-all cursor-pointer"
+                  className="px-4 py-2 border border-gray-200 text-gray-500 rounded-xl font-bold text-sm hover:bg-gray-50 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -204,11 +197,11 @@ export default function FamilyBeneficiaryInfo() {
         )}
       </div>
 
-      <div className="pt-6 flex justify-between items-center border-t border-sand-high">
+      <div className="pt-3 flex justify-between items-center border-t border-sand-high">
         <button
           type="button"
           onClick={prevStep}
-          className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-sm font-bold text-gray-500 hover:text-primary hover:bg-gray-50 transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:text-primary hover:bg-gray-50 transition-all cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
@@ -217,7 +210,7 @@ export default function FamilyBeneficiaryInfo() {
           type="button"
           onClick={nextStep}
           disabled={familyData.beneficiaries.length === 0 || isAdding}
-          className="group flex items-center justify-center gap-1.5 px-8 py-3.5 bg-primary text-white rounded-xl font-bold text-base shadow-md hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+          className="group flex items-center justify-center gap-1.5 px-8 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-md hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
         >
           Next Step
           <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />

@@ -118,7 +118,7 @@ export default function CompanionDocuments() {
     updateCompanionData({ documents: updatedDocuments });
   };
 
-  const isComplete = companionData.documents.nationalIdUrl && companionData.documents.criminalRecordUrl;
+  const isComplete = companionData.documents.nationalIdCard && companionData.documents.criminalRecord;
 
   return (
     <div className="space-y-8">
@@ -133,24 +133,24 @@ export default function CompanionDocuments() {
         <FileUploader
           label="National ID Card"
           required
-          currentUrl={companionData.documents.nationalIdUrl?.url}
-          onUpload={(fileData) => handleUpload("nationalIdUrl", fileData)}
-          onRemove={() => handleRemove("nationalIdUrl")}
+          currentUrl={companionData.documents.nationalIdCard?.url}
+          onUpload={(fileData) => handleUpload("nationalIdCard", fileData)}
+          onRemove={() => handleRemove("nationalIdCard")}
         />
 
         <FileUploader
           label="Criminal Record (الفيش الجنائي)"
           required
-          currentUrl={companionData.documents.criminalRecordUrl?.url}
-          onUpload={(fileData) => handleUpload("criminalRecordUrl", fileData)}
-          onRemove={() => handleRemove("criminalRecordUrl")}
+          currentUrl={companionData.documents.criminalRecord?.url}
+          onUpload={(fileData) => handleUpload("criminalRecord", fileData)}
+          onRemove={() => handleRemove("criminalRecord")}
         />
 
         <FileUploader
           label="Syndicate Card (Optional)"
-          currentUrl={companionData.documents.syndicateCardUrl?.url}
-          onUpload={(fileData) => handleUpload("syndicateCardUrl", fileData)}
-          onRemove={() => handleRemove("syndicateCardUrl")}
+          currentUrl={companionData.documents.syndicateCard?.url}
+          onUpload={(fileData) => handleUpload("syndicateCard", fileData)}
+          onRemove={() => handleRemove("syndicateCard")}
         />
       </div>
 

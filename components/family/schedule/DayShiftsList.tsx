@@ -176,7 +176,7 @@ export default function DayShiftsList({
                     </a>
                   )}
                   <Link
-                    href={`/family/bookings/${shift.bookingId}`}
+                    href={`/family/bookings/${shift.bookingId}?from=schedule`}
                     className="px-4 py-2 bg-[#1f8a8a] hover:bg-[#0d8282] text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm border border-[#1f8a8a]/10 cursor-pointer"
                   >
                     <span>{t("viewVisit")}</span>

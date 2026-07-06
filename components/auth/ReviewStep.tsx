@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle, Loader2, AlertCircle, User, MapPin, Briefcase, FileText } from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, AlertCircle, User, MapPin, Briefcase, FileText, PartyPopper } from "lucide-react";
 import { useRegisterStore } from "@/store/registerStore";
 import { useAuthStore } from "@/store/authStore";
 import { registerUser } from "@/lib/API";
@@ -11,6 +11,7 @@ export default function ReviewStep() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   
   const state = useRegisterStore();
   const setAuth = useAuthStore((s: any) => s.setAuth);
@@ -19,37 +20,74 @@ export default function ReviewStep() {
     setLoading(true);
     setError(null);
 
+    // حفظ الـ role قبل أي تعديل على الـ store
+    const currentRole = state.role;
+
     const payload = {
       name: state.name,
       email: state.email,
       password: state.password,
       phone: state.phone,
-      role: state.role,
+      role: currentRole,
       location: state.location,
-      companionData: state.role === 'companion' ? state.companionData : undefined,
-      familyData: state.role === 'family' ? state.familyData : undefined,
+      companionData: currentRole === 'companion' ? state.companionData : undefined,
+      familyData: currentRole === 'family' ? state.familyData : undefined,
     };
 
     try {
       const data = await registerUser(payload);
       const { accessToken, user } = data;
       
-      // Save to auth store
+      // حفظ بيانات المصادقة
       setAuth(user, accessToken);
       
-      // Cleanup register store
-      state.resetRegisterForm();
+      // إظهار شاشة النجاح أولاً
+      setSuccess(true);
+      setLoading(false);
+
+      const dashboardPath = currentRole === 'companion' ? '/companion/dashboard' : '/family/dashboard';
       
-      // Redirect based on role
-      const dashboardPath = state.role === 'companion' ? '/companion/dashboard' : '/family/dashboard';
-      router.replace(dashboardPath);
+      setTimeout(() => {
+        // تنظيف الفورم بعد انتهاء التنبيه
+        state.resetRegisterForm();
+        router.replace(dashboardPath);
+      }, 2500);
     } catch (err: any) {
       console.error("Registration Error:", err);
       setError(err.response?.data?.message || "Registration failed. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-center space-y-5 animate-fade-in">
+        {/* Success icon */}
+        <div className="relative flex items-center justify-center">
+          <div className="absolute w-24 h-24 rounded-full bg-green-100 animate-ping opacity-30" />
+          <div className="w-20 h-20 rounded-full bg-green-50 border-2 border-green-200 flex items-center justify-center shadow-md">
+            <CheckCircle className="w-10 h-10 text-green-500" />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-primary font-display">
+            🎉 You&apos;re all set!
+          </h2>
+          <p className="text-sm text-gray-500 font-medium max-w-xs mx-auto leading-relaxed">
+            {state.role === 'companion'
+              ? "Welcome to Sanad! Your caregiver profile is being reviewed. Redirecting you to your dashboard..."
+              : "Welcome to Sanad! Your account is ready. Redirecting you to your dashboard..."}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-xs text-gray-400 font-semibold">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Redirecting...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-fade-in text-left">

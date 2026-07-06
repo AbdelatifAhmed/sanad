@@ -23,7 +23,8 @@ type NavLabelKey =
   | "profile"
   | "settings"
   | "applications"
-  | "activeShift";
+  | "activeShift"
+  | "notifications";
 
 type AppLabelKey = "name" | "familyDashboard" | "careDashboard";
 
