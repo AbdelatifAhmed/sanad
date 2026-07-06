@@ -618,11 +618,16 @@ const getBookingById = async (req, res) => {
       console.error("Failed to fetch beneficiary details:", err);
     }
 
+    const Review = require("../models/reviews.schema");
+    const reviewData = await Review.findOne({ bookingId: id }).lean();
+
     return res.status(200).json({
       status: "success",
       data: {
         ...booking.toObject(),
-        beneficiary
+        beneficiary,
+        isReviewed: !!reviewData,
+        reviewDetails: reviewData || null
       }
     });
   } catch (error) {
@@ -687,7 +692,7 @@ const fileComplaint = async (req, res) => {
   try {
     const lang = req.lang || "en";
     const { id } = req.params;
-    const { description } = req.body;
+    const { title, description } = req.body;
 
     if (!description) {
       return res.status(400).json({
@@ -713,7 +718,14 @@ const fileComplaint = async (req, res) => {
     }
 
     booking.complaints = booking.complaints || [];
-    booking.complaints.push({ description });
+    if (booking.complaints.length > 0) {
+      return res.status(400).json({
+        status: "error",
+        message: lang === "ar" ? "تم تقديم شكوى بالفعل لهذا الحجز" : "A complaint has already been submitted for this booking"
+      });
+    }
+    const complaintTitle = title || (lang === "ar" ? "شكوى عامة" : "General Complaint");
+    booking.complaints.push({ title: complaintTitle, description });
     await booking.save();
 
     return res.status(200).json({

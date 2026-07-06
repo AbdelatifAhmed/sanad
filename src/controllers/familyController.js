@@ -1,4 +1,5 @@
 const Family = require('../models/family.schema');
+const Companion = require('../models/companion.schema');
 const mongoose = require('mongoose');
 const messages = require("../utils/messages");
 const Booking = require('../models/booking.schema');
@@ -295,16 +296,54 @@ exports.getFamilyDashboardStats = async (req, res) => {
       }
     }
 
+    // Fetch companion profiles to get their actual specializations
+    const companionUserIds = bookings.slice(0, 3).map(b => b.companionId?._id).filter(Boolean);
+    const companionProfiles = await Companion.find({ userId: { $in: companionUserIds } }).select("userId specialization companionType");
+    const companionProfileMap = new Map();
+    companionProfiles.forEach(p => {
+      if (p.userId) {
+        companionProfileMap.set(p.userId.toString(), p);
+      }
+    });
+
     // 3. Current Caregivers formatting (bookings are already filtered by status)
     const currentCaregivers = bookings.slice(0, 3).map(b => {
       const isPending = b.status === "pending";
-      const name = b.jobPostId?.title || b.companionId?.name || "Companion Care Session";
+      const name = b.companionId?.name || b.jobPostId?.title || "Companion Care Session";
       const avatar = b.companionId?.avatar || "/avatar_2.jpg";
-      const role = b.companionId ? "RN" : "";
       
-      const subtext = isPending 
-        ? (lang === "en" ? "Requested for " : "مطلوب ليوم ") + new Date(b.startDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "long" })
-        : (lang === "en" ? "Elderly Care Specialist" : "أخصائي رعاية كبار السن");
+      const role = "";
+      
+      let subtext = "";
+      if (isPending) {
+        subtext = (lang === "en" ? "Requested for " : "مطلوب ليوم ") + new Date(b.startDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "long" });
+      } else {
+        const profile = b.companionId ? companionProfileMap.get(b.companionId._id.toString()) : null;
+        const spec = profile?.specialization;
+        
+        if (spec === "nursing") {
+          subtext = lang === "en" ? "Nursing Specialist" : "أخصائي تمريض";
+        } else if (spec === "physiotherapy") {
+          subtext = lang === "en" ? "Physical Therapy Specialist" : "أخصائي علاج طبيعي";
+        } else if (spec === "dementia") {
+          subtext = lang === "en" ? "Dementia Care Specialist" : "أخصائي رعاية مرضى الخرف";
+        } else if (spec === "companionship_companion") {
+          subtext = lang === "en" ? "Companionship Specialist" : "أخصائي رعاية ومرافقة";
+        } else {
+          const serviceType = b.jobPostId?.serviceType;
+          if (serviceType === "child_care") {
+            subtext = lang === "en" ? "Child Care Specialist" : "أخصائي رعاية أطفال";
+          } else if (serviceType === "home_nursing") {
+            subtext = lang === "en" ? "Home Nursing Specialist" : "أخصائي تمريض منزلي";
+          } else if (serviceType === "physical_therapy") {
+            subtext = lang === "en" ? "Physical Therapy Specialist" : "أخصائي علاج طبيعي";
+          } else if (serviceType === "companionship") {
+            subtext = lang === "en" ? "Companion Care Specialist" : "أخصائي رعاية ومرافقة";
+          } else {
+            subtext = lang === "en" ? "Elderly Care Specialist" : "أخصائي رعاية كبار السن";
+          }
+        }
+      }
 
       let scheduleText = "";
       if (!isPending && b.schedule && b.schedule.length > 0) {
@@ -378,7 +417,7 @@ exports.getFamilyProfile = async (req, res) => {
     if (!req.user || req.user.role !== 'family') {
       return res.status(403).json({ status: 'fail', message: 'Access denied.' });
     }
-    const familyProfile = await Family.findOne({ familyId: req.user._id });
+    const familyProfile = await Family.findOne({ familyId: req.user._id }).populate("familyId", "createdAt");
     if (!familyProfile) {
       return res.status(200).json({ status: 'success', data: { profile: null, beneficiaries: [] } });
     }
