@@ -11,6 +11,7 @@ const navItems: SidebarItem[] = [
   { labelKey: "activeShift", href: "/companion/shift", icon: "play_circle" },
   { labelKey: "wallet", href: "/companion/wallet", icon: "wallet" },
   { labelKey: "profile", href: "/companion/profile", icon: "person" },
+  { label: "Contact Admin", href: "/companion/support", icon: "support_agent" },
 ];
 
 export default function CompanionLayout({
