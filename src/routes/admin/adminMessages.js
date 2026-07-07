@@ -22,9 +22,13 @@ router.post('/upload', authenticate, uploadMiddleware.single('file'), ctrl.uploa
 // Shared: mark as read
 router.patch('/read', authenticate, ctrl.markAsRead);
 
-// Admin-only: resolve / reopen conversation
+// Admin-only: resolve / reopen / close conversation
 router.patch('/resolve', authenticate, isAdmin, ctrl.resolveConversation);
 router.patch('/reopen',  authenticate, isAdmin, ctrl.reopenConversation);
+router.patch('/close',   authenticate, isAdmin, ctrl.closeConversation);
+
+// User-facing: reopen their own resolved conversation
+router.patch('/user/reopen', authenticate, ctrl.reopenConversation);
 
 // Admin-only: start or retrieve a conversation with any user
 router.post('/start-conversation', authenticate, isAdmin, ctrl.startConversation);

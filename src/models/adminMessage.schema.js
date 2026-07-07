@@ -39,7 +39,7 @@ const adminMessageSchema = new mongoose.Schema(
     // Message content
     messageType: {
       type: String,
-      enum: ['text', 'image', 'pdf', 'document'],
+      enum: ['text', 'image', 'pdf', 'document', 'system'],
       default: 'text',
     },
     text: {

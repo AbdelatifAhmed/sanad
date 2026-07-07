@@ -1,11 +1,22 @@
 /**
  * adminMessageHandler.js
  * Registers Socket.IO event handlers for the Admin Messaging System.
- * Reuses the existing socket infrastructure — no new server or namespace.
+ * Includes real-time presence tracking (isOnline / lastSeen).
  */
+
+const User = require('../models/user.schema');
 
 module.exports = function registerAdminMessageHandlers(io, socket) {
   const userId = socket.userId;
+
+  // ── Mark user as online on connect ────────────────────────────────────────
+  (async () => {
+    try {
+      await User.findByIdAndUpdate(userId, { isOnline: true, lastSeen: new Date() });
+      // Broadcast to all connected clients
+      io.emit('presence:updated', { userId, isOnline: true, lastSeen: new Date() });
+    } catch (_) {}
+  })();
 
   // ── Join a specific conversation room ─────────────────────────────────────
   socket.on('adminConversation:join', (conversationId) => {
@@ -23,15 +34,7 @@ module.exports = function registerAdminMessageHandlers(io, socket) {
   // Payload: { conversationId, senderRole, senderName }
   socket.on('adminMessage:typing', (payload) => {
     if (!payload?.conversationId) return;
-    // Broadcast to the conversation room except sender
     socket.to(`adminConv_${payload.conversationId}`).emit('adminMessage:typing', {
-      conversationId: payload.conversationId,
-      senderRole: payload.senderRole || 'unknown',
-      senderName: payload.senderName || '',
-      userId,
-    });
-    // Also emit to admin's personal room if user is typing
-    socket.to(payload.adminId || '').emit('adminMessage:typing', {
       conversationId: payload.conversationId,
       senderRole: payload.senderRole || 'unknown',
       senderName: payload.senderName || '',
@@ -48,10 +51,21 @@ module.exports = function registerAdminMessageHandlers(io, socket) {
     });
   });
 
-  // ── Online presence: user comes online ───────────────────────────────────
-  // The base server already joins each user to their personal room (userId).
-  // Here we broadcast online status to conversations they participate in.
-  socket.on('adminPresence:online', () => {
-    socket.broadcast.emit('adminPresence:userOnline', { userId });
+  // ── Manual presence ping (keep-alive from frontend) ───────────────────────
+  socket.on('presence:ping', async () => {
+    try {
+      const now = new Date();
+      await User.findByIdAndUpdate(userId, { isOnline: true, lastSeen: now });
+      io.emit('presence:updated', { userId, isOnline: true, lastSeen: now });
+    } catch (_) {}
+  });
+
+  // ── Handle disconnect — mark offline ──────────────────────────────────────
+  socket.on('disconnect', async () => {
+    try {
+      const now = new Date();
+      await User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: now });
+      io.emit('presence:updated', { userId, isOnline: false, lastSeen: now });
+    } catch (_) {}
   });
 };
