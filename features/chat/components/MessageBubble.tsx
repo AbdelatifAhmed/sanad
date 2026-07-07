@@ -17,6 +17,26 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isSelf })
     return date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: true });
   };
 
+  if (message.isSystemAlert) {
+    return (
+      <div className="flex w-full justify-center my-3 animate-fade-in">
+        <div className="max-w-[85%] bg-amber-500/10 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border border-amber-500/25 px-5 py-3 rounded-2xl text-xs flex items-start gap-2.5 shadow-soft">
+          <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5 select-none">
+            security
+          </span>
+          <div className="space-y-1 text-start leading-relaxed">
+            <span className="font-bold block">
+              {locale === "ar" ? "تنبيه أمني للمحادثة" : "Security Chat Alert"}
+            </span>
+            <span className="block font-medium">
+              {message.messageText}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex w-full ${isSelf ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[70%] sm:max-w-[60%] flex flex-col ${isSelf ? "items-end" : "items-start"}`}>

@@ -9,11 +9,12 @@ export const metadata = {
 export default async function FamilyCompanionsPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  const resolvedParams = await searchParams;
   // Extract pagination and filters from searchParams if needed
-  const page = typeof searchParams.page === "string" ? searchParams.page : "1";
-  const limit = typeof searchParams.limit === "string" ? searchParams.limit : "9";
+  const page = typeof resolvedParams?.page === "string" ? resolvedParams.page : "1";
+  const limit = typeof resolvedParams?.limit === "string" ? resolvedParams.limit : "20";
 
   let initialData = null;
   try {
