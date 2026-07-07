@@ -266,17 +266,21 @@ ${ragContext || "No context found."}
     ];
 
     const invokeOptions = isAgentActive ? { tools: familyTools } : {};
-    const response = await llm.invoke(promptMessages, invokeOptions);
+    let response = await llm.invoke(promptMessages, invokeOptions);
 
     if (response.tool_calls && response.tool_calls.length > 0) {
       const toolCall = response.tool_calls[0];
-
+      let toolOutput = "";
+      let responseType = "text";
+      let results = [];
+      let activeFilters = toolCall.args || {};
+      let taskList = [];
+ 
       if (toolCall.name === "search_companions") {
         const args = toolCall.args || {};
         console.log("[Tool Call: search_companions] Args:", JSON.stringify(args, null, 2));
         
         if (!args.city) {
-          console.log("[Tool Call: search_companions] Missing city, asking user.");
           return {
             responseType: "text",
             reply: isArabic(lang)
@@ -295,34 +299,27 @@ ${ragContext || "No context found."}
         });
 
         console.log("[Tool Call: search_companions] Search Result Count:", searchResult.companions.length);
-
-        return {
-          responseType: "filtered_data",
-          reply: generateSearchReply(searchResult.companions, searchResult.filters, lang),
-          activeFilters: searchResult.filters,
-          results: searchResult.companions,
-          taskList: searchResult.filters.skills || [],
-        };
+        toolOutput = JSON.stringify(searchResult.companions);
+        responseType = "filtered_data";
+        results = searchResult.companions;
+        activeFilters = searchResult.filters;
+        taskList = searchResult.filters.skills || [];
       }
-
-      if (toolCall.name === "get_upcoming_bookings") {
+ 
+      else if (toolCall.name === "get_upcoming_bookings") {
         const bookings = await getUpcomingFamilyBookings(userId);
-        return {
-          responseType: "calendar",
-          reply: generateCalendarReply(bookings, lang),
-          activeFilters: {},
-          results: [],
-          taskList: [],
-        };
+        toolOutput = JSON.stringify(bookings);
+        responseType = "calendar";
+        results = bookings;
       }
-
-      if (toolCall.name === "create_job_post") {
+ 
+      else if (toolCall.name === "create_job_post") {
         const args = toolCall.args || {};
         console.log("[Tool Call: create_job_post] Args:", JSON.stringify(args, null, 2));
-
+ 
         const requiredParams = ["beneficiaryName", "city", "budgetPerHour", "serviceType", "workingDays", "startTime", "endTime", "durationInWeeks"];
         const missingParams = requiredParams.filter(param => !args[param] || (Array.isArray(args[param]) && args[param].length === 0));
-
+ 
         if (missingParams.length > 0) {
           const collected = [];
           if (args.beneficiaryName) collected.push(isArabic(lang) ? `المستفيد: ${args.beneficiaryName}` : `care for ${args.beneficiaryName}`);
@@ -332,7 +329,7 @@ ${ragContext || "No context found."}
           const collectedText = collected.length > 0
             ? (isArabic(lang) ? `لقد جمعت بعض التفاصيل بالفعل (${collected.join("، ")}). ` : `I have collected some details (${collected.join(", ")}). `)
             : "";
-
+ 
           const questions = [];
           if (missingParams.includes("beneficiaryName")) questions.push(isArabic(lang) ? "من هو المستفيد من الرعاية؟" : "Who is this care for?");
           if (missingParams.includes("city")) questions.push(isArabic(lang) ? "ما هي المدينة أو المنطقة؟" : "Which city or neighborhood?");
@@ -341,7 +338,7 @@ ${ragContext || "No context found."}
           if (missingParams.includes("workingDays")) questions.push(isArabic(lang) ? "ما هي أيام العمل المطلوبة في الأسبوع؟" : "Which days of the week are needed?");
           if (missingParams.includes("startTime") || missingParams.includes("endTime")) questions.push(isArabic(lang) ? "ما هي أوقات بدء وانتهاء العمل؟" : "What are the start and end times?");
           if (missingParams.includes("durationInWeeks")) questions.push(isArabic(lang) ? "ما هي مدة الخدمة المطلوبة بالأسابيع؟" : "For how many weeks do you need this service?");
-
+ 
           return {
             responseType: "text",
             reply: collectedText + (isArabic(lang)
@@ -352,12 +349,12 @@ ${ragContext || "No context found."}
             taskList: [],
           };
         }
-
+ 
         try {
           const Family = require("../../models/family.schema");
           const User = require("../../models/user.schema");
           const JobPost = require("../../models/jobPost.schema");
-
+ 
           const familyProfile = await Family.findOne({ familyId: userId });
           if (!familyProfile || !familyProfile.beneficiaries || familyProfile.beneficiaries.length === 0) {
             return {
@@ -370,20 +367,20 @@ ${ragContext || "No context found."}
               taskList: [],
             };
           }
-
+ 
           let beneficiary = familyProfile.beneficiaries.find(b => 
             b.name.toLowerCase().includes(args.beneficiaryName.toLowerCase()) ||
             (args.beneficiaryName.toLowerCase() === "father" && b.gender === "male") ||
             (args.beneficiaryName.toLowerCase() === "mother" && b.gender === "female")
           );
-
+ 
           if (!beneficiary) {
             beneficiary = familyProfile.beneficiaries[0];
           }
-
+ 
           const user = await User.findById(userId);
           const coordinates = user?.location?.geo?.coordinates || [31.2357, 30.0444];
-
+ 
           const newPost = await JobPost.create({
             familyId: userId,
             beneficiaryId: beneficiary._id,
@@ -407,22 +404,57 @@ ${ragContext || "No context found."}
             startDate: new Date(),
             status: "open"
           });
-
-          return {
-            responseType: "text",
-            reply: isArabic(lang)
-              ? `🎉 تم بنجاح إنشاء طلب الرعاية الخاص بك لـ **${beneficiary.name}** في **${args.city}** بميزانية **${args.budgetPerHour} ج.م/ساعة**! يمكنك مراجعته والتقديم عليه من [صفحة طلباتي](/family/job-posts).`
-              : `🎉 Successfully created your care request for **${beneficiary.name}** in **${args.city}** with a budget of **${args.budgetPerHour} EGP/hour**! You can manage it on your [My Posts page](/family/job-posts).`,
-            activeFilters: {},
-            results: [],
-            taskList: [],
-          };
+ 
+          toolOutput = `🎉 Job post created successfully. ID: ${newPost._id}`;
 
         } catch (dbError) {
           console.error("Failed to create job post in DB:", dbError);
           throw dbError;
         }
       }
+ 
+      // Re-invoke the LLM with the tool results so it can write a contextual reply
+      const provider = (process.env.DEFAULT_MODEL || "polli").trim().toLowerCase();
+      let toolMessages = [];
+ 
+      if (provider === "openai") {
+        toolMessages = [
+          ...promptMessages,
+          {
+            role: "assistant",
+            content: response.content || "",
+            tool_calls: response.tool_calls,
+          },
+          {
+            role: "tool",
+            name: toolCall.name,
+            tool_call_id: toolCall.id,
+            content: toolOutput,
+          },
+        ];
+      } else {
+        toolMessages = [
+          ...promptMessages,
+          {
+            role: "assistant",
+            content: response.content || `Executing database action: ${toolCall.name}`,
+          },
+          {
+            role: "user",
+            content: `[SYSTEM INSTRUCTION: The tool '${toolCall.name}' returned this database data: ${toolOutput}. Please read this data and conversation history, and answer my query directly in the language I used (Arabic or English).]`,
+          },
+        ];
+      }
+ 
+      response = await llm.invoke(toolMessages);
+ 
+      return {
+        responseType,
+        reply: response.content || "",
+        activeFilters,
+        results,
+        taskList,
+      };
     }
 
     if (response.content) {

@@ -402,7 +402,7 @@ const getMyProposals = async (req, res) => {
 
     const { status } = req.query;
     const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 6;
+    const limit = parseInt(req.query.limit, 10) || 15;
     const skip = (page - 1) * limit;
 
     const query = { companionId: req.user._id };

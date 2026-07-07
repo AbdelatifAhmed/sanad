@@ -172,13 +172,16 @@ ${ragContext || "No context found."}
     ];
 
     const invokeOptions = isAgentActive ? { tools: companionTools } : {};
-    const response = await llm.invoke(promptMessages, invokeOptions);
-
+    let response = await llm.invoke(promptMessages, invokeOptions);
+ 
     if (response.tool_calls && response.tool_calls.length > 0) {
       const toolCall = response.tool_calls[0];
-
+      let toolOutput = "";
+      let responseType = "text";
+      let results = [];
+      let activeFilters = toolCall.args || {};
+ 
       if (toolCall.name === "audit_schedule_conflict") {
-        const args = toolCall.args || {};
         const profile = await getCompanionProfile(userId);
         if (!profile) {
           return {
@@ -191,31 +194,62 @@ ${ragContext || "No context found."}
             taskList: [],
           };
         }
-
-        const audit = await auditCompanionScheduleConflict(profile._id, args);
-        return {
-          responseType: "text",
-          reply: isArabic(lang) ? audit.messageAr : audit.messageEn,
-          activeFilters: args,
-          results: audit.activeBookings,
-          taskList: [],
-        };
+ 
+        // FIX: Pass userId (not profile._id) because Booking.companionId references the User model
+        const audit = await auditCompanionScheduleConflict(userId, toolCall.args);
+        toolOutput = JSON.stringify(audit);
+        results = audit.activeBookings || [];
       }
-
+ 
       if (toolCall.name === "get_active_bookings") {
         const bookings = await getCompanionActiveBookings(userId);
-        const reply = bookings.length === 0
-          ? (isArabic(lang) ? "ليس لديك حجوزات نشطة قادمة حاليا." : "You do not have active upcoming bookings right now.")
-          : generateCalendarReply(bookings, lang);
-
-        return {
-          responseType: "calendar",
-          reply,
-          activeFilters: {},
-          results: [],
-          taskList: [],
-        };
+        toolOutput = JSON.stringify(bookings);
+        responseType = "calendar";
+        results = bookings;
       }
+ 
+      // Re-invoke the LLM with the tool results so it can write a contextual reply
+      const provider = (process.env.DEFAULT_MODEL || "polli").trim().toLowerCase();
+      let toolMessages = [];
+ 
+      if (provider === "openai") {
+        toolMessages = [
+          ...promptMessages,
+          {
+            role: "assistant",
+            content: response.content || "",
+            tool_calls: response.tool_calls,
+          },
+          {
+            role: "tool",
+            name: toolCall.name,
+            tool_call_id: toolCall.id,
+            content: toolOutput,
+          },
+        ];
+      } else {
+        toolMessages = [
+          ...promptMessages,
+          {
+            role: "assistant",
+            content: response.content || `Executing database action: ${toolCall.name}`,
+          },
+          {
+            role: "user",
+            content: `[SYSTEM INSTRUCTION: The tool '${toolCall.name}' returned this database data: ${toolOutput}. Please read this data and conversation history, and answer my query directly in the language I used (Arabic or English).]`,
+          },
+        ];
+      }
+ 
+      response = await llm.invoke(toolMessages);
+ 
+      return {
+        responseType,
+        reply: response.content || "",
+        activeFilters,
+        results,
+        taskList: [],
+      };
     }
 
     if (response.content) {
