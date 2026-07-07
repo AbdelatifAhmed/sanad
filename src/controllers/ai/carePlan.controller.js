@@ -24,10 +24,31 @@ const generateCarePlan = async (req, res) => {
 
     // 2. Delegate to familyAgent care plan tool
     const plan = await familyAgent.generateCarePlan(description, skills, lang);
-
+ 
+    // Map skill IDs back to full skill objects
+    const populatedSkills = (plan.requiredSkills || [])
+      .map(idStr => {
+        const found = skills.find(s => String(s._id) === String(idStr));
+        if (found) {
+          return {
+            _id: found._id,
+            nameEn: found.nameEn,
+            nameAr: found.nameAr,
+            category: found.category
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+ 
+    const updatedPlan = {
+      tasksList: plan.tasksList || [],
+      requiredSkills: populatedSkills
+    };
+ 
     return res.status(200).json({
       status: "success",
-      data: plan,
+      data: updatedPlan,
     });
   } catch (error) {
     console.error("Error in generateCarePlan controller:", error);

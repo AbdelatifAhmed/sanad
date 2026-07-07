@@ -25,22 +25,22 @@ const generateCalendarReply = (bookings, lang) => {
     const start = new Date(booking.startDate).toLocaleDateString(isArabic(lang) ? "ar-EG" : "en-US");
     const personName = booking.companion?.name || (isArabic(lang) ? "مرافق غير محدد" : "Companion");
     const days = Array.isArray(booking.workingDays) ? booking.workingDays.join(", ") : "";
-    
+
     const now = new Date();
     const startDateObj = new Date(booking.startDate);
     const end = new Date(booking.endDate || booking.startDate);
-    
+
     const isPendingAndPastStart = ["pending", "pending_payment"].includes(booking.status) && startDateObj < now;
     const isActiveAndPastEnd = ["approved", "active"].includes(booking.status) && end < now;
     const isOverdue = isPendingAndPastStart || isActiveAndPastEnd;
-    
+
     let statusText = booking.status;
     let actionLink = "";
-    
+
     if (isOverdue) {
       statusText = isArabic(lang) ? "متأخر (يتطلب إجراء)" : "Overdue (Action Required)";
-      actionLink = isArabic(lang) 
-        ? ` - [اضغط هنا لإدارة الحجز](/family/bookings)` 
+      actionLink = isArabic(lang)
+        ? ` - [اضغط هنا لإدارة الحجز](/family/bookings)`
         : ` - [Click here to manage booking](/family/bookings)`;
     } else {
       const statusMapEn = {
@@ -59,8 +59,8 @@ const generateCalendarReply = (bookings, lang) => {
         completed: "مكتمل",
         cancelled: "ملغي"
       };
-      statusText = isArabic(lang) 
-        ? (statusMapAr[booking.status] || booking.status) 
+      statusText = isArabic(lang)
+        ? (statusMapAr[booking.status] || booking.status)
         : (statusMapEn[booking.status] || booking.status);
     }
 
@@ -107,32 +107,32 @@ const familyTools = [
       parameters: {
         type: "object",
         properties: {
-          city: { 
-            type: "string", 
-            description: "Name of the city or neighborhood in Arabic (e.g. القاهرة, الجيزة, المعادي, مدينة نصر). This parameter is REQUIRED." 
+          city: {
+            type: "string",
+            description: "Name of the city or neighborhood in Arabic (e.g. القاهرة, الجيزة, المعادي, مدينة نصر). This parameter is REQUIRED."
           },
-          governorate: { 
-            type: "string", 
-            description: "Name of the governorate in Arabic (e.g. القاهرة, الجيزة)." 
+          governorate: {
+            type: "string",
+            description: "Name of the governorate in Arabic (e.g. القاهرة, الجيزة)."
           },
-          preferredGender: { 
-            type: "string", 
+          preferredGender: {
+            type: "string",
             enum: ["male", "female"],
             description: "Preferred gender if specified."
           },
-          maxHourlyRate: { 
+          maxHourlyRate: {
             type: "number",
             description: "Maximum hourly rate budget."
           },
-          specialty: { 
-            type: "string", 
+          specialty: {
+            type: "string",
             enum: ["none", "nursing", "physiotherapy", "companionship_companion", "dementia"],
             description: "Required caregiving specialty."
           },
-          days: { 
-            type: "array", 
-            items: { "type": "string" }, 
-            description: "Days of availability in English (e.g. Saturday, Monday)." 
+          days: {
+            type: "array",
+            items: { "type": "string" },
+            description: "Days of availability in English (e.g. Saturday, Monday)."
           }
         },
         required: ["city"]
@@ -158,47 +158,47 @@ const familyTools = [
       parameters: {
         type: "object",
         properties: {
-          beneficiaryName: { 
-            type: "string", 
-            description: "Name or relation of the beneficiary (e.g. father, mother, Ali)." 
+          beneficiaryName: {
+            type: "string",
+            description: "Name or relation of the beneficiary (e.g. father, mother, Ali)."
           },
-          city: { 
-            type: "string", 
-            description: "Arabic name of the city (e.g. القاهرة, الجيزة)." 
+          city: {
+            type: "string",
+            description: "Arabic name of the city (e.g. القاهرة, الجيزة)."
           },
-          governorate: { 
-            type: "string", 
-            description: "Arabic name of the governorate (e.g. القاهرة, الجيزة)." 
+          governorate: {
+            type: "string",
+            description: "Arabic name of the governorate (e.g. القاهرة, الجيزة)."
           },
-          budgetPerHour: { 
-            type: "number", 
-            description: "Proposed hourly rate budget in EGP." 
+          budgetPerHour: {
+            type: "number",
+            description: "Proposed hourly rate budget in EGP."
           },
-          serviceType: { 
-            type: "string", 
+          serviceType: {
+            type: "string",
             enum: ["elderly_care", "child_care", "home_nursing", "physical_therapy", "companionship"],
-            description: "Service type category needed." 
+            description: "Service type category needed."
           },
-          workingDays: { 
-            type: "array", 
-            items: { "type": "string" }, 
-            description: "Weekdays required, normalized to English names (e.g. Saturday, Monday)." 
+          workingDays: {
+            type: "array",
+            items: { "type": "string" },
+            description: "Weekdays required, normalized to English names (e.g. Saturday, Monday)."
           },
-          startTime: { 
-            type: "string", 
-            description: "Start time of shifts in HH:MM 24-hour format." 
+          startTime: {
+            type: "string",
+            description: "Start time of shifts in HH:MM 24-hour format."
           },
-          endTime: { 
-            type: "string", 
-            description: "End time of shifts in HH:MM 24-hour format." 
+          endTime: {
+            type: "string",
+            description: "End time of shifts in HH:MM 24-hour format."
           },
-          durationInWeeks: { 
-            type: "number", 
-            description: "Duration of the job posting in weeks." 
+          durationInWeeks: {
+            type: "number",
+            description: "Duration of the job posting in weeks."
           },
-          description: { 
-            type: "string", 
-            description: "Description of the care needed and patient's condition." 
+          description: {
+            type: "string",
+            description: "Description of the care needed and patient's condition."
           }
         }
       }
@@ -275,11 +275,11 @@ ${ragContext || "No context found."}
       let results = [];
       let activeFilters = toolCall.args || {};
       let taskList = [];
- 
+
       if (toolCall.name === "search_companions") {
         const args = toolCall.args || {};
         console.log("[Tool Call: search_companions] Args:", JSON.stringify(args, null, 2));
-        
+
         if (!args.city) {
           return {
             responseType: "text",
@@ -305,31 +305,31 @@ ${ragContext || "No context found."}
         activeFilters = searchResult.filters;
         taskList = searchResult.filters.skills || [];
       }
- 
+
       else if (toolCall.name === "get_upcoming_bookings") {
         const bookings = await getUpcomingFamilyBookings(userId);
         toolOutput = JSON.stringify(bookings);
         responseType = "calendar";
         results = bookings;
       }
- 
+
       else if (toolCall.name === "create_job_post") {
         const args = toolCall.args || {};
         console.log("[Tool Call: create_job_post] Args:", JSON.stringify(args, null, 2));
- 
+
         const requiredParams = ["beneficiaryName", "city", "budgetPerHour", "serviceType", "workingDays", "startTime", "endTime", "durationInWeeks"];
         const missingParams = requiredParams.filter(param => !args[param] || (Array.isArray(args[param]) && args[param].length === 0));
- 
+
         if (missingParams.length > 0) {
           const collected = [];
           if (args.beneficiaryName) collected.push(isArabic(lang) ? `المستفيد: ${args.beneficiaryName}` : `care for ${args.beneficiaryName}`);
           if (args.city) collected.push(isArabic(lang) ? `المدينة: ${args.city}` : `in ${args.city}`);
           if (args.budgetPerHour) collected.push(isArabic(lang) ? `الميزانية: ${args.budgetPerHour} ج.م/ساعة` : `budget ${args.budgetPerHour} EGP/hour`);
-          
+
           const collectedText = collected.length > 0
             ? (isArabic(lang) ? `لقد جمعت بعض التفاصيل بالفعل (${collected.join("، ")}). ` : `I have collected some details (${collected.join(", ")}). `)
             : "";
- 
+
           const questions = [];
           if (missingParams.includes("beneficiaryName")) questions.push(isArabic(lang) ? "من هو المستفيد من الرعاية؟" : "Who is this care for?");
           if (missingParams.includes("city")) questions.push(isArabic(lang) ? "ما هي المدينة أو المنطقة؟" : "Which city or neighborhood?");
@@ -338,7 +338,7 @@ ${ragContext || "No context found."}
           if (missingParams.includes("workingDays")) questions.push(isArabic(lang) ? "ما هي أيام العمل المطلوبة في الأسبوع؟" : "Which days of the week are needed?");
           if (missingParams.includes("startTime") || missingParams.includes("endTime")) questions.push(isArabic(lang) ? "ما هي أوقات بدء وانتهاء العمل؟" : "What are the start and end times?");
           if (missingParams.includes("durationInWeeks")) questions.push(isArabic(lang) ? "ما هي مدة الخدمة المطلوبة بالأسابيع؟" : "For how many weeks do you need this service?");
- 
+
           return {
             responseType: "text",
             reply: collectedText + (isArabic(lang)
@@ -349,12 +349,12 @@ ${ragContext || "No context found."}
             taskList: [],
           };
         }
- 
+
         try {
           const Family = require("../../models/family.schema");
           const User = require("../../models/user.schema");
           const JobPost = require("../../models/jobPost.schema");
- 
+
           const familyProfile = await Family.findOne({ familyId: userId });
           if (!familyProfile || !familyProfile.beneficiaries || familyProfile.beneficiaries.length === 0) {
             return {
@@ -367,26 +367,26 @@ ${ragContext || "No context found."}
               taskList: [],
             };
           }
- 
-          let beneficiary = familyProfile.beneficiaries.find(b => 
+
+          let beneficiary = familyProfile.beneficiaries.find(b =>
             b.name.toLowerCase().includes(args.beneficiaryName.toLowerCase()) ||
             (args.beneficiaryName.toLowerCase() === "father" && b.gender === "male") ||
             (args.beneficiaryName.toLowerCase() === "mother" && b.gender === "female")
           );
- 
+
           if (!beneficiary) {
             beneficiary = familyProfile.beneficiaries[0];
           }
- 
+
           const user = await User.findById(userId);
           const coordinates = user?.location?.geo?.coordinates || [31.2357, 30.0444];
- 
+
           const newPost = await JobPost.create({
             familyId: userId,
             beneficiaryId: beneficiary._id,
             title: isArabic(lang) ? `طلب رعاية لـ ${beneficiary.name}` : `Care request for ${beneficiary.name}`,
-            description: args.description || (isArabic(lang) 
-              ? `طلب رعاية لـ ${beneficiary.name} في ${args.city} بميزانية ${args.budgetPerHour} ج.م/ساعة.` 
+            description: args.description || (isArabic(lang)
+              ? `طلب رعاية لـ ${beneficiary.name} في ${args.city} بميزانية ${args.budgetPerHour} ج.م/ساعة.`
               : `Care request for ${beneficiary.name} in ${args.city} with a budget of ${args.budgetPerHour} EGP/hour.`),
             serviceType: args.serviceType,
             budgetPerHour: Number(args.budgetPerHour),
@@ -404,7 +404,7 @@ ${ragContext || "No context found."}
             startDate: new Date(),
             status: "open"
           });
- 
+
           toolOutput = `🎉 Job post created successfully. ID: ${newPost._id}`;
 
         } catch (dbError) {
@@ -412,11 +412,11 @@ ${ragContext || "No context found."}
           throw dbError;
         }
       }
- 
+
       // Re-invoke the LLM with the tool results so it can write a contextual reply
       const provider = (process.env.DEFAULT_MODEL || "polli").trim().toLowerCase();
       let toolMessages = [];
- 
+
       if (provider === "openai") {
         toolMessages = [
           ...promptMessages,
@@ -445,9 +445,9 @@ ${ragContext || "No context found."}
           },
         ];
       }
- 
+
       response = await llm.invoke(toolMessages);
- 
+
       return {
         responseType,
         reply: response.content || "",
