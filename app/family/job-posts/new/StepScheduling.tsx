@@ -101,6 +101,53 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
     return t("customWeeks", { count: w });
   };
 
+  const getFirstActualShift = () => {
+    if (!startDate || workingDays.length === 0) return null;
+    const start = new Date(startDate);
+    const dayNamesEnglish = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    
+    for (let i = 0; i < 7; i++) {
+      const current = new Date(start);
+      current.setDate(start.getDate() + i);
+      const dayName = dayNamesEnglish[current.getDay()];
+      if (workingDays.includes(dayName as WorkingDay)) {
+        return current;
+      }
+    }
+    return null;
+  };
+ 
+  const getLastActualShift = () => {
+    if (!startDate || !durationInWeeks || workingDays.length === 0) return null;
+    const end = new Date(startDate);
+    end.setDate(end.getDate() + Number(durationInWeeks) * 7 - 1);
+    const dayNamesEnglish = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    
+    for (let i = 0; i < 7; i++) {
+      const current = new Date(end);
+      current.setDate(end.getDate() - i);
+      const dayName = dayNamesEnglish[current.getDay()];
+      if (workingDays.includes(dayName as WorkingDay)) {
+        return current;
+      }
+    }
+    return null;
+  };
+ 
+  const firstShiftDate = getFirstActualShift();
+  const lastShiftDate = getLastActualShift();
+  const endDateObj = (() => {
+    if (!startDate || !durationInWeeks) return null;
+    const end = new Date(startDate);
+    end.setDate(end.getDate() + Number(durationInWeeks) * 7 - 1);
+    return end;
+  })();
+  const totalShifts = workingDays.length * (Number(durationInWeeks) || 0);
+ 
+  const startDayName = new Date(startDate).toLocaleDateString(locale, { weekday: 'long' });
+  const startDayEnglish = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date(startDate).getDay()];
+  const isStartDayOutsideWorkingDays = workingDays.length > 0 && !workingDays.includes(startDayEnglish as WorkingDay);
+
   return (
     <div className="space-y-8">
       {/* Working days */}
@@ -175,7 +222,7 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
         <label className="block text-sm font-semibold text-[#1b1c1c]">
           {tBooking("schedule.recurringStartDate")} <span className="text-red-500">*</span>
         </label>
-        <div className="w-full md:px-16 lg:px-28">
+        <div className="w-full md:px-16 lg:px-18">
           <InlineCalendar
             value={startDate}
             minDate={new Date().toISOString().split("T")[0]}
@@ -285,6 +332,71 @@ export default function StepScheduling({ defaultValues, onNext, onBack }: StepSc
         </div>
         {errors.durationInWeeks && <p className="text-xs text-red-500">{errors.durationInWeeks}</p>}
       </div>
+      {/* Dynamic Schedule Preview Card */}
+      {startDate && workingDays.length > 0 && durationInWeeks !== "" && (
+        <div className="bg-[#1f8a8a]/[0.02] border border-[#1f8a8a]/20 rounded-3xl p-5 md:p-6 space-y-4 shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-center gap-2 border-b border-[#bdc9c8]/20 pb-3">
+            <span className="material-symbols-outlined text-[#1f8a8a] text-xl font-bold">event_note</span>
+            <h4 className="font-bold text-[#1f8a8a] text-sm md:text-base">
+              {isRtl ? "معاينة وتلخيص جدول الخدمة" : "Service Schedule Summary"}
+            </h4>
+          </div>
+ 
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center sm:text-start">
+            <div className="space-y-1">
+              <span className="text-xs text-[#3e4949]/70 block">{isRtl ? "أول زيارة فعلية" : "First Actual Visit"}</span>
+              <span className="font-extrabold text-[#1b1c1c] text-sm flex items-center gap-1 justify-center sm:justify-start">
+                <span className="material-symbols-outlined text-teal-600 text-sm">play_circle</span>
+                {firstShiftDate ? firstShiftDate.toLocaleDateString(locale, { weekday: 'long', month: 'short', day: 'numeric' }) : "—"}
+              </span>
+            </div>
+ 
+            <div className="space-y-1 border-l border-[#bdc9c8]/20 pl-4">
+              <span className="text-xs text-[#3e4949]/70 block">{isRtl ? "آخر زيارة فعلية" : "Last Actual Visit"}</span>
+              <span className="font-extrabold text-[#1b1c1c] text-sm flex items-center gap-1 justify-center sm:justify-start">
+                <span className="material-symbols-outlined text-amber-600 text-sm font-bold">event_available</span>
+                {lastShiftDate ? lastShiftDate.toLocaleDateString(locale, { weekday: 'long', month: 'short', day: 'numeric' }) : "—"}
+              </span>
+            </div>
+ 
+            <div className="space-y-1 border-l border-[#bdc9c8]/20 pl-4">
+              <span className="text-xs text-[#3e4949]/70 block">{isRtl ? "تاريخ نهاية آخر أسبوع" : "End of Last Week"}</span>
+              <span className="font-extrabold text-[#1b1c1c] text-sm flex items-center gap-1 justify-center sm:justify-start">
+                <span className="material-symbols-outlined text-red-500 text-sm">cancel</span>
+                {endDateObj ? endDateObj.toLocaleDateString(locale, { weekday: 'long', month: 'short', day: 'numeric' }) : "—"}
+              </span>
+            </div>
+ 
+            <div className="space-y-1 border-l border-[#bdc9c8]/20 pl-4">
+              <span className="text-xs text-[#3e4949]/70 block">{isRtl ? "إجمالي عدد الزيارات" : "Total Visits"}</span>
+              <span className="font-extrabold text-[#1f8a8a] text-base flex items-center gap-1 justify-center sm:justify-start">
+                <span className="material-symbols-outlined text-[#1f8a8a] text-sm">done_all</span>
+                {totalShifts} {isRtl ? "زيارة" : "visits"}
+              </span>
+            </div>
+          </div>
+ 
+          {isStartDayOutsideWorkingDays && firstShiftDate && (
+            <div className="flex gap-2.5 p-3.5 bg-amber-50/50 border border-amber-200/50 rounded-2xl text-amber-900 text-xs items-start leading-relaxed mt-2">
+              <span className="material-symbols-outlined text-amber-700 text-lg shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>
+                info
+              </span>
+              <div>
+                {isRtl ? (
+                  <p>
+                    تنبيه: يبدأ تفعيل العقد يوم <strong>{startDayName} ({new Date(startDate).toLocaleDateString(locale)})</strong>، ولكن بما أنه ليس من أيام العمل الأسبوعية المحددة، فإن أول زيارة فعلية للمرافق ستكون يوم <strong>{firstShiftDate.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' })}</strong>.
+                  </p>
+                ) : (
+                  <p>
+                    Note: Your contract starts on <strong>{startDayName} ({new Date(startDate).toLocaleDateString(locale)})</strong>. However, since this is not one of the selected working days, the first active visit will be on <strong>{firstShiftDate.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' })}</strong>.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
 
       {/* Navigation */}
       <div className="flex justify-between items-center pt-4 border-t border-[#bdc9c8]/30">

@@ -67,6 +67,7 @@ export const browseSearchCompanions = async (data: Record<string, unknown>, loca
 export const generateCarePlan = async (data: Record<string, unknown>, locale = "ar") => {
   const res = await api.post("/ai/family/generate-care-plan", data, {
     headers: { "Accept-Language": locale },
+    timeout: 45000,
   });
   return res.data.data;
 };
