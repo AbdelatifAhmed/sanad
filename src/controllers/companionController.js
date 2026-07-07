@@ -108,8 +108,9 @@ const updateCompanionProfile = async (req, res) => {
     if (availability !== undefined) setUpdate.availability = availability;
 
     // Handle Bio Embedding generation
-    if (bio !== undefined || skills !== undefined || hobbies !== undefined) {
+    if (bio !== undefined || skills !== undefined || hobbies !== undefined || specialization !== undefined) {
       const bioText = bio !== undefined ? bio : (existingCompanion ? existingCompanion.bio : '');
+      const specializationText = specialization !== undefined ? specialization : (existingCompanion ? existingCompanion.specialization : '');
       let skillsText = '';
       if (Array.isArray(skills)) {
         skillsText = skills.join(' ');
@@ -120,7 +121,7 @@ const updateCompanionProfile = async (req, res) => {
       }
       const hobbiesText = Array.isArray(hobbies) ? hobbies.join(' ') : (existingCompanion && Array.isArray(existingCompanion.hobbies) ? existingCompanion.hobbies.join(' ') : '');
       
-      const fullText = `${bioText} ${skillsText} ${hobbiesText}`.trim();
+      const fullText = `${specializationText} ${bioText} ${skillsText} ${hobbiesText}`.trim();
 
       if (fullText) {
         try {
@@ -308,7 +309,7 @@ const updateCompanionAvailability = async (req, res) => {
 const getVerifiedCompanions = async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
+    const limit = parseInt(req.query.limit, 20) || 20;
     const skip = (page - 1) * limit;
 
     const query = { verificationStatus: 'verified' };

@@ -1,9 +1,9 @@
-const { z } = require("zod");
 const mongoose = require("mongoose");
 const llm = require("../../../config/llm");
 const Companion = require("../../../models/companion.schema");
 const User = require("../../../models/user.schema");
 const { searchCompanions } = require("../ragService");
+const { familySearchSchema, getFamilySearchSystemPrompt } = require("../prompts/familySearchPrompt");
 
 const DAY_ALIASES = {
   sunday: "Sunday",
@@ -32,19 +32,17 @@ const DAY_ALIASES = {
   "السبت": "Saturday",
 };
 
-const familySearchSchema = z.object({
-  intent: z.enum(["search_companions", "calendar", "platform_qa", "general_chat"]),
-  city: z.string().nullable().optional(),
-  governorate: z.string().nullable().optional(),
-  preferredGender: z.enum(["male", "female"]).nullable().optional(),
-  maxHourlyRate: z.number().nullable().optional(),
-  specialty: z.enum(["none", "nursing", "physiotherapy", "companionship_companion", "dementia"]).nullable().optional(),
-  skills: z.preprocess((value) => value ?? [], z.array(z.string())).default([]),
-  days: z.preprocess((value) => value ?? [], z.array(z.string())).default([]),
-  startTime: z.string().nullable().optional(),
-  endTime: z.string().nullable().optional(),
-  semanticQuery: z.string().nullable().optional(),
-});
+const LOCATION_NORMALIZER = {
+  cairo: "القاهرة",
+  giza: "الجيزة",
+  alexandria: "الإسكندرية",
+  qena: "قنا",
+  luxor: "الأقصر",
+  aswan: "أسوان",
+  "nasr city": "مدينة نصر",
+  maadi: "المعادي",
+  heliopolis: "مصر الجديدة",
+};
 
 const normalizeDay = (day) => {
   if (!day) return null;
@@ -52,9 +50,15 @@ const normalizeDay = (day) => {
   return DAY_ALIASES[key] || DAY_ALIASES[String(day).trim()] || null;
 };
 
+const normalizeLocation = (loc) => {
+  if (!loc) return undefined;
+  const cleaned = String(loc).trim().toLowerCase();
+  return LOCATION_NORMALIZER[cleaned] || loc;
+};
+
 const inferIntentFromQuery = (query = "") => {
   const text = String(query || "").toLowerCase();
-  if (/booking|appointment|schedule|upcoming|calendar|date|monday|tuesday|wednesday|thursday|friday|saturday|sunday/i.test(text)) return "calendar";
+  if (/booking|appointment|schedule|upcoming|calendar|date/i.test(text)) return "calendar";
   if (/price|pricing|payment|escrow|support|policy|service|platform|how|what|can|help/i.test(text)) return "platform_qa";
   if (/find|search|caregiver|companion|nurse|physio|dementia|need|recommend|filter|match|available/i.test(text)) return "search_companions";
   return "general_chat";
@@ -67,8 +71,8 @@ const normalizeFilters = (raw = {}, fallbackQuery = "") => {
 
   return {
     intent: raw.intent || inferIntentFromQuery(fallbackQuery),
-    city: raw.city || undefined,
-    governorate: raw.governorate || undefined,
+    city: normalizeLocation(raw.city),
+    governorate: normalizeLocation(raw.governorate),
     preferredGender: raw.preferredGender || undefined,
     maxHourlyRate: raw.maxHourlyRate || raw.maxRate || undefined,
     specialty: raw.specialty || raw.specialization || undefined,
@@ -86,17 +90,7 @@ const extractFamilySearchQuery = async (query, lang = "ar", history = []) => {
     const prompt = [
       {
         role: "system",
-        content: `
-You extract strict filters for Sanad caregiver search and classify the family user's intent.
-Return null/empty values when not explicitly implied.
-Specialty values must be one of: none, nursing, physiotherapy, companionship_companion, dementia.
-Gender values must be male or female.
-Normalize Arabic and English day names into English weekday names.
-Use "calendar" only when the user asks about their own upcoming bookings/appointments.
-Use "platform_qa" when the user asks about Sanad services, pricing, escrow, shifts, policies, or support.
-Use "search_companions" when they ask to find, compare, recommend, or filter caregivers.
-Current response language: ${lang}.
-`,
+        content: getFamilySearchSystemPrompt(lang),
       },
       ...history,
       { role: "user", content: query },
@@ -115,12 +109,24 @@ const buildNativeFilters = async (filters = {}) => {
   let hasUserFilters = false;
 
   if (filters.city) {
-    userQuery["location.city"] = { $regex: new RegExp(filters.city, "i") };
+    const englishCity = Object.keys(LOCATION_NORMALIZER).find(
+      (key) => LOCATION_NORMALIZER[key] === filters.city
+    );
+    const regexStr = englishCity 
+      ? `(${filters.city}|${englishCity})` 
+      : filters.city;
+    userQuery["location.city"] = { $regex: new RegExp(regexStr, "i") };
     hasUserFilters = true;
   }
 
   if (filters.governorate) {
-    userQuery["location.governorate"] = { $regex: new RegExp(filters.governorate, "i") };
+    const englishGov = Object.keys(LOCATION_NORMALIZER).find(
+      (key) => LOCATION_NORMALIZER[key] === filters.governorate
+    );
+    const regexStr = englishGov 
+      ? `(${filters.governorate}|${englishGov})` 
+      : filters.governorate;
+    userQuery["location.governorate"] = { $regex: new RegExp(regexStr, "i") };
     hasUserFilters = true;
   }
 
@@ -155,6 +161,7 @@ const serializeCompanion = (doc) => ({
   _id: doc._id,
   userId: doc.userId || doc.userInfo?._id,
   name: doc.userInfo?.name || doc.userId?.name,
+  avatar: doc.userInfo?.avatar?.url || doc.userId?.avatar?.url,
   gender: doc.userInfo?.gender || doc.userId?.gender,
   location: doc.userInfo?.location || doc.userId?.location,
   companionType: doc.companionType,
@@ -173,7 +180,6 @@ const searchFamilyCompanions = async ({ query, filters, page = 1, limit = 10 }) 
   const normalizedFilters = normalizeFilters(filters, query);
   const companionQuery = await buildNativeFilters(normalizedFilters);
   
-  // Get total count for accurate pagination
   const totalCount = await Companion.countDocuments(companionQuery);
   const skip = (page - 1) * limit;
 
@@ -199,9 +205,6 @@ const searchFamilyCompanions = async ({ query, filters, page = 1, limit = 10 }) 
   let companions;
 
   try {
-    // Note: If vector search doesn't natively support skip, you fetch limit*page and slice.
-    // For optimal vector DB, you pass skip. Here we assume searchCompanions takes page and limit.
-    // However, to be safe with existing ragService signature, we fetch top N and slice.
     const topN = await searchCompanions(
       semanticText,
       { _id: { $in: objectIds } },

@@ -28,11 +28,9 @@ const formatBooking = (booking) => ({
 });
 
 const getUpcomingFamilyBookings = async (familyUserId, limit = 8) => {
-  const now = new Date();
   const bookings = await Booking.find({
     familyId: familyUserId,
     status: { $in: ACTIVE_STATUSES },
-    endDate: { $gte: now },
   })
     .populate({ path: "companionId", select: "name phone avatar gender" })
     .sort({ startDate: 1 })
@@ -43,11 +41,9 @@ const getUpcomingFamilyBookings = async (familyUserId, limit = 8) => {
 };
 
 const getCompanionActiveBookings = async (companionUserId, limit = 20) => {
-  const now = new Date();
   const bookings = await Booking.find({
     companionId: companionUserId,
     status: { $in: ACTIVE_STATUSES },
-    endDate: { $gte: now },
   })
     .populate({ path: "familyId", select: "name phone avatar" })
     .sort({ startDate: 1 })
