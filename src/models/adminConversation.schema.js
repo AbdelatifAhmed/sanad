@@ -56,10 +56,16 @@ const adminConversationSchema = new mongoose.Schema(
     // Conversation lifecycle
     status: {
       type: String,
-      enum: ['open', 'resolved'],
+      enum: ['open', 'waiting_for_admin', 'waiting_for_user', 'resolved', 'closed'],
       default: 'open',
       index: true,
     },
+
+    // Timestamps for lifecycle events
+    resolvedAt:  { type: Date, default: null },
+    closedAt:    { type: Date, default: null },
+    reopenedAt:  { type: Date, default: null },
+    reopenCount: { type: Number, default: 0 },
 
     // Optional subject / topic for the conversation
     subject: {
