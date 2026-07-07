@@ -24,7 +24,7 @@ interface AIStoreState {
   isSearchActive: boolean;
   isSearchLoading: boolean;
 
-  // Global AI Assistant Widget State
+  aiQuery: string;
   isAssistantOpen: boolean;
   
   // Actions
@@ -32,6 +32,7 @@ interface AIStoreState {
   setExtractedFilters: (filters: Record<string, any>, nativeFilter?: Record<string, any>) => void;
   setSearchActive: (isActive: boolean) => void;
   setSearchLoading: (isLoading: boolean) => void;
+  setAiQuery: (query: string) => void;
   toggleAssistant: () => void;
   openAssistant: () => void;
   closeAssistant: () => void;
@@ -47,6 +48,7 @@ export const useAIStore = create<AIStoreState>((set) => ({
   isSearchActive: false,
   isSearchLoading: false,
 
+  aiQuery: "",
   isAssistantOpen: false,
 
   setSearchResults: (results, total, page) =>
@@ -57,6 +59,7 @@ export const useAIStore = create<AIStoreState>((set) => ({
 
   setSearchActive: (isActive) => set({ isSearchActive: isActive }),
   setSearchLoading: (isLoading) => set({ isSearchLoading: isLoading }),
+  setAiQuery: (query) => set({ aiQuery: query }),
 
   toggleAssistant: () => set((state) => ({ isAssistantOpen: !state.isAssistantOpen })),
   openAssistant: () => set({ isAssistantOpen: true }),
@@ -70,5 +73,6 @@ export const useAIStore = create<AIStoreState>((set) => ({
       totalCount: 0,
       currentPage: 1,
       isSearchActive: false,
+      aiQuery: "",
     }),
 }));

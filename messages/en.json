@@ -681,7 +681,7 @@
     "lateMinsAlert": "The companion is {mins} minutes late behind schedule."
   },
   "familyDashboard": {
-    "greeting": "Good morning {name}",
+    "greeting": "Welcome Back, {name}",
     "summaryText": "Here is a summary of your ongoing care arrangements.",
     "overviewTitle": "Overview",
     "activeRequests": "Active Requests",
