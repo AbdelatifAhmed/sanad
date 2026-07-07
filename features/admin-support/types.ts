@@ -1,3 +1,10 @@
+export type ConversationStatus =
+  | "open"
+  | "waiting_for_admin"
+  | "waiting_for_user"
+  | "resolved"
+  | "closed";
+
 export interface AdminConversation {
   _id: string;
   userId: string;
@@ -7,8 +14,12 @@ export interface AdminConversation {
   lastMessageTime: string | null;
   unreadByAdmin: number;
   unreadByUser: number;
-  status: "open" | "resolved";
+  status: ConversationStatus;
   subject?: string;
+  reopenedAt?: string | null;
+  reopenCount?: number;
+  resolvedAt?: string | null;
+  closedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -29,7 +40,7 @@ export interface AdminMessage {
   senderRole: "admin" | "family" | "companion";
   receiverId: string | { _id: string; name: string };
   receiverRole: "admin" | "family" | "companion";
-  messageType: "text" | "image" | "pdf" | "document";
+  messageType: "text" | "image" | "pdf" | "document" | "system";
   text: string;
   attachment?: Attachment;
   isRead: boolean;
