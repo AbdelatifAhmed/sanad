@@ -28,7 +28,7 @@ export default function MyApplicationsList() {
       setLoading(true);
       const res = await getMyProposals({ 
         page, 
-        limit: 6, 
+        limit: 15, 
         status: statusFilter || undefined 
       });
       if (res && res.data) {
@@ -218,7 +218,7 @@ export default function MyApplicationsList() {
           <Loader2 className="w-10 h-10 animate-spin text-stitch-primary" />
         </div>
       ) : proposals.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {proposals.map((proposal) => (
             <ApplicationCard
               key={proposal._id}
