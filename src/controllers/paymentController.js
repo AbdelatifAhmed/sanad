@@ -864,6 +864,20 @@ const getCompanionDebtLedger = async (req, res) => {
     const companion = await Companion.findOne({ userId: companionId });
     const debt = await CompanionDebt.findOne({ companionId });
 
+    // Check Stripe transfers capability if account is connected
+    let stripeTransfersActive = false;
+    let stripeOnboardingIncomplete = false;
+    if (companion?.stripeConnectId) {
+      try {
+        const capCheck = await stripeService.checkAccountTransfersCapability(companion.stripeConnectId);
+        stripeTransfersActive = capCheck.isActive;
+        stripeOnboardingIncomplete = !capCheck.detailsSubmitted;
+      } catch (stripeErr) {
+        // Non-fatal: log but don't block response
+        console.warn("Could not check Stripe capability:", stripeErr.message);
+      }
+    }
+
     return res.status(200).json({
       status: "success",
       data: {
@@ -873,6 +887,8 @@ const getCompanionDebtLedger = async (req, res) => {
         debtHistory: debt ? debt.debtHistory : [],
         walletBalance: companion ? (companion.walletBalance || 0) : 0,
         stripeConnectId: companion ? companion.stripeConnectId : null,
+        stripeTransfersActive,
+        stripeOnboardingIncomplete,
       },
     });
   } catch (error) {
@@ -1136,6 +1152,45 @@ const connectCompanionStripe = async (req, res) => {
   }
 };
 
+const getCompanionStripeLoginLink = async (req, res) => {
+  try {
+    const lang = req.lang || "en";
+    
+    const companion = await Companion.findOne({ userId: req.user._id });
+    if (!companion) {
+      return res.status(404).json({
+        status: "fail",
+        message: lang === "en" ? "Companion profile not found" : "لم يتم العثور على ملف المرافق.",
+      });
+    }
+
+    if (!companion.stripeConnectId) {
+      return res.status(400).json({
+        status: "fail",
+        message: lang === "en"
+          ? "Please connect your Stripe bank account first."
+          : "يرجى ربط حسابك البنكي بـ Stripe أولاً.",
+      });
+    }
+
+    const loginUrl = await stripeService.createConnectedAccountLoginLink(companion.stripeConnectId);
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        url: loginUrl,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating Stripe Connect login link:", error);
+    return res.status(500).json({
+      status: "error",
+      message: messages.common.serverError[req.lang || "en"],
+      error: error.message,
+    });
+  }
+};
+
 const requestCompanionPayout = async (req, res) => {
   try {
     const lang = req.lang || "en";
@@ -1157,19 +1212,62 @@ const requestCompanionPayout = async (req, res) => {
       });
     }
 
-    const amountToPayout = companion.walletBalance || 0;
-    if (amountToPayout <= 0) {
+    // Verify the connected account has the 'transfers' capability active
+    try {
+      const capCheck = await stripeService.checkAccountTransfersCapability(companion.stripeConnectId);
+      if (!capCheck.isActive) {
+        return res.status(400).json({
+          status: "fail",
+          code: "stripe_onboarding_incomplete",
+          message: lang === "en"
+            ? "Your Stripe account setup is incomplete. Please complete your bank account onboarding first."
+            : "إعداد حسابك البنكي على Stripe غير مكتمل بعد. يرجى إتمام خطوات التسجيل أولاً قبل السحب.",
+        });
+      }
+    } catch (capErr) {
+      console.error("Failed to verify Stripe transfers capability:", capErr.message);
+      return res.status(500).json({
+        status: "error",
+        message: lang === "en"
+          ? "Could not verify bank account status. Please try again."
+          : "تعذر التحقق من حالة حسابك البنكي. يرجى المحاولة مرة أخرى.",
+      });
+    }
+
+    const availableBalance = companion.walletBalance || 0;
+    if (availableBalance <= 0) {
       return res.status(400).json({
         status: "fail",
         message: lang === "en" ? "No earnings available for payout." : "لا يوجد عوائد متاحة للسحب حالياً.",
       });
     }
 
+    // Determine payout amount: use requested amount or full balance
+    const requestedAmount = req.body.amount ? Number(req.body.amount) : null;
+    if (requestedAmount !== null) {
+      if (isNaN(requestedAmount) || requestedAmount <= 0) {
+        return res.status(400).json({
+          status: "fail",
+          message: lang === "en" ? "Invalid payout amount." : "مبلغ السحب غير صالح.",
+        });
+      }
+      if (requestedAmount > availableBalance) {
+        return res.status(400).json({
+          status: "fail",
+          message: lang === "en"
+            ? `Requested amount exceeds available balance (${availableBalance.toFixed(2)} EGP).`
+            : `المبلغ المطلوب يتجاوز رصيدك المتاح (${availableBalance.toFixed(2)} ج.م).`,
+        });
+      }
+    }
+
+    const amountToPayout = requestedAmount !== null ? requestedAmount : availableBalance;
+
     // Deduct balance and trigger transfer
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      companion.walletBalance = 0;
+      companion.walletBalance = availableBalance - amountToPayout;
       await companion.save({ session, validateBeforeSave: false });
 
       const transactionId = "payout_" + Math.random().toString(36).substr(2, 9).toUpperCase();
@@ -1228,5 +1326,6 @@ module.exports = {
   getAdminPayments,
   settleCompanionDebt,
   connectCompanionStripe,
+  getCompanionStripeLoginLink,
   requestCompanionPayout,
 };
