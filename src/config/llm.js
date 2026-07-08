@@ -1,14 +1,31 @@
-const { ChatOpenAI } = require('@langchain/openai');
-require('dotenv').config();
+const openAILLM = require("./openAILLM");
+const pollinationsLLM = require("./pollinationsLLM");
+require("dotenv").config();
 
-if (!process.env.OPENAI_API_KEY) {
-  console.error('Error: OPENAI_API_KEY is not defined in .env file');
-}
+const getActiveLLM = () => {
+  const provider = (process.env.DEFAULT_MODEL || "polli").trim().toLowerCase();
+  console.log(`[LLM Switcher] Active provider: ${provider}`);
+  if (provider === "openai") {
+    return openAILLM;
+  }
+  return pollinationsLLM;
+};
 
-const llm = new ChatOpenAI({
-  openAIApiKey: process.env.OPENAI_API_KEY,
-  modelName: 'gpt-4o-mini',
-  temperature: 0.5, 
-});
+const llm = {
+  get models() {
+    const active = getActiveLLM();
+    return active.models || ["gpt-4o-mini"];
+  },
+  get timeoutMs() {
+    const active = getActiveLLM();
+    return active.timeoutMs || 15000;
+  },
+  invoke: (messages, options) => {
+    return getActiveLLM().invoke(messages, options);
+  },
+  withStructuredOutput: (schema, options) => {
+    return getActiveLLM().withStructuredOutput(schema, options);
+  }
+};
 
 module.exports = llm;

@@ -1,17 +1,41 @@
 const AIChatSession = require("../../models/aiChatSession.schema");
 const { HumanMessage, AIMessage } = require("@langchain/core/messages");
+const mongoose = require("mongoose");
 
 class SessionManager {
+  static normalizeAgentType(agentType) {
+    const aliases = {
+      family: "family_assistant",
+      family_assistant: "family_assistant",
+      companion: "companion_support",
+      companion_support: "companion_support",
+    };
+
+    return aliases[agentType] || agentType;
+  }
+
   /**
    * Fetch or create a session.
    * @param {string} userId - User's MongoDB ID.
    * @param {string} agentType - Agent Type ('family_assistant' or 'companion_support').
+   * @param {string} [sessionId] - Optional session ID.
    * @returns {Promise<Document>} The Mongoose Document of AIChatSession.
    */
-  static async getSession(userId, agentType) {
-    let session = await AIChatSession.findOne({ userId, agentType });
+  static async getSession(userId, agentType, sessionId = null) {
+    const normalizedAgentType = this.normalizeAgentType(agentType);
+    let session = null;
+
+    if (sessionId && mongoose.Types.ObjectId.isValid(sessionId)) {
+      session = await AIChatSession.findOne({ _id: sessionId, userId });
+    }
+
     if (!session) {
-      session = new AIChatSession({ userId, agentType, messages: [] });
+      session = new AIChatSession({ 
+        userId, 
+        agentType: normalizedAgentType, 
+        title: "New Conversation",
+        messages: [] 
+      });
     }
     return session;
   }
@@ -21,10 +45,11 @@ class SessionManager {
    * @param {string} userId - User's MongoDB ID.
    * @param {string} agentType - Agent Type.
    * @param {number} limit - Max number of recent messages to fetch.
+   * @param {string} [sessionId] - Optional session ID.
    * @returns {Promise<Array>} Array of HumanMessage and AIMessage instances.
    */
-  static async getFormattedHistory(userId, agentType, limit = 10) {
-    const session = await this.getSession(userId, agentType);
+  static async getFormattedHistory(userId, agentType, limit = 10, sessionId = null) {
+    const session = await this.getSession(userId, this.normalizeAgentType(agentType), sessionId);
     const recentMessages = session.messages.slice(-limit);
     return recentMessages.map((msg) => {
       return msg.sender === "user"
@@ -39,11 +64,19 @@ class SessionManager {
    * @param {string} agentType - Agent Type.
    * @param {string} sender - 'user' or 'ai'.
    * @param {string} text - Message text.
+   * @param {string} [sessionId] - Optional session ID.
    * @returns {Promise<Document>} Saved session document.
    */
-  static async addMessage(userId, agentType, sender, text) {
+  static async addMessage(userId, agentType, sender, text, sessionId = null) {
     const schemaSender = sender === "ai" || sender === "assistant" ? "ai" : "user";
-    const session = await this.getSession(userId, agentType);
+    const session = await this.getSession(userId, this.normalizeAgentType(agentType), sessionId);
+    
+    if (session.messages.length === 0 && schemaSender === "user") {
+      const cleanText = text.trim();
+      const words = cleanText.split(/\s+/).slice(0, 5).join(" ");
+      session.title = words || "New Conversation";
+    }
+
     session.messages.push({ sender: schemaSender, text });
     return await session.save();
   }
@@ -55,7 +88,10 @@ class SessionManager {
    * @returns {Promise<Document>} The deleted session document.
    */
   static async clearSession(userId, agentType) {
-    return await AIChatSession.findOneAndDelete({ userId, agentType });
+    return await AIChatSession.findOneAndDelete({
+      userId,
+      agentType: this.normalizeAgentType(agentType),
+    });
   }
 }
 

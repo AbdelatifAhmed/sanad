@@ -54,6 +54,10 @@ const userSchema = new mongoose.Schema(
       url: { type: String, trim: true },
       public_id: { type: String, trim: true }
     },
+    // Presence tracking
+    isOnline: { type: Boolean, default: false },
+    lastSeen:  { type: Date,    default: null  },
+
     resetPasswordOtp: {
       type: String,
     },

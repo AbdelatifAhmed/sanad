@@ -27,6 +27,10 @@ const aiChatSessionSchema = new mongoose.Schema(
       enum: ['family_assistant', 'companion_support'],
       required: true
     },
+    title: {
+      type: String,
+      default: 'New Conversation'
+    },
     messages: [messageSchema]
   },
   { timestamps: true }

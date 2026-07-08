@@ -108,8 +108,9 @@ const updateCompanionProfile = async (req, res) => {
     if (availability !== undefined) setUpdate.availability = availability;
 
     // Handle Bio Embedding generation
-    if (bio !== undefined || skills !== undefined || hobbies !== undefined) {
+    if (bio !== undefined || skills !== undefined || hobbies !== undefined || specialization !== undefined) {
       const bioText = bio !== undefined ? bio : (existingCompanion ? existingCompanion.bio : '');
+      const specializationText = specialization !== undefined ? specialization : (existingCompanion ? existingCompanion.specialization : '');
       let skillsText = '';
       if (Array.isArray(skills)) {
         skillsText = skills.join(' ');
@@ -120,7 +121,7 @@ const updateCompanionProfile = async (req, res) => {
       }
       const hobbiesText = Array.isArray(hobbies) ? hobbies.join(' ') : (existingCompanion && Array.isArray(existingCompanion.hobbies) ? existingCompanion.hobbies.join(' ') : '');
       
-      const fullText = `${bioText} ${skillsText} ${hobbiesText}`.trim();
+      const fullText = `${specializationText} ${bioText} ${skillsText} ${hobbiesText}`.trim();
 
       if (fullText) {
         try {
@@ -308,7 +309,7 @@ const updateCompanionAvailability = async (req, res) => {
 const getVerifiedCompanions = async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
+    const limit = parseInt(req.query.limit, 20) || 20;
     const skip = (page - 1) * limit;
 
     const query = { verificationStatus: 'verified' };
@@ -324,6 +325,11 @@ const getVerifiedCompanions = async (req, res) => {
     // Specialization filter
     if (req.query.specialization) {
       query.specialization = req.query.specialization;
+    }
+
+    // CompanionType filter
+    if (req.query.companionType) {
+      query.companionType = req.query.companionType;
     }
 
     // Hourly Rate filter
@@ -345,6 +351,21 @@ const getVerifiedCompanions = async (req, res) => {
       }
     }
 
+    // Gender filter
+    if (req.query.gender) {
+      const matchingUsersByGender = await User.find({ gender: req.query.gender }).select('_id');
+      const userIdsByGender = matchingUsersByGender.map(u => u._id);
+      
+      if (query.userId) {
+        // Intersect if already exists
+        const existingIds = query.userId.$in.map(id => id.toString());
+        const newIds = userIdsByGender.filter(id => existingIds.includes(id.toString()));
+        query.userId = { $in: newIds };
+      } else {
+        query.userId = { $in: userIdsByGender };
+      }
+    }
+
     // Search filter (name, bio)
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, 'i');
@@ -357,15 +378,29 @@ const getVerifiedCompanions = async (req, res) => {
       }).select('_id');
       
       const userIds = matchingUsers.map(u => u._id);
-      query.$or = [
-        { userId: { $in: userIds } },
-        { bio: searchRegex }
-      ];
+      
+      if (query.userId) {
+         // Intersect
+         const existingIds = query.userId.$in.map(id => id.toString());
+         const newIds = userIds.filter(id => existingIds.includes(id.toString()));
+         // OR with bio
+         query.$or = [
+           { userId: { $in: newIds } },
+           { bio: searchRegex, userId: query.userId }
+         ];
+         delete query.userId;
+      } else {
+         query.$or = [
+           { userId: { $in: userIds } },
+           { bio: searchRegex }
+         ];
+      }
     }
 
     const total = await Companion.countDocuments(query);
     const companions = await Companion.find(query)
       .populate('userId', 'name email phone avatar location')
+      .populate('skills', 'nameAr nameEn category')
       .skip(skip)
       .limit(limit);
 

@@ -6,9 +6,9 @@ const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 const getUserNotifications = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { limit = 20, page = 1, unreadOnly } = req.query;
+    const { limit = 15, page = 1, unreadOnly } = req.query;
 
-    const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
+    const limitNum = Math.min(Math.max(parseInt(limit) || 15, 1), 100);
     const pageNum = Math.max(parseInt(page) || 1, 1);
     const skip = (pageNum - 1) * limitNum;
 
@@ -17,6 +17,7 @@ const getUserNotifications = async (req, res) => {
 
     const [notifications, totalCount, unreadCount] = await Promise.all([
       Notification.find(filter)
+        .populate("senderId", "name avatar role")
         .sort({ createdAt: -1 })
         .limit(limitNum)
         .skip(skip)
@@ -26,15 +27,18 @@ const getUserNotifications = async (req, res) => {
     ]);
 
     return res.status(200).json({
-      notifications,
-      unreadCount,
-      pagination: {
-        total: totalCount,
-        page: pageNum,
-        limit: limitNum,
-        totalPages: Math.ceil(totalCount / limitNum),
-        hasMore: pageNum * limitNum < totalCount,
-      },
+      status: "success",
+      data: {
+        notifications,
+        unreadCount,
+        pagination: {
+          total: totalCount,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(totalCount / limitNum),
+          hasMore: pageNum * limitNum < totalCount,
+        }
+      }
     });
   } catch (error) {
     console.error("Error fetching notifications:", error);
