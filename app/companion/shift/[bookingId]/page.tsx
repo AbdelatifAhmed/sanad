@@ -306,15 +306,19 @@ export default function CompanionShiftPage() {
             {familyUser && (
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
-                  {familyUser.avatar ? (
+                  {familyUser.avatar && typeof familyUser.avatar === "string" ? (
                     <img 
-                      src={familyUser.avatar} 
+                      src={
+                        familyUser.avatar.startsWith("http")
+                          ? familyUser.avatar
+                          : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}${familyUser.avatar.startsWith("/") ? "" : "/"}${familyUser.avatar}`
+                      } 
                       alt={familyUser.name} 
                       className="w-10 h-10 rounded-full object-cover border border-stitch-outline/20"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-teal-50 text-stitch-primary flex items-center justify-center font-bold border border-teal-100">
-                      {familyUser.name.charAt(0)}
+                    <div className="w-10 h-10 rounded-full bg-teal-50 text-stitch-primary flex items-center justify-center font-bold border border-teal-100 text-xs">
+                      {familyUser.name ? familyUser.name.slice(0, 2).toUpperCase() : ""}
                     </div>
                   )}
                   <div>

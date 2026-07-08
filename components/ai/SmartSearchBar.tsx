@@ -48,7 +48,7 @@ export default function SmartSearchBar() {
         <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_0_340deg,white_360deg)] animate-[spin_2s_linear_infinite]" />
       </div>
 
-      <div className="relative bg-white dark:bg-zinc-900 rounded-full border border-sand-high/60 shadow-soft p-2 flex items-center z-10 overflow-hidden focus-within:ring-2 focus-within:ring-stitch-primary">
+      <div className="relative bg-white rounded-full border border-sand-high/60 shadow-soft p-2 flex items-center z-10 overflow-hidden focus-within:ring-2 focus-within:ring-stitch-primary">
         <span className="material-symbols-outlined text-stitch-primary/50 ml-3 mr-2">
           auto_awesome
         </span>

@@ -3,54 +3,253 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { api } from "../../../lib/services/api";
-import { 
-  Wallet, 
-  TrendingUp, 
-  AlertTriangle, 
-  CheckCircle, 
-  Loader2, 
+import {
+  Wallet,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownLeft,
+  AlertTriangle,
+  CheckCircle,
+  Loader2,
   Send,
-  ShieldAlert
+  Link2,
+  History,
+  X,
+  BadgeDollarSign,
 } from "lucide-react";
 
+// ─── Types ──────────────────────────────────────────────────────────────────
+interface WalletTransaction {
+  _id: string;
+  type: "payout" | "debt" | "refund" | "deposit";
+  amount: number;
+  status: "completed" | "pending" | "failed";
+  createdAt: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  transactionId?: string;
+  bookingId?: {
+    _id: string;
+    jobPostId?: { title: string } | null;
+  } | null;
+}
+
+// ─── Payout Modal ────────────────────────────────────────────────────────────
+function PayoutModal({
+  availableBalance,
+  onClose,
+  onSuccess,
+}: {
+  availableBalance: number;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [amount, setAmount] = useState(availableBalance.toFixed(2));
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const amountNum = parseFloat(amount) || 0;
+  const isValidAmount = amountNum > 0 && amountNum <= availableBalance;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isValidAmount) return;
+    try {
+      setSubmitting(true);
+      setError(null);
+      const res = await api.post("/payments/companion/payout", { amount: amountNum });
+      setSuccess(true);
+      setTimeout(() => {
+        onSuccess();
+      }, 1800);
+    } catch (err: any) {
+      setError(
+        err.response?.data?.message || err.message || "فشل في تنفيذ عملية السحب."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white border border-stitch-outline/10 w-full max-w-md rounded-3xl p-6 md:p-8 space-y-6 shadow-premium relative">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-stitch-outline/10 pb-4">
+          <h3 className="text-lg font-bold text-stitch-on-surface flex items-center gap-2">
+            <BadgeDollarSign className="w-5 h-5 text-stitch-primary" />
+            سحب أرباحك للحساب البنكي
+          </h3>
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            className="p-1.5 hover:bg-sand-low rounded-xl transition-all cursor-pointer disabled:opacity-50"
+          >
+            <X className="w-5 h-5 text-stitch-on-surface-variant" />
+          </button>
+        </div>
+
+        {success ? (
+          <div className="py-10 text-center space-y-4">
+            <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto animate-bounce" />
+            <h3 className="text-lg font-bold text-stitch-on-surface">
+              تمت عملية السحب بنجاح!
+            </h3>
+            <p className="text-sm text-stitch-on-surface-variant/70">
+              سيتم تحويل المبلغ لحسابك البنكي خلال 1–3 أيام عمل عبر Stripe.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5" dir="rtl">
+            {/* Available balance info */}
+            <div className="p-4 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-between">
+              <span className="text-xs font-semibold text-stitch-on-surface-variant">
+                رصيدك المتاح للسحب
+              </span>
+              <span className="text-lg font-black text-stitch-primary font-mono">
+                EGP {availableBalance.toFixed(2)}
+              </span>
+            </div>
+
+            {/* Amount input */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-stitch-on-surface-variant block">
+                المبلغ المراد سحبه (بالجنيه المصري){" "}
+                <span className="text-rose-500">*</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={availableBalance}
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="0.00"
+                  required
+                  disabled={submitting}
+                  className="flex-1 h-12 bg-sand-low border border-stitch-outline/30 rounded-2xl px-4 text-sm font-bold text-stitch-on-surface focus:ring-2 focus:ring-stitch-primary/20 focus:border-stitch-primary outline-none transition-all text-left"
+                  dir="ltr"
+                />
+                <button
+                  type="button"
+                  onClick={() => setAmount(availableBalance.toFixed(2))}
+                  disabled={submitting}
+                  className="px-4 h-12 bg-stitch-primary/10 hover:bg-stitch-primary/15 text-stitch-primary font-bold text-xs rounded-2xl transition-all whitespace-nowrap border border-stitch-primary/20 cursor-pointer disabled:opacity-50"
+                >
+                  سحب الكل
+                </button>
+              </div>
+              {amountNum > availableBalance && (
+                <p className="text-xs text-rose-500 font-semibold">
+                  المبلغ المدخل يتجاوز رصيدك المتاح
+                </p>
+              )}
+            </div>
+
+            {/* Warning note */}
+            <div className="p-3 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 leading-relaxed">
+                سيتم تحويل المبلغ المحدد لحسابك البنكي المرتبط عبر Stripe. قد
+                تستغرق العملية 1–3 أيام عمل.
+              </p>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="p-3 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                <span className="text-xs text-rose-700">{error}</span>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 justify-end pt-2 border-t border-stitch-outline/10">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={submitting}
+                className="px-5 py-3 bg-sand-low hover:bg-sand-high text-stitch-on-surface font-bold text-xs rounded-xl cursor-pointer disabled:opacity-50 transition-all"
+              >
+                إلغاء
+              </button>
+              <button
+                type="submit"
+                disabled={submitting || !isValidAmount}
+                className="px-6 py-3 bg-stitch-primary hover:bg-stitch-primary/90 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {submitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                تأكيد السحب
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page content ───────────────────────────────────────────────────────
 function WalletContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  
-  // Settle form inputs
-  const [amount, setAmount] = useState("");
-  const [transactionRef, setTransactionRef] = useState("");
-  
-  // Wallet metrics
-  const [debtData, setDebtData] = useState<any>(null);
-  const [payments, setPayments] = useState<any[]>([]);
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+
+  // Wallet data
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [totalWithdrawn, setTotalWithdrawn] = useState(0);
+  const [stripeConnected, setStripeConnected] = useState(false);
+  const [stripeTransfersActive, setStripeTransfersActive] = useState(false);
+  const [stripeOnboardingIncomplete, setStripeOnboardingIncomplete] = useState(false);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
 
   // Alert from sidebar redirect
-  const showNoShiftAlert = searchParams.get("noActiveShift") === "true";
+  const stripeSetup = searchParams.get("stripe_setup");
 
   const fetchWalletData = async () => {
     try {
       setLoading(true);
-      const [debtRes, paymentsRes] = await Promise.all([
+      const [debtRes, txnsRes] = await Promise.all([
         api.get("/payments/companion/debt"),
-        api.get("/payments/me?limit=20")
+        api.get("/payments/me?limit=50"),
       ]);
-      
-      if (debtRes.data && debtRes.data.data) {
-        setDebtData(debtRes.data.data);
+
+      if (debtRes.data?.data) {
+        const d = debtRes.data.data;
+        setWalletBalance(d.walletBalance || 0);
+        setStripeConnected(!!d.stripeConnectId);
+        setStripeTransfersActive(!!d.stripeTransfersActive);
+        setStripeOnboardingIncomplete(!!d.stripeOnboardingIncomplete);
       }
-      if (paymentsRes.data && paymentsRes.data.data && paymentsRes.data.data.bookings) {
-        setPayments(paymentsRes.data.data.bookings);
-      } else if (paymentsRes.data && paymentsRes.data.data && paymentsRes.data.data.payments) {
-        setPayments(paymentsRes.data.data.payments);
-      } else if (paymentsRes.data && paymentsRes.data.data) {
-        setPayments(paymentsRes.data.data);
-      }
+
+      // Collect transactions from both possible shapes
+      let txns: WalletTransaction[] = [];
+      const txData = txnsRes.data?.data;
+      if (txData?.payments) txns = txData.payments;
+      else if (txData?.bookings) txns = txData.bookings;
+      else if (Array.isArray(txData)) txns = txData;
+
+      setTransactions(txns);
+
+      // Sum completed payout (bank withdrawals) from transaction list
+      const withdrawn = txns
+        .filter((t) => t.type === "payout" && t.status === "completed" && t.amount < 0)
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      setTotalWithdrawn(withdrawn);
     } catch (err: any) {
       console.error("Failed to load wallet data:", err);
     } finally {
@@ -58,7 +257,6 @@ function WalletContent() {
     }
   };
 
-  const stripeSetup = searchParams.get("stripe_setup");
   useEffect(() => {
     fetchWalletData();
   }, []);
@@ -81,7 +279,6 @@ function WalletContent() {
     try {
       setSubmitting(true);
       setActionError(null);
-      setActionSuccess(null);
       const res = await api.post("/payments/companion/stripe-connect");
       if (res.data?.data?.url) {
         window.location.href = res.data.data.url;
@@ -89,322 +286,367 @@ function WalletContent() {
         throw new Error("Failed to generate onboarding URL.");
       }
     } catch (err: any) {
-      console.error("Connect stripe error:", err);
-      setActionError(err.response?.data?.message || err.message || "Failed to initiate onboarding.");
+      setActionError(
+        err.response?.data?.message || err.message || "فشل في تفعيل ربط الحساب البنكي."
+      );
       setSubmitting(false);
     }
   };
 
-  const handleRequestPayout = async () => {
+  const handleManageStripe = async () => {
     try {
       setSubmitting(true);
       setActionError(null);
-      setActionSuccess(null);
-      const res = await api.post("/payments/companion/payout");
-      setActionSuccess(res.data?.message || "Payout processed successfully.");
-      await fetchWalletData();
+      const res = await api.post("/payments/companion/stripe-login");
+      if (res.data?.data?.url) {
+        window.location.href = res.data.data.url;
+      } else {
+        throw new Error("Failed to generate dashboard login URL.");
+      }
     } catch (err: any) {
-      console.error("Payout request error:", err);
-      setActionError(err.response?.data?.message || err.message || "Payout execution failed.");
+      setActionError(
+        err.response?.data?.message || err.message || "فشل في فتح لوحة تحكم البنك."
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleSettleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!amount || !transactionRef) return;
-    
-    try {
-      setSubmitting(true);
-      setActionError(null);
-      setActionSuccess(null);
-      
-      const res = await api.post("/payments/companion/settle-debt", {
-        amount: Number(amount),
-        transactionRef
-      });
-      
-      setActionSuccess(res.data?.message || "Submitted successfully.");
-      setAmount("");
-      setTransactionRef("");
-      await fetchWalletData();
-    } catch (err: any) {
-      console.error("Settlement error:", err);
-      setActionError(err.response?.data?.message || err.message || "Failed to submit reference.");
-    } finally {
-      setSubmitting(false);
-    }
+  const handlePayoutSuccess = async () => {
+    setShowPayoutModal(false);
+    setActionSuccess("تمت عملية السحب بنجاح! سيصل المبلغ لحسابك البنكي خلال 1–3 أيام.");
+    await fetchWalletData();
   };
-
-  // Calculate earnings
-  const availableEarnings = debtData?.walletBalance || 0;
-
-  const pendingRelease = payments
-    .filter(p => p.status === "pending" && p.companionId === debtData?.companionId)
-    .reduce((sum, p) => sum + (p.amount || 0), 0);
-
-  const totalDebt = debtData?.totalDebt || 0;
-  const isFrozenWarning = totalDebt >= 500;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-sand text-stitch-on-surface flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-sand flex flex-col items-center justify-center p-6">
         <Loader2 className="w-12 h-12 text-stitch-primary animate-spin mb-4" />
-        <p className="text-stitch-on-surface-variant/80 font-medium">تحميل بيانات المحفظة والمدفوعات...</p>
+        <p className="text-stitch-on-surface-variant/80 font-medium">
+          جاري تحميل محفظتك...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto font-stitch-body p-4 text-right animate-fade-in" dir="rtl">
-      
-      {/* Alert if redirected due to no active shift */}
-      {showNoShiftAlert && (
-        <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl text-amber-800 text-sm flex items-start space-x-3 space-x-reverse shadow-soft">
-          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
-          <div className="flex-1">
-            <h4 className="font-bold">تنبيه النظام</h4>
-            <p className="text-xs text-amber-800/80 mt-0.5">
-              عذراً، ليس لديك أي مناوبة نشطة أو معتمدة حالياً للبدء فيها. تم تحويلك تلقائياً إلى صفحة المحفظة.
+    <div className="min-h-screen bg-sand text-stitch-on-surface pb-16" dir="rtl">
+
+      {/* ─── Banner Header ─────────────────────────────────────────────── */}
+      <div className="bg-gradient-to-r from-[#006767] via-[#1f8a8a] to-[#aeedd5]/50 text-white py-12 px-6 shadow-md relative overflow-hidden">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-2 text-right">
+            <span className="bg-white/20 text-[#aeedd5] text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full backdrop-blur-md">
+              أرباحك المالية — مدفوعات آمنة عبر Stripe
+            </span>
+            <h1 className="text-3xl md:text-4xl font-bold font-stitch-display">
+              محفظة أرباحي
+            </h1>
+            <p className="text-white/80 text-sm max-w-xl">
+              تتبع أرباحك وسحب مستحقاتك مباشرةً لحسابك البنكي بكل سهولة وأمان.
             </p>
           </div>
-          <button 
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.delete("noActiveShift");
-              router.replace(url.pathname);
-            }} 
-            className="text-amber-700 hover:text-amber-900 font-bold text-xs self-center"
-          >
-            إغلاق
-          </button>
         </div>
-      )}
-
-      {/* Header */}
-      <div>
-        <span className="text-xs font-semibold text-stitch-primary uppercase tracking-widest block mb-1">البيانات المالية للمرافق</span>
-        <h1 className="text-3xl font-stitch-display font-bold text-stitch-on-surface">محفظة العوائد والديون</h1>
+        <div className="absolute -bottom-8 -left-8 w-44 h-44 rounded-full bg-white/10" />
+        <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-white/10" />
       </div>
 
-      {/* Freeze Warning */}
-      {isFrozenWarning && (
-        <div className="p-5 bg-red-50 border border-red-100 rounded-3xl flex items-start gap-4 text-red-600 shadow-soft">
-          <ShieldAlert className="w-8 h-8 shrink-0 mt-0.5 text-red-500" />
-          <div className="space-y-1">
-            <h3 className="font-bold text-base">تحذير تجميد الحساب!</h3>
-            <p className="text-xs text-red-650/80 leading-relaxed">
-              لقد تجاوزت ديون المنصة الخاصة بك الحد المسموح به (500 جنيه مصري). يرجى سداد مستحقات المنصة لتجنب تجميد حسابك وحظر استقبال طلبات الرعاية الجديدة.
-            </p>
-          </div>
-        </div>
-      )}
+      <div className="max-w-6xl mx-auto px-6 mt-8 space-y-6">
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* Card 1: Available Earnings */}
-        <div className="bg-white border border-stitch-outline/10 shadow-soft rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[180px]">
-          <div>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-stitch-primary/5 rounded-full blur-2xl pointer-events-none" />
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-teal-50 rounded-2xl text-stitch-primary">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold text-stitch-primary bg-teal-50 px-2.5 py-1 rounded-full border border-teal-100">متاح للسحب</span>
-            </div>
-            <p className="text-xs text-stitch-on-surface-variant/80">إجمالي الأرباح المتاحة</p>
-            <h2 className="text-3xl font-black text-stitch-on-surface mt-1 font-mono">EGP {availableEarnings.toFixed(2)}</h2>
-          </div>
+        {/* ─── System Alerts ──────────────────────────────────────────────── */}
 
-          <div className="mt-4 pt-3 border-t border-[#eae7e7]">
-            {debtData?.stripeConnectId ? (
-              <button
-                onClick={handleRequestPayout}
-                disabled={submitting || availableEarnings <= 0}
-                className="w-full py-2.5 px-4 bg-stitch-primary text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-stitch-primary/95 transition-all shadow-sm"
-              >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                <span>سحب الأرباح للحساب البنكي</span>
-              </button>
-            ) : (
-              <button
-                onClick={handleConnectStripe}
-                disabled={submitting}
-                className="w-full py-2.5 px-4 bg-[#1f8a8a] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 hover:bg-[#0d8282] transition-all shadow-sm"
-              >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
-                <span>ربط حساب البنك (Stripe)</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Card 2: Platform Debt */}
-        <div className={`border rounded-3xl p-6 relative overflow-hidden shadow-soft ${
-          isFrozenWarning ? "bg-red-50/50 border-red-200" : "bg-white border-stitch-outline/10"
-        }`}>
-          <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-center justify-between mb-4">
-            <div className={`p-3 rounded-2xl ${isFrozenWarning ? "bg-red-50 text-red-500" : "bg-sand-low text-stitch-on-surface-variant"}`}>
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-            <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
-              isFrozenWarning ? "bg-red-50 border-red-100 text-red-600" : "bg-sand-low border-stitch-outline/20 text-stitch-on-surface-variant"
-            }`}>ديون المنصة</span>
-          </div>
-          <p className="text-xs text-stitch-on-surface-variant/80">مستحقات المنصة من الشفتات النقدية</p>
-          <h2 className={`text-3xl font-black mt-1 font-mono ${isFrozenWarning ? "text-red-500" : "text-stitch-on-surface"}`}>EGP {totalDebt.toFixed(2)}</h2>
-        </div>
-
-        {/* Card 3: Next Scheduled Release */}
-        <div className="bg-white border border-stitch-outline/10 shadow-soft rounded-3xl p-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-stitch-primary/5 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-teal-50 rounded-2xl text-stitch-primary">
-              <Wallet className="w-6 h-6" />
-            </div>
-            <span className="text-xs font-bold text-stitch-primary bg-teal-50 px-2.5 py-1 rounded-full border border-teal-100">أرباح معلقة</span>
-          </div>
-          <p className="text-xs text-stitch-on-surface-variant/80">عوائد قيد التأكيد (دفع إلكتروني)</p>
-          <h2 className="text-3xl font-black text-stitch-on-surface mt-1 font-mono">EGP {pendingRelease.toFixed(2)}</h2>
-        </div>
-
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Column: Vodafone Cash Form */}
-        <div className="lg:col-span-1 bg-white border border-stitch-outline/10 shadow-soft rounded-3xl p-6 md:p-8 space-y-6 h-fit">
-          <div>
-            <h3 className="text-lg font-bold text-stitch-on-surface">سداد رسوم ومستحقات المنصة</h3>
-            <p className="text-xs text-stitch-on-surface-variant/80 mt-1 leading-relaxed">
-              يرجى تحويل مبلغ السداد إلى محفظة فودافون كاش الرسمية للمنصة:
-              <strong className="block text-stitch-primary font-mono text-sm mt-1">01012345678</strong>
-              ثم قم بملء البيانات بالأسفل لتسجيل عملية السداد وتأكيدها.
-            </p>
-          </div>
-
-          {actionError && (
-            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-xs flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{actionError}</span>
-            </div>
-          )}
-
-          {actionSuccess && (
-            <div className="p-4 bg-teal-50 border border-teal-100 rounded-2xl text-stitch-primary text-xs flex items-start gap-2">
-              <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{actionSuccess}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSettleSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-stitch-on-surface-variant">مبلغ التحويل بالجنيه</label>
-              <input 
-                type="number" 
-                required
-                placeholder="مثال: 150"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                className="w-full text-sm p-3 bg-sand-low border border-stitch-outline/30 focus:border-stitch-primary focus:ring-1 focus:ring-stitch-primary rounded-2xl outline-none text-stitch-on-surface placeholder-stitch-on-surface-variant/50 text-right"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-stitch-on-surface-variant">رقم المعاملة / كود المرجع (Ref ID)</label>
-              <input 
-                type="text" 
-                required
-                placeholder="كود المعاملة المكون من أرقام وحروف"
-                value={transactionRef}
-                onChange={e => setTransactionRef(e.target.value)}
-                className="w-full text-sm p-3 bg-sand-low border border-stitch-outline/30 focus:border-stitch-primary focus:ring-1 focus:ring-stitch-primary rounded-2xl outline-none text-stitch-on-surface placeholder-stitch-on-surface-variant/50 font-mono text-left"
-                dir="ltr"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting || !amount || !transactionRef}
-              className="w-full py-3.5 bg-stitch-primary hover:bg-stitch-primary/95 text-white font-bold rounded-2xl shadow-soft hover:shadow-premium transition-all flex items-center justify-center space-x-2 space-x-reverse disabled:opacity-50"
-            >
-              {submitting ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  <span>تقديم إثبات التحويل</span>
-                </>
-              )}
+        {actionError && (
+          <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-650 text-sm flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+            <span>{actionError}</span>
+            <button onClick={() => setActionError(null)} className="ms-auto cursor-pointer">
+              <X className="w-4 h-4" />
             </button>
-          </form>
-        </div>
+          </div>
+        )}
 
-        {/* Right Column: Ledger Table */}
-        <div className="lg:col-span-2 bg-white border border-stitch-outline/10 shadow-soft rounded-3xl p-6 md:p-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-stitch-on-surface">سجل المعاملات والديون</h3>
-            <span className="text-xs text-stitch-on-surface-variant/50">آخر 20 معاملة</span>
+        {actionSuccess && (
+          <div className="p-4 bg-teal-50 border border-teal-100 rounded-2xl text-stitch-primary text-sm flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <span>{actionSuccess}</span>
+            <button onClick={() => setActionSuccess(null)} className="ms-auto cursor-pointer">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* ─── Main Grid ──────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+          {/* Left Column: Balance cards + action */}
+          <div className="lg:col-span-4 space-y-6">
+
+            {/* Card 1: Available Balance */}
+            <div className="relative rounded-3xl overflow-hidden shadow-soft border border-stitch-outline/10 bg-white p-6 md:p-8 space-y-6">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-stitch-primary/5 rounded-full blur-2xl pointer-events-none" />
+
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-stitch-primary/10 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-stitch-primary" />
+                </div>
+                <h3 className="font-bold text-stitch-on-surface text-sm uppercase tracking-wider">
+                  الرصيد المتاح للسحب
+                </h3>
+              </div>
+
+              <div>
+                <div className="text-3xl md:text-4xl font-bold text-stitch-primary tracking-tight font-stitch-display">
+                  {walletBalance.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{" "}
+                  <span className="text-sm font-semibold">EGP</span>
+                </div>
+                <p className="text-xs text-stitch-on-surface-variant/70 mt-1">
+                  أرباحك الجاهزة للسحب الفوري
+                </p>
+              </div>
+
+              {/* Action buttons */}
+              <div className="space-y-3">
+                {!stripeConnected ? (
+                  // State 1: No Stripe account yet
+                  <>
+                    <button
+                      onClick={handleConnectStripe}
+                      disabled={submitting}
+                      className="w-full h-14 bg-[#1f8a8a] hover:bg-[#0d8282] disabled:opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {submitting ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Link2 className="w-5 h-5" />
+                      )}
+                      ربط حساب البنك (Stripe)
+                    </button>
+                    <p className="text-xs text-stitch-on-surface-variant/50 text-center">
+                      يرجى ربط حسابك البنكي أولاً لتتمكن من سحب أرباحك
+                    </p>
+                  </>
+                ) : !stripeTransfersActive ? (
+                  // State 2: Account created but onboarding not complete
+                  <>
+                    <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl space-y-3">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-amber-800">
+                            إعداد الحساب البنكي غير مكتمل
+                          </p>
+                          <p className="text-xs text-amber-700/80 leading-relaxed">
+                            لم تكتمل خطوات التسجيل على Stripe بعد. يجب إتمام إعداد الحساب البنكي قبل أي عملية سحب.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleConnectStripe}
+                        disabled={submitting}
+                        className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        {submitting ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Link2 className="w-4 h-4" />
+                        )}
+                        إتمام إعداد الحساب البنكي
+                      </button>
+                    </div>
+                    <button
+                      onClick={handleManageStripe}
+                      disabled={submitting}
+                      className="w-full h-12 bg-sand-low hover:bg-sand-high text-stitch-on-surface border border-stitch-outline/20 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {submitting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Link2 className="w-4 h-4 text-stitch-primary" />
+                      )}
+                      فتح لوحة تحكم Stripe
+                    </button>
+                  </>
+                ) : (
+                  // State 3: Fully active — can withdraw
+                  <>
+                    <button
+                      onClick={() => setShowPayoutModal(true)}
+                      disabled={walletBalance <= 0 || submitting}
+                      className="w-full h-14 bg-stitch-primary hover:bg-stitch-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Send className="w-5 h-5" />
+                      سحب رصيد للحساب البنكي
+                    </button>
+                    <button
+                      onClick={handleManageStripe}
+                      disabled={submitting}
+                      className="w-full h-12 bg-sand-low hover:bg-sand-high text-stitch-on-surface border border-stitch-outline/20 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {submitting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Link2 className="w-4 h-4 text-stitch-primary" />
+                      )}
+                      إدارة وتعديل الحساب البنكي (Stripe)
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Card 2: Total Withdrawn */}
+            <div className="relative rounded-3xl overflow-hidden shadow-soft border border-stitch-outline/10 bg-white p-6 md:p-8 space-y-4">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                  <Wallet className="w-5 h-5 text-emerald-600" />
+                </div>
+                <h3 className="font-bold text-stitch-on-surface text-sm uppercase tracking-wider">
+                  إجمالي المسحوب
+                </h3>
+              </div>
+
+              <div>
+                <div className="text-3xl md:text-4xl font-bold text-emerald-600 tracking-tight font-stitch-display">
+                  {totalWithdrawn.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{" "}
+                  <span className="text-sm font-semibold">EGP</span>
+                </div>
+                <p className="text-xs text-stitch-on-surface-variant/70 mt-1">
+                  إجمالي ما حولته لحسابك البنكي حتى الآن
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            {debtData?.debtHistory && debtData.debtHistory.length > 0 ? (
-              <table className="w-full text-right border-collapse">
-                <thead>
-                  <tr className="border-b border-stitch-outline/20 text-xs text-stitch-on-surface-variant/75 font-bold">
-                    <th className="pb-3 pt-1">التاريخ</th>
-                    <th className="pb-3 pt-1">السبب / الملاحظة</th>
-                    <th className="pb-3 pt-1 text-left">القيمة</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stitch-outline/10">
-                  {debtData.debtHistory.map((item: any, idx: number) => {
-                    const isPayment = item.amount < 0;
-                    return (
-                      <tr key={idx} className="text-xs text-stitch-on-surface-variant/90 hover:bg-sand-low/50">
-                        <td className="py-4 font-mono">
-                          {new Date(item.recordedAt).toLocaleDateString("ar-EG", { month: "short", day: "numeric", year: "numeric" })}
-                        </td>
-                        <td className="py-4">
-                          {item.reason === "cash_payment_admin_fee" 
-                            ? "خصم نسبة المنصة (حجز نقدي)" 
-                            : item.reason.startsWith("vodafone_cash_settlement_pending")
-                            ? `سداد مديونية معلق (بانتظار المراجعة)`
-                            : item.reason}
-                        </td>
-                        <td className={`py-4 text-left font-bold font-mono ${isPayment ? "text-teal-650" : "text-red-500"}`}>
-                          {isPayment ? "" : "+"}{item.amount.toFixed(2)} EGP
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {/* Right Column: Transaction History */}
+          <div className="lg:col-span-8 bg-white border border-stitch-outline/10 shadow-soft rounded-3xl p-6 md:p-8 space-y-6">
+            <div className="flex items-center gap-3 pb-2 border-b border-stitch-outline/10">
+              <History className="w-5 h-5 text-stitch-primary" />
+              <h3 className="font-bold text-stitch-on-surface text-base">
+                سجل المعاملات
+              </h3>
+            </div>
+
+            {transactions.length > 0 ? (
+              <div className="space-y-3">
+                {transactions.map((txn, idx) => {
+                  const isIncoming = txn.amount > 0;
+                  const dateStr = new Date(txn.createdAt).toLocaleDateString("ar-EG", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+
+                  const statusColors: Record<string, string> = {
+                    completed: "bg-emerald-50 text-emerald-700 border-emerald-100",
+                    pending: "bg-amber-50 text-amber-700 border-amber-100",
+                    failed: "bg-rose-50 text-rose-700 border-rose-100",
+                  };
+
+                  const typeLabels: Record<string, string> = {
+                    payout: isIncoming ? "إيداع من حجز" : "سحب بنكي",
+                    debt: "رسوم منصة",
+                    refund: "استرداد",
+                    deposit: "إيداع",
+                  };
+
+                  return (
+                    <div
+                      key={txn._id || idx}
+                      className="flex items-center justify-between p-4 bg-sand/30 border border-stitch-outline/10 rounded-2xl hover:shadow-soft transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            isIncoming
+                              ? "bg-stitch-primary/10 text-stitch-primary"
+                              : "bg-sand-high text-stitch-on-surface-variant"
+                          }`}
+                        >
+                          {isIncoming ? (
+                            <ArrowDownLeft className="w-5 h-5" />
+                          ) : (
+                            <ArrowUpRight className="w-5 h-5" />
+                          )}
+                        </div>
+                        <div className="space-y-0.5 text-right">
+                          <h4 className="font-bold text-stitch-on-surface text-sm">
+                            {txn.descriptionAr || typeLabels[txn.type] || txn.type}
+                          </h4>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-stitch-on-surface-variant/70">
+                            <span className="font-mono">{dateStr}</span>
+                            <span className="text-stitch-outline/40">|</span>
+                            <span
+                              className={`px-1.5 py-0.5 rounded border text-[10px] uppercase font-bold ${
+                                statusColors[txn.status] ||
+                                "bg-sand-low text-stitch-on-surface-variant border-stitch-outline/20"
+                              }`}
+                            >
+                              {txn.status === "completed"
+                                ? "مكتملة"
+                                : txn.status === "pending"
+                                ? "معلقة"
+                                : "فشلت"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        className={`font-mono font-bold text-sm whitespace-nowrap ${
+                          isIncoming ? "text-stitch-primary" : "text-stitch-on-surface"
+                        }`}
+                      >
+                        {isIncoming ? "+" : "-"} {Math.abs(txn.amount).toFixed(2)} EGP
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
-              <div className="p-8 bg-sand-low rounded-2xl border border-dashed border-stitch-outline/20 text-center text-stitch-on-surface-variant/60 text-sm">
-                لا توجد معاملات مسجلة في محفظتك حالياً.
+              <div className="py-16 text-center text-stitch-on-surface-variant/50 text-sm bg-sand/30 border border-dashed border-stitch-outline/20 rounded-3xl space-y-3">
+                <Wallet className="w-12 h-12 mx-auto text-stitch-outline/40" />
+                <p>لا توجد معاملات مسجلة في محفظتك حالياً.</p>
+                <p className="text-xs">ستظهر هنا أرباحك وعمليات السحب تلقائياً.</p>
               </div>
             )}
           </div>
         </div>
-
       </div>
 
+      {/* ─── Payout Modal ──────────────────────────────────────────────────── */}
+      {showPayoutModal && (
+        <PayoutModal
+          availableBalance={walletBalance}
+          onClose={() => setShowPayoutModal(false)}
+          onSuccess={handlePayoutSuccess}
+        />
+      )}
     </div>
   );
 }
 
+// ─── Page wrapper with Suspense ──────────────────────────────────────────────
 export default function CompanionWallet() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-sand text-stitch-on-surface flex flex-col items-center justify-center p-6">
-        <Loader2 className="w-12 h-12 text-stitch-primary animate-spin mb-4" />
-        <p className="text-stitch-on-surface-variant/80 font-medium">تحميل المحفظة...</p>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-sand flex flex-col items-center justify-center p-6">
+          <Loader2 className="w-12 h-12 text-stitch-primary animate-spin mb-4" />
+          <p className="text-stitch-on-surface-variant/80 font-medium">
+            تحميل المحفظة...
+          </p>
+        </div>
+      }
+    >
       <WalletContent />
     </Suspense>
   );

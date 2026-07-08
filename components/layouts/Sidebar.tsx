@@ -121,7 +121,7 @@ export default function Sidebar({
         resolvedHref = `/companion/shift/${activeBookingId}`;
         isActive = pathname.startsWith(`/companion/shift/${activeBookingId}`);
       } else {
-        resolvedHref = "/companion/wallet?noActiveShift=true";
+        resolvedHref = "/companion/shift";
         isActive = pathname === "/companion/shift" || pathname.startsWith("/companion/shift/");
       }
     }
