@@ -63,8 +63,8 @@ const messages = {
       ar: "يرجى تقديم عنوان بريد إلكتروني صالح."
     },
     weakPassword: {
-      en: "Password must be at least 8 characters long, containing at least one uppercase letter and one number.",
-      ar: "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل، وتحتوي على حرف كبير واحد ورقم واحد على الأقل."
+      en: "Password must be at least 8 characters long, containing at least one uppercase letter, one lowercase letter, one number, and one symbol.",
+      ar: "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل، وتحتوي على حرف كبير، وحرف صغير، ورقم، ورمز خاص واحد على الأقل."
     },
     rateLimited: {
       en: "Too many attempts, please try again later.",
@@ -89,6 +89,10 @@ const messages = {
     incorrectCurrentPassword: {
       en: "Current password is incorrect.",
       ar: "كلمة المرور الحالية غير صحيحة."
+    },
+    accountDeleted: {
+      en: "Account has been deleted successfully.",
+      ar: "تم حذف الحساب بنجاح."
     }
   },
   booking: {

@@ -2,6 +2,7 @@ const User = require('../../models/user.schema');
 const Companion = require('../../models/companion.schema');
 const Booking = require('../../models/booking.schema');
 const Notification = require('../../models/notification.schema');
+const ActivityLog = require('../../models/activityLog.schema');
 
 /**
  * GET /api/admin/activity
@@ -34,7 +35,7 @@ const getActivityFeed = async (req, res) => {
     const dateFilter = fromDate ? { createdAt: { $gte: fromDate } } : {};
 
     // ── Fetch source data in parallel ────────────────────────────────────────
-    const [users, companions, bookings, resubmissionNotifications] = await Promise.all([
+    const [users, companions, bookings, resubmissionNotifications, activityLogs] = await Promise.all([
       // All non-admin users (registrations + profile changes tracked via updatedAt)
       (category === 'all' || category === 'registration' || category === 'profile')
         ? User.find({
@@ -73,6 +74,11 @@ const getActivityFeed = async (req, res) => {
           .populate('senderId', 'name')
           .lean()
         : Promise.resolve([]),
+
+      // Activity Logs
+      ActivityLog.find({
+        ...dateFilter
+      }).lean(),
     ]);
 
     // ── Build unified event list ──────────────────────────────────────────────
@@ -223,6 +229,39 @@ const getActivityFeed = async (req, res) => {
         navigateTo:  `/bookings?id=${b._id}`,
         entityId:    b._id.toString(),
       });
+    }
+
+    // ── Activity logs events ──────────────────────────────────────────────────
+    if (activityLogs && activityLogs.length > 0) {
+      for (const log of activityLogs) {
+        if (category !== 'all' && log.category !== category) continue;
+        if (role !== 'all' && log.actorRole !== role) continue;
+
+        events.push({
+          id:          `act-log-${log._id}`,
+          category:    log.category,
+          type:        log.type,
+          title:       log.title,
+          description: log.description,
+          actorName:   log.actorName,
+          actorRole:   log.actorRole,
+          relatedId:   log.relatedId?.toString() || '',
+          relatedModel:log.relatedModel || '',
+          icon:        log.icon,
+          iconBg:      log.iconBg,
+          iconColor:   log.iconColor,
+          badgeLabel:  log.badgeLabel,
+          badgeClass:  log.badgeClass,
+          timestamp:   log.createdAt,
+          exactDate:   log.createdAt,
+          navigateTo:  log.relatedModel === 'User' 
+            ? `/families/${log.relatedId}` 
+            : log.relatedModel === 'Booking' 
+            ? `/bookings?id=${log.relatedId}` 
+            : '',
+          entityId:    log.relatedId?.toString() || '',
+        });
+      }
     }
 
     // ── Filter by search term ─────────────────────────────────────────────────
