@@ -7,6 +7,8 @@ import {
   familyAIChat,
   companionAIChat,
   aiSmartSearch,
+  browseSearchCompanions,
+  generateCarePlan,
   clearAIChatSession,
   createBooking,
   getCompanionRequests,
@@ -735,6 +737,48 @@ export const useAISmartSearch = () => {
       setIsLoading(true);
       setError(null);
       const res = await aiSmartSearch(data);
+      return res;
+    } catch (err: any) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { execute, isLoading, error };
+};
+
+export const useBrowseSearchCompanions = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<any>(null);
+
+  const execute = async (data: any, locale = "ar") => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const res = await browseSearchCompanions(data, locale);
+      return res;
+    } catch (err: any) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { execute, isLoading, error };
+};
+
+export const useGenerateCarePlan = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<any>(null);
+
+  const execute = async (data: any, locale = "ar") => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const res = await generateCarePlan(data, locale);
       return res;
     } catch (err: any) {
       setError(err);

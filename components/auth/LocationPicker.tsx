@@ -190,71 +190,74 @@ export default function LocationPicker({ value, onChange }: LocationPickerProps)
 
   // Classic UI for Registration Flow
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-200 rounded-3xl bg-gray-50/50 space-y-4 transition-all hover:border-[#005c53]/40">
-        <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-sm ${location ? 'bg-[#e6f4f2] text-[#005c53]' : 'bg-white text-gray-400'}`}>
-          {loading ? (
-            <Loader2 className="w-8 h-8 animate-spin" />
-          ) : location ? (
-            <CheckCircle className="w-8 h-8 text-[#005c53]" />
-          ) : (
-            <MapPin className="w-8 h-8" />
-          )}
+    <div className="space-y-3">
+      {location ? (
+        <div className="flex flex-col sm:flex-row items-center justify-between p-3.5 bg-[#e6f4f2]/40 border border-[#bdc9c8]/40 rounded-xl gap-3 transition-all duration-300">
+          <div className="flex items-center gap-2.5 min-w-0 w-full sm:w-auto text-left">
+            <div className="w-8.5 h-8.5 bg-[#e6f4f2] text-[#005c53] flex items-center justify-center rounded-lg shrink-0 shadow-sm">
+              <CheckCircle className="w-4.5 h-4.5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-xs text-[#012d1d]">
+                {t("capturedTitle")}
+              </p>
+              <p className="text-[11px] text-gray-500 font-semibold truncate max-w-full">
+                {address || `${location.geo.coordinates[1].toFixed(4)}, ${location.geo.coordinates[0].toFixed(4)}`}
+              </p>
+            </div>
+          </div>
+          
+          <button
+            type="button"
+            onClick={handleGetLocation}
+            disabled={loading}
+            className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 border border-[#bdc9c8] text-gray-600 bg-white rounded-lg font-bold text-[11px] hover:bg-[#fcf9f6] transition-all cursor-pointer"
+          >
+            {loading ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Navigation className="w-3 h-3 text-[#005c53]" />
+            )}
+            {loading ? t("detecting") : t("updateLocation")}
+          </button>
         </div>
-
-        <div className="text-center space-y-1">
-          <h3 className="font-bold text-gray-800">
-            {location ? t("capturedTitle") : t("shareTitle")}
-          </h3>
-          <p className="text-xs text-gray-500 max-w-60 mx-auto font-medium">
-            {location 
-              ? t("capturedDesc") 
-              : t("shareDesc")}
-          </p>
+      ) : (
+        <div className="flex flex-col sm:flex-row items-center justify-between p-3.5 bg-[#fcf9f6] border border-sand-high rounded-xl gap-3 transition-all duration-300">
+          <div className="flex items-center gap-2.5 text-left">
+            <div className="w-8.5 h-8.5 bg-white border border-sand-high text-gray-400 flex items-center justify-center rounded-lg shrink-0 shadow-sm">
+              <MapPin className="w-4.5 h-4.5" />
+            </div>
+            <div>
+              <p className="font-bold text-xs text-[#012d1d]">{t("shareTitle")}</p>
+              <p className="text-[10px] text-gray-400 font-semibold">{t("shareDesc")}</p>
+            </div>
+          </div>
+          
+          <button
+            type="button"
+            onClick={handleGetLocation}
+            disabled={loading}
+            className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-1.5 bg-[#005c53] hover:bg-[#00473c] text-white rounded-lg font-bold text-[11px] transition-all cursor-pointer animate-pulse"
+          >
+            {loading ? (
+              <Loader2 className="w-3 h-3 animate-spin text-white" />
+            ) : (
+              <Navigation className="w-3 h-3 text-white" />
+            )}
+            {loading ? t("detecting") : t("detectMy")}
+          </button>
         </div>
+      )}
 
-        <button
-          type="button"
-          onClick={handleGetLocation}
-          disabled={loading}
-          className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 rounded-xl font-bold text-sm text-gray-700 hover:bg-gray-50 hover:border-[#005c53]/30 transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-        >
-          <Navigation className="w-4 h-4 text-[#005c53]" />
-          {loading ? t("detecting") : location ? t("updateLocation") : t("detectMy")}
-        </button>
-      </div>
-
-      {/* Reusable Interactive OSM Leaflet Map Picker */}
-      <div className="relative w-full h-56 rounded-2xl overflow-hidden border border-[#bdc9c8] shadow-inner">
+      {/* Map Picker */}
+      <div className="relative w-full h-40 rounded-xl overflow-hidden border border-[#bdc9c8] shadow-inner">
         <SharedMap center={mapCenter} readOnly={false} zoom={13} onChange={handleMapChange} />
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-xs font-semibold">
-          <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-          {error}
-        </div>
-      )}
-
-      {location && (
-        <div className="p-4 bg-[#e6f4f2]/30 border border-[#bdc9c8]/40 rounded-2xl space-y-2 animate-fade-in">
-          <div className="flex justify-between items-start">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#005c53]">{t("currentAddress")}</span>
-            <CheckCircle className="w-4 h-4 text-[#005c53]" />
-          </div>
-          <p className="text-sm font-medium text-gray-700 leading-relaxed">
-            {address}
-          </p>
-          <div className="flex gap-4 pt-1">
-            <div className="space-y-0.5">
-              <span className="text-[10px] text-gray-400 font-bold uppercase">{t("city")}</span>
-              <p className="text-xs font-bold text-gray-700">{location.city || "—"}</p>
-            </div>
-            <div className="space-y-0.5">
-              <span className="text-[10px] text-gray-400 font-bold uppercase">{t("governorate")}</span>
-              <p className="text-xs font-bold text-gray-700">{location.governorate || "—"}</p>
-            </div>
-          </div>
+        <div className="p-2.5 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600 text-xs font-semibold">
+          <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
     </div>

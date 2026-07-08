@@ -16,6 +16,7 @@ export interface ChatMessage {
   isRead: boolean;
   createdAt: string;
   updatedAt: string;
+  isSystemAlert?: boolean;
 }
 
 export interface Conversation {

@@ -22,14 +22,24 @@ export const ChatContainer: React.FC = () => {
     sendMessage,
   } = useChat(activeBookingId, currentUserId);
 
-  // Auto-select the first conversation on desktop initial load
+  // Auto-select booking from URL query parameter
   useEffect(() => {
-    if (!activeBookingId && conversations.length > 0) {
-      if (typeof window !== "undefined" && window.innerWidth >= 768) {
-        setActiveBookingId(conversations[0].bookingId);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const bookingIdParam = params.get("bookingId");
+      if (bookingIdParam) {
+        setActiveBookingId(bookingIdParam);
+      } else {
+        const companionIdParam = params.get("companionId");
+        if (companionIdParam && conversations.length > 0) {
+          const matchedConv = conversations.find(c => c.otherUser?._id === companionIdParam);
+          if (matchedConv) {
+            setActiveBookingId(matchedConv.bookingId);
+          }
+        }
       }
     }
-  }, [conversations, activeBookingId]);
+  }, [conversations]);
 
   // Lock parent layout scroll on mount to prevent layout-related vertical scrolling and clipping
   useEffect(() => {

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Calendar, MessageSquare, Briefcase, ArrowRight, Info } from "lucide-react";
+import { Calendar, MessageSquare, Briefcase, ArrowRight, Info, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { getAvatarUrl } from "@/lib/avatar";
 
@@ -26,50 +26,27 @@ export default function CurrentCaregivers({ caregivers }: CurrentCaregiversProps
   const [tooltipVisible, setTooltipVisible] = useState(false);
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
+    <div className="bg-white p-6 md:p-8 rounded-3xl border border-sand-high/60 shadow-soft space-y-6">
+      <div className="space-y-3">
+        <div className="flex justify-between items-center">
           <h2 className="font-display text-xl font-bold text-[#012d1d]">
             {t("currentCaregiversTitle")}
           </h2>
-          <div className="relative">
-            <button
-              type="button"
-              onMouseEnter={() => setTooltipVisible(true)}
-              onMouseLeave={() => setTooltipVisible(false)}
-              onFocus={() => setTooltipVisible(true)}
-              onBlur={() => setTooltipVisible(false)}
-              className="text-stitch-on-surface-variant/40 hover:text-stitch-primary transition-colors cursor-pointer"
-              aria-label={t("currentCaregiversTooltip")}
-            >
-              <Info className="w-4 h-4" />
-            </button>
-            {tooltipVisible && (
-              <div 
-                className="absolute top-full mt-2 start-0 w-64 bg-stitch-surface border border-stitch-outline/20 rounded-2xl p-3 shadow-premium z-50 animate-fade-in"
-                role="tooltip"
-              >
-                <p className="text-xs text-stitch-on-surface-variant leading-relaxed">
-                  {t("currentCaregiversTooltip")}
-                </p>
-              </div>
-            )}
-          </div>
+          <Link 
+            href="/family/companions" 
+            className="text-xs font-bold text-[#1f8a8a] flex items-center gap-1 hover:underline transition-all"
+          >
+            {t("viewAll")} <ArrowRight className="w-3 h-3 rtl:rotate-180" />
+          </Link>
         </div>
-        <Link 
-          href="/family/companions" 
-          className="text-xs font-bold text-[#1f8a8a] flex items-center gap-1 hover:underline transition-all"
-        >
-          {t("viewAll")} <ArrowRight className="w-3 h-3 rtl:rotate-180" />
-        </Link>
+
+        <p className="text-xs text-gray-400 font-semibold">
+          {t("currentCaregiversDesc")}
+        </p>
       </div>
 
-      <p className="text-xs text-gray-400 font-medium -mt-2">
-        {t("currentCaregiversDesc")}
-      </p>
-
       {caregivers.length === 0 ? (
-        <div className="bg-white p-8 rounded-3xl border border-sand-high/60 shadow-soft text-center text-gray-500 text-sm font-medium">
+        <div className="p-8 rounded-2xl bg-gray-50 border border-sand-high/40 text-center text-gray-500 text-sm font-medium">
           {t("noCaregivers")}
         </div>
       ) : (
@@ -80,7 +57,7 @@ export default function CurrentCaregivers({ caregivers }: CurrentCaregiversProps
             return (
               <div 
                 key={caregiver.id} 
-                className="bg-white p-5 rounded-3xl border border-sand-high shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-300 hover:shadow-md"
+                className="p-5 rounded-2xl border border-sand-high/60 bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-300 hover:shadow-sm"
               >
                 <div className="flex items-center gap-4">
                   {isPending ? (
@@ -105,11 +82,6 @@ export default function CurrentCaregivers({ caregivers }: CurrentCaregiversProps
                       <h4 className="font-body font-bold text-sm text-gray-900">
                         {caregiver.name}
                       </h4>
-                      {!isPending && caregiver.role && (
-                        <span className="text-[10px] font-extrabold text-gray-500 bg-gray-100 border border-gray-200/50 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          {caregiver.role}
-                        </span>
-                      )}
                     </div>
                     <p className="text-xs text-gray-400 font-semibold mt-0.5">
                       {caregiver.subtext}
@@ -128,12 +100,23 @@ export default function CurrentCaregivers({ caregivers }: CurrentCaregiversProps
                     ⏳ {t("pendingConfirmation")}
                   </div>
                 ) : (
-                  <Link 
-                    href="/family/messages"
-                    className="self-end sm:self-center w-10 h-10 rounded-full bg-gray-50 hover:bg-[#e6f4f2] hover:text-[#015347] flex items-center justify-center text-gray-400 transition-colors border border-sand-high cursor-pointer"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                  </Link>
+                  <div className="flex gap-2 self-end sm:self-center">
+                    {caregiver.companionId && (
+                      <Link 
+                        href={`/family/companions/${caregiver.companionId}`}
+                        title="View Profile"
+                        className="w-10 h-10 rounded-full bg-gray-50 hover:bg-[#e6f4f2] hover:text-[#015347] flex items-center justify-center text-gray-400 transition-colors border border-sand-high cursor-pointer"
+                      >
+                        <User className="w-4 h-4" />
+                      </Link>
+                    )}
+                    <Link 
+                      href={`/family/messages?bookingId=${caregiver.id}`}
+                      className="w-10 h-10 rounded-full bg-gray-50 hover:bg-[#e6f4f2] hover:text-[#015347] flex items-center justify-center text-gray-400 transition-colors border border-sand-high cursor-pointer"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                    </Link>
+                  </div>
                 )}
               </div>
             );

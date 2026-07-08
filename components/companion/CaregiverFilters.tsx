@@ -1,6 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 
 interface FilterState {
   search: string;
@@ -8,6 +9,8 @@ interface FilterState {
   rate: string;
   rating: string;
   specialization: string;
+  gender: string;
+  companionType: string;
 }
 
 interface CaregiverFiltersProps {
@@ -15,6 +18,7 @@ interface CaregiverFiltersProps {
   totalCount: number;
   onFilterChange: (key: keyof FilterState, value: string) => void;
   onClearAll: () => void;
+  onAiSearch?: (query: string) => void;
 }
 
 const SPECIALIZATION_CHIPS = [
@@ -30,37 +34,25 @@ export default function CaregiverFilters({
   totalCount,
   onFilterChange,
   onClearAll,
+  onAiSearch,
 }: CaregiverFiltersProps) {
   const t = useTranslations("companionsPage");
-
+  const locale = useLocale();
   const hasActiveFilters =
-    filters.search ||
     filters.duration ||
     filters.rate ||
     filters.rating ||
-    filters.specialization;
+    filters.specialization ||
+    filters.gender ||
+    filters.companionType;
+
 
   return (
     <div className="space-y-4">
-      {/* Search + Location Bar */}
+      {/* Search + Location Bar is removed, as it's now handled globally by SmartSearchBar */}
       <div className="bg-white rounded-2xl border border-sand-high/60 shadow-soft p-4">
-        <div className="flex flex-col md:flex-row gap-3">
-          {/* Keyword search */}
-          <div className="flex-1 relative">
-            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-stitch-on-surface-variant text-[20px]">
-              search
-            </span>
-            <input
-              type="text"
-              value={filters.search}
-              onChange={(e) => onFilterChange("search", e.target.value)}
-              placeholder={t("searchPlaceholder")}
-              className="w-full pl-10 pr-4 py-3 bg-sand-low border border-sand-high/60 rounded-xl text-sm focus:ring-2 focus:ring-stitch-primary/30 focus:border-stitch-primary outline-none transition-all placeholder:text-stitch-on-surface-variant/50 text-[#012d1d] font-medium"
-            />
-          </div>
-
-          {/* Clear / count */}
-          <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+          <div className="flex items-center gap-3 shrink-0 ml-auto">
             <span className="text-xs text-stitch-on-surface-variant font-medium hidden md:block">
               {t("foundCount", { count: totalCount })}
             </span>
@@ -76,9 +68,9 @@ export default function CaregiverFilters({
         </div>
 
         {/* Detailed Filters Row */}
-        <div className="mt-4 pt-4 border-t border-sand-high/60 flex flex-wrap gap-4 items-center">
+        <div className="mt-2 flex flex-wrap gap-4 items-center">
           {/* Duration */}
-          <div className="flex flex-col gap-1 min-w-[140px]">
+          <div className="flex flex-col gap-1 min-w-35">
             <label className="text-[10px] font-bold uppercase tracking-wider text-stitch-on-surface-variant/60">
               {t("durationLabel")}
             </label>
@@ -98,7 +90,7 @@ export default function CaregiverFilters({
           <div className="w-px h-8 bg-sand-high/80 hidden md:block" />
 
           {/* Hourly Rate */}
-          <div className="flex flex-col gap-1 min-w-[140px]">
+          <div className="flex flex-col gap-1 min-w-35">
             <label className="text-[10px] font-bold uppercase tracking-wider text-stitch-on-surface-variant/60">
               {t("rateLabel")}
             </label>
@@ -117,7 +109,7 @@ export default function CaregiverFilters({
           <div className="w-px h-8 bg-sand-high/80 hidden md:block" />
 
           {/* Rating */}
-          <div className="flex flex-col gap-1 min-w-[140px]">
+          <div className="flex flex-col gap-1 min-w-35">
             <label className="text-[10px] font-bold uppercase tracking-wider text-stitch-on-surface-variant/60">
               {t("ratingLabel")}
             </label>
@@ -130,6 +122,42 @@ export default function CaregiverFilters({
               <option value="4.5">{t("rating45")}</option>
               <option value="4.0">{t("rating40")}</option>
               <option value="3.0">{t("rating30")}</option>
+            </select>
+          </div>
+
+          <div className="w-px h-8 bg-sand-high/80 hidden md:block" />
+
+          {/* Gender */}
+          <div className="flex flex-col gap-1 min-w-35">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-stitch-on-surface-variant/60">
+              {locale === "ar" ? "الجنس" : "Gender"}
+            </label>
+            <select
+              value={filters.gender}
+              onChange={(e) => onFilterChange("gender", e.target.value)}
+              className="bg-transparent border-none font-bold text-stitch-primary text-sm focus:ring-0 p-0 cursor-pointer outline-none"
+            >
+              <option value="">{locale === "ar" ? "الكل" : "Any"}</option>
+              <option value="male">{locale === "ar" ? "ذكر" : "Male"}</option>
+              <option value="female">{locale === "ar" ? "أنثى" : "Female"}</option>
+            </select>
+          </div>
+
+          <div className="w-px h-8 bg-sand-high/80 hidden md:block" />
+
+          {/* Companion Type */}
+          <div className="flex flex-col gap-1 min-w-35">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-stitch-on-surface-variant/60">
+              {locale === "ar" ? "النوع" : "Type"}
+            </label>
+            <select
+              value={filters.companionType}
+              onChange={(e) => onFilterChange("companionType", e.target.value)}
+              className="bg-transparent border-none font-bold text-stitch-primary text-sm focus:ring-0 p-0 cursor-pointer outline-none"
+            >
+              <option value="">{locale === "ar" ? "الكل" : "Any"}</option>
+              <option value="general">{locale === "ar" ? "عام" : "General"}</option>
+              <option value="specialized">{locale === "ar" ? "متخصص" : "Specialized"}</option>
             </select>
           </div>
 
@@ -157,7 +185,7 @@ export default function CaregiverFilters({
               }`}
             >
               <span className="material-symbols-outlined text-[15px]">{chip.icon}</span>
-              {t(chip.translationKey as any)}
+              {t(chip.translationKey as Parameters<typeof t>[0])}
             </button>
           );
         })}

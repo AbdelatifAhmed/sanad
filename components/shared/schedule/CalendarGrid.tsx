@@ -3,25 +3,7 @@
 import React, { useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
-
-interface ScheduleItem {
-  bookingId: string;
-  bookingStatus: string;
-  companionId: {
-    _id: string;
-    name: string;
-    avatar?: any;
-    phone?: string;
-  };
-  location: any;
-  date: string;
-  startTime: string;
-  endTime: string;
-  checkInTime?: string;
-  checkOutTime?: string;
-  tasksList: any[];
-  slotIndex: number;
-}
+import type { ScheduleItem } from "./types";
 
 interface CalendarGridProps {
   selectedDate: Date;
@@ -42,7 +24,7 @@ export default function CalendarGrid({
   locale,
   isRtl,
 }: CalendarGridProps) {
-  const t = useTranslations("familySchedule");
+  const t = useTranslations("schedule");
 
   // Generate calendar days for current month view
   const calendarDays = useMemo(() => {
@@ -102,8 +84,8 @@ export default function CalendarGrid({
       <div className="flex items-center justify-between">
         <h3 className="text-base font-bold text-[#1b1c1c]">{t("calendarTitle")}</h3>
         <div className="flex items-center space-x-1 space-x-reverse">
-          <button 
-            onClick={isRtl ? nextMonth : prevMonth} 
+          <button
+            onClick={isRtl ? nextMonth : prevMonth}
             className="p-1.5 hover:bg-[#f5f2eb] rounded-lg border border-[#eae7e7] transition-all cursor-pointer"
           >
             <ChevronRight className="w-4 h-4 text-[#3e4949]" />
@@ -111,8 +93,8 @@ export default function CalendarGrid({
           <span className="text-sm font-bold text-[#1b1c1c] min-w-[100px] text-center capitalize">
             {monthName}
           </span>
-          <button 
-            onClick={isRtl ? prevMonth : nextMonth} 
+          <button
+            onClick={isRtl ? prevMonth : nextMonth}
             className="p-1.5 hover:bg-[#f5f2eb] rounded-lg border border-[#eae7e7] transition-all cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4 text-[#3e4949]" />
@@ -159,6 +141,18 @@ export default function CalendarGrid({
             </button>
           );
         })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center justify-center space-x-4 space-x-reverse text-[11px] text-[#3e4949]/80 border-t border-[#eae7e7] pt-4">
+        <div className="flex items-center space-x-1.5 space-x-reverse">
+          <span className="w-2 h-2 rounded-full bg-[#1f8a8a]" />
+          <span>{t("legendHasShifts")}</span>
+        </div>
+        <div className="flex items-center space-x-1.5 space-x-reverse">
+          <span className="w-2 h-2 rounded-full bg-[#1f8a8a]/20 border border-[#1f8a8a]/30" />
+          <span>{t("legendToday")}</span>
+        </div>
       </div>
     </div>
   );

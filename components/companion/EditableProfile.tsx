@@ -16,20 +16,45 @@ import { api } from "@/lib/services/api";
 import { 
   Star, MapPin, Edit2, Check, X, Camera, Plus, Loader2, Upload, Calendar, Clock, FileText, VerifiedIcon, CheckCircle2,
   UploadCloud, Lock, Trash2, ShieldAlert, AlertCircle, Info, ChevronRight
+  Star, MapPin, Edit2, Check, X, Plus, Loader2, Calendar, Clock, FileText, CheckCircle2,
+  UploadCloud
 } from "lucide-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { calculateCompanionProfileCompletion } from "@/lib/profileCompletion";
 
 interface EditableProfileProps {
   initialData: CompanionProfile | null;
 }
 
+interface ReviewItem {
+  familyId?: { name?: string };
+  createdAt: string | Date;
+  rating: number;
+  comment: string;
+}
+
+interface ProfileSkill {
+  nameAr?: string;
+  nameEn?: string;
+}
+
+interface CertificateDocument {
+  name: string;
+  url: string;
+}
+
+type WeekdayKey = "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
+const WEEKDAYS: WeekdayKey[] = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 export default function EditableProfile({ initialData }: EditableProfileProps) {
   const locale = useLocale();
   const router = useRouter();
+  const t = useTranslations("companionProfileEdit");
+  const isRtl = locale === "ar";
   const [profile, setProfile] = useState<CompanionProfile | null>(initialData);
   const [loading, setLoading] = useState(!initialData);
   const [saving, setSaving] = useState(false);
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [docUploading, setDocUploading] = useState(false);
 
@@ -75,6 +100,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [dragActive, setDragActive] = useState<{ [key: string]: boolean }>({});
 
+
   // Online / Offline Status State
   const [isOnline, setIsOnline] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
@@ -101,8 +127,21 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
       fetchProfile();
     } else if (initialData.userId?._id) {
       fetchReviews(initialData.userId._id);
+
+  const fetchReviews = async (userId: string) => {
+    try {
+      setReviewsLoading(true);
+      const data = await getCompanionReviews(userId);
+      if (data && data.reviews) {
+        setReviews(data.reviews);
+      }
+    } catch (error) {
+      console.error("Failed to load reviews", error);
+    } finally {
+      setReviewsLoading(false);
+
     }
-  }, [initialData]);
+  };
 
   // Auto-clear toast
   useEffect(() => {
@@ -202,19 +241,15 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
     }
   };
 
-  const fetchReviews = async (userId: string) => {
-    try {
-      setReviewsLoading(true);
-      const data = await getCompanionReviews(userId);
-      if (data && data.reviews) {
-        setReviews(data.reviews);
-      }
-    } catch (error) {
-      console.error("Failed to load reviews", error);
-    } finally {
-      setReviewsLoading(false);
+  useEffect(() => {
+    if (!initialData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchProfile();
+    } else if (initialData.userId?._id) {
+      fetchReviews(initialData.userId._id);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -339,7 +374,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
   const saveSkills = async () => {
     try {
       setSaving(true);
-      const result = await updateProfileInfo({ skills: skillsEdit });
+      await updateProfileInfo({ skills: skillsEdit });
       // Fetch profile again to get populated skills
       await fetchProfile();
       setEditMode({ ...editMode, skills: false });
@@ -387,14 +422,9 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
     return <div className="text-center py-10">Failed to load profile.</div>;
   }
 
-  // Calculate Profile Strength
-  let strength = 0;
-  if (profile.bio) strength += 20;
-  if (profile.hobbies && profile.hobbies.length > 0) strength += 10;
-  if (profile.skills && profile.skills.length > 0) strength += 20;
-  if (profile.availability && profile.availability.length > 0) strength += 20;
-  if (profile.documents?.nationalIdCard && profile.documents.nationalIdCard.public_id) strength += 15;
-  if (profile.documents?.criminalRecord && profile.documents.criminalRecord.public_id) strength += 15;
+  const profileCompletion = calculateCompanionProfileCompletion(profile);
+  const strength = profileCompletion.percentage;
+  const translateDay = (day: string) => (WEEKDAYS.includes(day as WeekdayKey) ? t(`days.${day as WeekdayKey}`) : day);
 
   const hasNationalId = profile.documents?.nationalIdCard && profile.documents.nationalIdCard.url && !profile.documents.nationalIdCard.url.includes("placeholder");
   const hasCriminalRecord = profile.documents?.criminalRecord && profile.documents.criminalRecord.url && !profile.documents.criminalRecord.url.includes("placeholder");
@@ -416,43 +446,43 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
               <span className="text-4xl text-gray-300 font-bold">{profile.userId?.name?.charAt(0) || "U"}</span>
             )}
           </div>
-          <label className="absolute -bottom-2 -right-2 w-10 h-10 bg-stitch-primary text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:bg-stitch-primary-container transition-colors z-10">
+          <label className="absolute -bottom-2 -end-2 w-10 h-10 bg-stitch-primary text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:bg-stitch-primary-container transition-colors z-10">
             <Edit2 className="w-4 h-4" />
             <input type="file" className="hidden" accept="image/jpeg, image/png" onChange={handleAvatarChange} disabled={avatarLoading} />
           </label>
         </div>
 
         {/* Info */}
-        <div className="flex-1 text-center md:text-left md:mt-2">
+        <div className="flex-1 text-center md:text-start md:mt-2">
           <div className="flex flex-col md:flex-row md:items-center gap-3 mb-1">
             <h1 className="text-3xl font-bold text-gray-900">{profile.userId?.name}</h1>
             {profile.verificationStatus === 'verified' && (
               <span className="inline-flex items-center gap-1 bg-teal-50 text-stitch-primary text-xs font-bold px-3 py-1 rounded-full border border-teal-100">
-                Verified
+                {t("verified")}
               </span>
             )}
           </div>
           
           <p className="text-gray-600 text-lg mb-4">
-            {profile.companionType === 'specialized' ? 'Compassionate Specialist' : 'General Care Provider'} 
-            {profile.specialization && profile.specialization !== 'none' && ` in ${profile.specialization.replace("_", " ")}`}
+            {profile.companionType === 'specialized' ? t("specializedCompanion") : t("generalCompanion")} 
+            {profile.specialization && profile.specialization !== 'none' && ` ${t("specializedIn", { specialization: profile.specialization.replace("_", " ") })}`}
           </p>
           
           <div className="flex items-center justify-center md:justify-start gap-4 text-sm text-gray-600 font-medium">
             <div className="flex items-center gap-1">
               <Star className="w-5 h-5 text-teal-600 fill-teal-600" />
               <span className="text-gray-900 font-bold">{profile.rating || 5.0}</span>
-              <span className="text-gray-500 font-normal">({profile.reviewCount || 0} reviews)</span>
+              <span className="text-gray-500 font-normal">({t("reviewsCount", { count: profile.reviewCount || 0 })})</span>
             </div>
             <div className="w-px h-4 bg-gray-300"></div>
             <div className="flex items-center gap-1">
               <MapPin className="w-5 h-5 text-gray-400" />
-              <span>{profile.userId?.location?.city ? `${profile.userId.location.city}, Egypt` : "Location not set"}</span>
+              <span>{profile.userId?.location?.readableAddress ? `${profile.userId.location.readableAddress}` : t("locationNotSet")}</span>
             </div>
             <div className="w-px h-4 bg-gray-300"></div>
             <div className="flex items-center gap-1">
               <span className="text-gray-900 font-bold">${profile.hourlyRate || 0}</span>
-              <span className="text-gray-500 font-normal">/ hour</span>
+              <span className="text-gray-500 font-normal">{t("perHour")}</span>
             </div>
           </div>
         </div>
@@ -460,11 +490,16 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
         {/* Top Right Actions */}
         <div className="flex flex-col items-center md:items-end gap-4 shrink-0">
           <div className="flex items-center gap-3 bg-gray-100 px-4 py-2 rounded-full">
-            <span className="text-sm font-bold text-gray-700">Status:</span>
+            <span className="text-sm font-bold text-gray-700">{t("status")}</span>
             <div className="flex flex-col text-xs">
               <span className={`font-bold transition-colors ${isOnline ? "text-teal-600" : "text-gray-500"}`}>
                 {isOnline ? "Online" : "Offline"}
               </span>
+              <span className="font-bold text-gray-900">{t("online")}</span>
+            </div>
+            {/* Fake toggle for UI matching */}
+            <div className="w-10 h-6 bg-gray-300 rounded-full flex items-center p-1 cursor-not-allowed opacity-50">
+              <div className={`w-4 h-4 bg-white rounded-full shadow-sm ${isRtl ? "-translate-x-4" : "translate-x-4"}`}></div>
             </div>
             {/* Interactive Toggle */}
             <button 
@@ -487,6 +522,8 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
             className="px-6 py-3 bg-stitch-primary text-white font-bold rounded-xl hover:bg-stitch-primary-container transition-colors shadow-sm w-full md:w-auto disabled:opacity-50"
           >
             View Public Profile
+          <button className="px-6 py-3 bg-stitch-primary text-white font-bold rounded-xl hover:bg-stitch-primary-container transition-colors shadow-sm w-full md:w-auto">
+            {t("viewPublicProfile")}
           </button>
         </div>
       </div>
@@ -499,7 +536,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
           {/* Personal Information */}
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Personal Information</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t("personalInfo.title")}</h2>
               {!editMode.info ? (
                 <button onClick={() => { 
                   setBioEdit(profile.bio || ""); 
@@ -508,7 +545,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                   setPhoneEdit(profile.userId?.phone || "");
                   setEditMode({ ...editMode, info: true }); 
                 }} className="text-stitch-primary font-bold text-sm hover:underline">
-                  Edit Info
+                  {t("personalInfo.editInfo")}
                 </button>
               ) : (
                 <div className="flex gap-2">
@@ -524,13 +561,13 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="space-y-2 col-span-2 md:col-span-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">Full Name</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t("personalInfo.fullName")}</label>
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 cursor-not-allowed">
                   {profile.userId?.name}
                 </div>
               </div>
               <div className="space-y-2 col-span-2 md:col-span-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">Email Address</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t("personalInfo.emailAddress")}</label>
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 cursor-not-allowed">
                   {profile.userId?.email}
                 </div>
@@ -552,7 +589,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                 )}
               </div>
               <div className="space-y-2 col-span-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">Hourly Rate ($/hr)</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t("personalInfo.hourlyRate")}</label>
                 {editMode.info ? (
                   <input 
                     type="number"
@@ -560,11 +597,11 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                     className="w-full p-4 border border-stitch-outline rounded-xl focus:ring-2 focus:ring-stitch-primary focus:border-transparent outline-none text-gray-700"
                     value={hourlyRateEdit}
                     onChange={(e) => setHourlyRateEdit(Number(e.target.value))}
-                    placeholder="e.g. 150"
+                    placeholder={t("personalInfo.hourlyRatePlaceholder")}
                   />
                 ) : (
                   <div className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 leading-relaxed font-bold">
-                    ${profile.hourlyRate || 0}/hr
+                    {t("hourlyRateValue", { rate: profile.hourlyRate || 0 })}
                   </div>
                 )}
               </div>
@@ -572,34 +609,34 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
 
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">Bio & Philosophy</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t("personalInfo.bio")}</label>
                 {editMode.info ? (
                   <textarea 
                     className="w-full p-4 border border-stitch-outline rounded-xl focus:ring-2 focus:ring-stitch-primary focus:border-transparent outline-none min-h-[140px] text-gray-700"
                     value={bioEdit}
                     onChange={(e) => setBioEdit(e.target.value)}
-                    placeholder="Tell families about yourself..."
+                    placeholder={t("personalInfo.bioPlaceholder")}
                   />
                 ) : (
                   <div className="w-full p-6 bg-gray-50 border border-gray-100 rounded-2xl text-gray-700 leading-relaxed min-h-[120px]">
-                    {profile.bio || "No bio provided yet. Add a bio to attract more families!"}
+                    {profile.bio || t("personalInfo.noBio")}
                   </div>
                 )}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">Hobbies</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t("personalInfo.hobbies")}</label>
                 {editMode.info ? (
                   <input 
                     type="text"
                     className="w-full p-4 border border-stitch-outline rounded-xl focus:ring-2 focus:ring-stitch-primary focus:border-transparent outline-none text-gray-700"
                     value={hobbiesEdit}
                     onChange={(e) => setHobbiesEdit(e.target.value)}
-                    placeholder="Reading, Chess, Walking... (comma separated)"
+                    placeholder={t("personalInfo.hobbiesPlaceholder")}
                   />
                 ) : (
                   <div className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 leading-relaxed">
-                    {profile.hobbies && profile.hobbies.length > 0 ? profile.hobbies.join(", ") : "No hobbies listed."}
+                    {profile.hobbies && profile.hobbies.length > 0 ? profile.hobbies.join(", ") : t("personalInfo.noHobbies")}
                   </div>
                 )}
               </div>
@@ -609,7 +646,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
           {/* Specialties & Skills */}
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Specialties & Skills</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t("skills.title")}</h2>
               {!editMode.skills ? (
                 <button onClick={() => { 
                   // Map existing skills to their names for editing
@@ -618,7 +655,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                   setEditMode({ ...editMode, skills: true }); 
                   loadDbSkills();
                 }} className="text-stitch-primary font-bold text-sm hover:underline">
-                  Manage Tags
+                  {t("skills.manageTags")}
                 </button>
               ) : (
                 <div className="flex gap-2">
@@ -634,10 +671,10 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
 
             <div className="flex flex-wrap gap-3">
               {!editMode.skills ? (
-                profile.skills && profile.skills.length > 0 ? profile.skills.map((skill: any, index) => {
+                profile.skills && profile.skills.length > 0 ? profile.skills.map((skill: string | ProfileSkill, index) => {
                   const skillName = typeof skill === 'string' 
                     ? skill 
-                    : (locale === 'ar' ? skill.nameAr : skill.nameEn) || "Skill";
+                    : (locale === 'ar' ? skill.nameAr : skill.nameEn) || t("skills.skillFallback");
                   
                   return (
                     <div key={index} className="bg-stitch-secondary-container/50 text-stitch-on-secondary-container px-4 py-2 rounded-full text-sm font-bold border border-stitch-secondary-container">
@@ -645,7 +682,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                     </div>
                   );
                 }) : (
-                  <span className="text-gray-400 text-sm italic">No skills listed yet.</span>
+                  <span className="text-gray-400 text-sm italic">{t("skills.noSkills")}</span>
                 )
               ) : (
                 <div className="w-full space-y-4">
@@ -663,7 +700,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                     <input 
                       type="text" 
                       className="flex-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-stitch-primary"
-                      placeholder="Type a skill..."
+                      placeholder={t("skills.skillPlaceholder")}
                       value={newSkillText}
                       onChange={(e) => setNewSkillText(e.target.value)}
                       onKeyDown={(e) => {
@@ -685,7 +722,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                       }}
                       className="px-4 py-2 bg-stitch-primary text-white rounded-xl font-bold hover:bg-stitch-primary-container"
                     >
-                      Add Custom
+                      {t("skills.addCustom")}
                     </button>
                   </div>
 
@@ -697,7 +734,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                     return matchesQuery && notSelected;
                   }).length > 0 && (
                     <div className="space-y-2 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                      <p className="text-xs font-bold text-gray-500 uppercase">Suggested Skills</p>
+                      <p className="text-xs font-bold text-gray-500 uppercase">{t("skills.suggestedSkills")}</p>
                       <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                         {dbSkills.filter(s => {
                           const name = locale === 'ar' ? s.nameAr : s.nameEn;
@@ -716,7 +753,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                               }}
                               className="px-3 py-1.5 bg-white hover:bg-stitch-primary/10 hover:text-stitch-primary text-gray-600 rounded-full text-xs font-bold border border-gray-200 transition-colors shadow-sm"
                             >
-                              + {name}
+                              {t("skills.addSuggested", { name })}
                             </button>
                           );
                         })}
@@ -731,18 +768,18 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
           {/* Schedule (Modern UI Redesign) */}
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Weekly Schedule</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t("schedule.title")}</h2>
               {!editMode.schedule ? (
                 <button onClick={() => { setScheduleEdit(profile.availability || []); setEditMode({ ...editMode, schedule: true }); }} className="text-stitch-primary font-bold text-sm hover:underline">
-                  Edit Schedule
+                  {t("schedule.editSchedule")}
                 </button>
               ) : (
                 <div className="flex gap-2">
                   <button onClick={() => setEditMode({ ...editMode, schedule: false })} className="px-3 py-1.5 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-lg">
-                    Cancel
+                    {t("actions.cancel")}
                   </button>
                   <button onClick={saveSchedule} disabled={saving} className="px-3 py-1.5 text-sm font-bold text-white bg-stitch-primary hover:bg-stitch-primary-container rounded-lg flex items-center gap-1">
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : t("actions.save")}
                   </button>
                 </div>
               )}
@@ -750,7 +787,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
 
             {editMode.schedule ? (
               <div className="space-y-3">
-                {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(day => {
+                {WEEKDAYS.map(day => {
                   const currentDay = scheduleEdit.find(s => s.day === day);
                   const isWorking = !!currentDay && currentDay.slots.length > 0;
 
@@ -770,7 +807,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                               }
                             }}
                           />
-                          <span className={`font-bold ${isWorking ? 'text-gray-900' : 'text-gray-500'}`}>{day}</span>
+                          <span className={`font-bold ${isWorking ? 'text-gray-900' : 'text-gray-500'}`}>{translateDay(day)}</span>
                         </label>
                       </div>
                       
@@ -779,7 +816,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                           <input 
                             type="text" 
                             className="w-full text-sm p-2.5 border border-gray-200 rounded-xl focus:border-stitch-primary outline-none"
-                            placeholder="e.g. 09:00-17:00"
+                            placeholder={t("schedule.slotPlaceholder")}
                             value={currentDay.slots.join(", ")}
                             onChange={(e) => {
                               const slots = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
@@ -800,7 +837,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                     <div key={i} className="flex flex-col p-5 bg-gray-50 border border-gray-100 rounded-2xl">
                       <div className="flex items-center gap-2 mb-2">
                         <Calendar className="w-5 h-5 text-stitch-primary" />
-                        <p className="font-bold text-gray-900">{a.day}</p>
+                        <p className="font-bold text-gray-900">{translateDay(a.day)}</p>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <Clock className="w-4 h-4 text-gray-400" />
@@ -809,7 +846,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 italic col-span-2">No schedule set. Please add your availability.</p>
+                  <p className="text-gray-500 italic col-span-2">{t("schedule.noSchedule")}</p>
                 )}
               </div>
             )}
@@ -818,10 +855,10 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
           {/* Reviews from Families */}
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Reviews from Families</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t("reviews.title")}</h2>
               <div className="flex items-center gap-2 text-sm font-bold text-gray-600">
-                <span>Sort by:</span>
-                <span className="text-stitch-primary cursor-pointer">Recent</span>
+                <span>{t("reviews.sortBy")}</span>
+                <span className="text-stitch-primary cursor-pointer">{t("reviews.recent")}</span>
               </div>
             </div>
 
@@ -854,11 +891,11 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                 ))}
                 
                 <button className="w-full py-3 mt-4 border border-gray-200 rounded-xl text-stitch-primary font-bold hover:bg-gray-50 transition-colors">
-                  View All {profile.reviewCount || reviews.length} Reviews
+                  {t("reviews.viewAll", { count: profile.reviewCount || reviews.length })}
                 </button>
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-6">No reviews yet.</p>
+              <p className="text-gray-500 text-center py-6">{t("reviews.noReviews")}</p>
             )}
           </div>
 
@@ -1011,7 +1048,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                   {locale === "ar" ? "الشهادات المهنية والتراخيص الطبية" : "Professional Certificates & Medical Licenses"}
                 </label>
                 
-                {profile.documents?.Certificates?.map((cert: any, i: number) => (
+                {profile.documents?.Certificates?.map((cert: CertificateDocument, i: number) => (
                   <div key={i} className="bg-gray-50 p-4 rounded-2xl border border-gray-200 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600">
@@ -1030,7 +1067,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                       </div>
                     </div>
                     <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded-full uppercase">
-                      {locale === "ar" ? "موثق" : "Verified"}
+                      {t("verified")}
                     </span>
                   </div>
                 ))}
@@ -1117,9 +1154,9 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
 
           {/* Profile Strength */}
           <div className="bg-stitch-primary rounded-3xl p-8 shadow-sm text-white">
-            <h2 className="text-xl font-bold mb-2">Profile Strength</h2>
+            <h2 className="text-xl font-bold mb-2">{t("profileStrength.title")}</h2>
             <p className="text-sm text-teal-100 mb-6 leading-relaxed">
-              Complete your profile to increase visibility to families.
+              {t("profileStrength.description")}
             </p>
             
             <div className="mb-2 h-2 w-full bg-teal-800 rounded-full overflow-hidden">
@@ -1127,9 +1164,9 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
             </div>
             
             <div className="flex items-center justify-between font-bold text-sm">
-              <span>{Math.min(strength, 100)}% Complete</span>
+              <span>{t("profileStrength.complete", { percentage: Math.min(strength, 100) })}</span>
               {strength < 100 && (
-                <button className="underline hover:text-teal-200">Complete Now</button>
+                <button className="underline hover:text-teal-200">{t("profileStrength.completeNow")}</button>
               )}
             </div>
           </div>

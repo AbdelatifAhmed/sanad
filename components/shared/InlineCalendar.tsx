@@ -144,7 +144,7 @@ export default function InlineCalendar({ value, onChange, minDate }: InlineCalen
     return compareDate.getTime() < parsedMinDate.getTime();
   };
   return (
-    <div className="w-full bg-[#fcf9f6] border border-[#bdc9c8]/70 rounded-2xl p-3.5 shadow-sm">
+    <div className="w-full bg-[#fcf9f6] border border-[#bdc9c8]/70 rounded-2xl p-3.5 shadow-sm ">
       {/* Calendar Header */}
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-extrabold text-[#1b1c1c] flex items-center gap-1 capitalize">

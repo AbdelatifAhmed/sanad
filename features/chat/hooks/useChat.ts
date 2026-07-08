@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSocket } from "../../../components/providers/SocketProvider";
 import { api } from "../../../lib/services/api";
 import { Conversation, ChatMessage } from "../types";
+import { useLocale } from "next-intl";
 
 export const useChat = (activeBookingId: string | null, userId: string | null) => {
+  const locale = useLocale();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
@@ -121,6 +123,8 @@ export const useChat = (activeBookingId: string | null, userId: string | null) =
       const res = await api.post("/chat", {
         bookingId: activeBookingId,
         messageText: trimmed,
+      }, {
+        timeout: 45000
       });
 
       // Replace optimistic message with actual saved message
@@ -155,7 +159,30 @@ export const useChat = (activeBookingId: string | null, userId: string | null) =
       console.error("Error sending message:", err);
       // Remove optimistic message on failure
       setMessages((prev) => prev.filter((msg) => msg._id !== optimisticId));
-      setMessagesError("Failed to send message. Please try again.");
+      if (err.response?.status === 403) {
+        const errorMsg = err.response.data?.message || 
+          (locale === "ar"
+            ? "تنبيه أمني: مشاركة معلومات الاتصال الشخصية أو الدفع خارج المنصة محظور لحماية حسابك."
+            : "Security alert: sharing personal contacts or proposing off-platform payments is forbidden to keep your booking protected.");
+        
+        // Append inline system alert message bubble
+        const blockedMsg: ChatMessage = {
+          _id: `blocked-${Date.now()}`,
+          bookingId: activeBookingId || "",
+          senderId: userId || "",
+          receiverId: "",
+          messageText: errorMsg,
+          isRead: false,
+          isSystemAlert: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, blockedMsg]);
+      } else {
+        setMessagesError("Failed to send message. Please try again.");
+        // Clear global error after 4 seconds to not disrupt user experience
+        setTimeout(() => setMessagesError(null), 4000);
+      }
     }
   };
 

@@ -16,6 +16,18 @@ import {
   Heart,
   ShieldAlert,
   X,
+import { uploadUserAvatar } from "@/lib/api/upload.api";
+import { getAvatarUrl } from "@/lib/avatar";
+import { useTranslations } from "next-intl";
+import { 
+  User, 
+  MapPin, 
+  Plus, 
+  Trash2, 
+  Edit2, 
+  Heart, 
+  ShieldAlert, 
+  X, 
   Info,
   Check,
   ChevronRight,
@@ -44,6 +56,8 @@ export default function FamilyProfile() {
   const { user } = useAuthStore();
   const router = useRouter();
 
+  const t = useTranslations("profile");
+  
   // Real-time care requests data fetching
   const { data: requestsData, isLoading: requestsLoading } = useFamilyCareRequests();
   const jobs = Array.isArray(requestsData?.jobPosts)
@@ -66,6 +80,7 @@ export default function FamilyProfile() {
   const [bookingsData, setBookingsData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [joinedAt, setJoinedAt] = useState<string>("");
 
   // Address/Profile editing states
   const [savingAddress, setSavingAddress] = useState<boolean>(false);
@@ -125,6 +140,16 @@ export default function FamilyProfile() {
     push: true
   });
 
+  const displayLocation = address.city
+    ? address.city
+    : user?.location?.city
+    ? `${user.location.city}${user.location.governorate ? `, ${user.location.governorate}` : ""}`
+    : "";
+
+  const joinDate = joinedAt
+    ? new Date(joinedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    : "";
+
   // Load user data on store load
   useEffect(() => {
     if (user) {
@@ -151,7 +176,7 @@ export default function FamilyProfile() {
     setNotifications(updated);
     localStorage.setItem("sanad_family_notifications", JSON.stringify(updated));
     setToast({
-      message: "Notification preferences updated locally.",
+      message: t("toast.notificationsUpdated"),
       type: "success"
     });
   };
@@ -165,7 +190,7 @@ export default function FamilyProfile() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      setToast({ message: "Image size must be less than 5MB.", type: "error" });
+      setToast({ message: t("validation.photoSize"), type: "error" });
       return;
     }
 
@@ -173,6 +198,8 @@ export default function FamilyProfile() {
       setUploadingPhoto(true);
       const res = await uploadUserAvatar(file);
       if (res && res.avatar) {
+      const result = await uploadUserAvatar(file);
+      if (result && result.avatar) {
         if (user) {
           useAuthStore.setState({
             user: {
@@ -186,6 +213,15 @@ export default function FamilyProfile() {
     } catch (err: any) {
       console.error("Failed to update photo:", err);
       const msg = err.response?.data?.message || "Failed to update profile photo.";
+              avatar: result.avatar,
+            }
+          });
+        }
+        setToast({ message: t("toast.photoUpdated"), type: "success" });
+      }
+    } catch (err: any) {
+      console.error("Failed to update photo:", err);
+      const msg = err.response?.data?.message || t("toast.photoFailed");
       setToast({ message: msg, type: "error" });
     } finally {
       setUploadingPhoto(false);
@@ -216,6 +252,7 @@ export default function FamilyProfile() {
             area: profile.address?.area || "",
             fullAddress: profile.address?.fullAddress || ""
           });
+          setJoinedAt(profile.familyId?.createdAt || "");
         } else {
           setProfileExists(false);
           // Pre-populate address from user location object if it exists
@@ -252,7 +289,7 @@ export default function FamilyProfile() {
         }
       } else {
         console.error("Error loading family profile:", err);
-        setError("Could not load family profile settings. Please refresh the page.");
+        setError(t("errorLoadMessage"));
       }
     } finally {
       setLoading(false);
@@ -280,7 +317,7 @@ export default function FamilyProfile() {
     e.preventDefault();
     if (!tempAddress.city.trim() || !tempAddress.area.trim() || !tempAddress.fullAddress.trim()) {
       setToast({
-        message: "Please fill out all address fields.",
+        message: t("validation.addressRequired"),
         type: "error"
       });
       return;
@@ -333,13 +370,13 @@ export default function FamilyProfile() {
 
         setEditProfileModalOpen(false);
         setToast({
-          message: "Profile and address updated successfully!",
+          message: t("toast.profileUpdated"),
           type: "success"
         });
       }
     } catch (err: any) {
       console.error("Failed to save profile:", err);
-      const msg = err.response?.data?.error || "Failed to update profile details.";
+      const msg = err.response?.data?.error || t("toast.profileFailed");
       setToast({ message: msg, type: "error" });
     } finally {
       setSavingAddress(false);
@@ -374,15 +411,15 @@ export default function FamilyProfile() {
   const handleSaveMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) {
-      setToast({ message: "Dependent name is required.", type: "error" });
+      setToast({ message: t("validation.nameRequired"), type: "error" });
       return;
     }
     if (formAge === "" || formAge < 0) {
-      setToast({ message: "Please enter a valid age.", type: "error" });
+      setToast({ message: t("validation.ageRequired"), type: "error" });
       return;
     }
     if (!formCondition.trim()) {
-      setToast({ message: "Please provide condition or care details.", type: "error" });
+      setToast({ message: t("validation.conditionRequired"), type: "error" });
       return;
     }
 
@@ -414,7 +451,7 @@ export default function FamilyProfile() {
       if (!profileExists) {
         if (!address.city.trim() || !address.area.trim() || !address.fullAddress.trim()) {
           setToast({
-            message: "You must complete the Residence Address details first to initialize your profile.",
+            message: t("validation.residenceRequired"),
             type: "error"
           });
           setSavingMember(false);
@@ -438,12 +475,15 @@ export default function FamilyProfile() {
           message: editingMember
             ? "Dependent profile updated successfully!"
             : "New family dependent registered successfully!",
+          message: editingMember 
+            ? t("toast.memberUpdated")
+            : t("toast.memberAdded"),
           type: "success"
         });
       }
     } catch (err: any) {
       console.error("Error saving member:", err);
-      const msg = err.response?.data?.error || "Failed to save family member.";
+      const msg = err.response?.data?.error || t("toast.memberFailed");
       setToast({ message: msg, type: "error" });
     } finally {
       setSavingMember(false);
@@ -463,13 +503,13 @@ export default function FamilyProfile() {
         setBeneficiaries(res.data.profile.beneficiaries || []);
         setConfirmDeleteId(null);
         setToast({
-          message: "Dependent removed from family profile.",
+          message: t("toast.memberRemoved"),
           type: "success"
         });
       }
     } catch (err: any) {
       console.error("Failed to delete dependent:", err);
-      const msg = err.response?.data?.error || "Failed to remove dependent.";
+      const msg = err.response?.data?.error || t("toast.memberDeleteFailed");
       setToast({ message: msg, type: "error" });
     } finally {
       setDeletingId(null);
@@ -483,7 +523,7 @@ export default function FamilyProfile() {
       const res = await api.put(`/bookings/${bookingId}/status`, { status: "completed" });
       if (res.data) {
         setToast({
-          message: "Service marked as completed successfully!",
+          message: t("toast.serviceCompleted"),
           type: "success"
         });
         // Refresh profile stats and bookings data
@@ -491,7 +531,7 @@ export default function FamilyProfile() {
       }
     } catch (err: any) {
       console.error("Failed to complete booking:", err);
-      const msg = err.response?.data?.error || "Failed to mark service as completed.";
+      const msg = err.response?.data?.error || t("toast.serviceFailed");
       setToast({ message: msg, type: "error" });
     } finally {
       setCompletingId(null);
@@ -565,12 +605,12 @@ export default function FamilyProfile() {
       {/* Breadcrumbs and Page Header */}
       <header>
         <div className="flex items-center gap-2 text-xs text-[#3e4949] mb-1 font-semibold uppercase tracking-wider">
-          <span>Family Portal</span>
+          <span>{t("familyPortal")}</span>
           <ChevronRight className="w-3 h-3 text-[#6e7979]" />
-          <span className="text-[#1f8a8a]">Managing Care for {profileName || "Family"}</span>
+          <span className="text-[#1f8a8a]">{t("managingCare", { name: profileName || t("familyMembers.dependent") })}</span>
         </div>
         <h1 className="text-3xl font-stitch-display font-extrabold text-[#1b1c1c] tracking-tight">
-          Profile Management
+          {t("pageTitle")}
         </h1>
       </header>
 
@@ -587,13 +627,13 @@ export default function FamilyProfile() {
         <div className="bg-red-50 border border-red-200 text-red-800 p-6 rounded-2xl flex items-start gap-3 shadow-soft max-w-2xl">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
           <div>
-            <h4 className="font-bold font-stitch-display text-sm">Error Loading Profile</h4>
+            <h4 className="font-bold font-stitch-display text-sm">{t("errorLoadingProfile")}</h4>
             <p className="text-xs mt-1 text-red-700">{error}</p>
             <button
               onClick={fetchProfile}
               className="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs transition-colors"
             >
-              Try Again
+              {t("tryAgain")}
             </button>
           </div>
         </div>
@@ -619,8 +659,9 @@ export default function FamilyProfile() {
                     <div className="w-6 h-6 border-2 border-[#1f8a8a] border-t-transparent rounded-full animate-spin" />
                   ) : getAvatarUrl(user?.avatar) ? (
                     <img src={getAvatarUrl(user?.avatar)!} alt="Profile" className="w-full h-full object-cover" />
+                    <img src={getAvatarUrl(user?.avatar) || ""} alt={profileName || t("personalInfo.fullName")} className="w-full h-full object-cover" />
                   ) : (
-                    (profileName || "F").charAt(0).toUpperCase()
+                    (profileName || "FA").slice(0, 2).toUpperCase()
                   )}
                 </div>
                 <div className="absolute bottom-0 right-0 bg-[#1f8a8a] hover:bg-[#166f6f] text-white p-2 rounded-full border-2 border-white shadow-md transition-all">
@@ -632,12 +673,8 @@ export default function FamilyProfile() {
               <div>
                 <div className="flex flex-col sm:flex-row items-center gap-2.5">
                   <h2 className="font-stitch-display text-2xl font-bold text-[#1b1c1c] leading-tight">
-                    {profileName || "Sarah Jenkins"}
+                    {profileName || ""}
                   </h2>
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#aeedd5] text-[#316d5b] text-[10px] font-extrabold rounded-full uppercase tracking-wider border border-[#aeedd5]">
-                    <Check className="w-3 h-3" />
-                    Premium Family Account
-                  </span>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-3 text-xs text-[#3e4949] font-semibold">
@@ -645,6 +682,18 @@ export default function FamilyProfile() {
                     <MapPin className="w-4 h-4 text-[#1f8a8a]" />
                     {address.city ? `${address.city}, Egypt` : "Cairo, Egypt"}
                   </span>
+                  {displayLocation && (
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-[#1f8a8a]" />
+                      {displayLocation}
+                    </span>
+                  )}
+                  {joinDate && (
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-[#1f8a8a]" />
+                      {t("joined")} {joinDate}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -659,10 +708,10 @@ export default function FamilyProfile() {
                 {uploadingPhoto ? (
                   <>
                     <div className="w-4 h-4 border-2 border-[#2b2b2b] border-t-transparent rounded-full animate-spin" />
-                    Uploading...
+                    {t("uploading")}
                   </>
                 ) : (
-                  "Change Photo"
+                  t("changePhoto")
                 )}
               </button>
               <button
@@ -670,7 +719,7 @@ export default function FamilyProfile() {
                 className="h-[56px] px-6 bg-[#1f8a8a] hover:bg-[#166f6f] text-white font-bold rounded-xl text-sm shadow-soft transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <Edit2 className="w-4 h-4" />
-                Edit Profile
+                {t("editProfile")}
               </button>
             </div>
           </div>
@@ -687,7 +736,7 @@ export default function FamilyProfile() {
                   {requestsLoading ? "..." : jobs.length}
                 </span>
                 <span className="text-xs font-semibold text-[#3e4949] uppercase tracking-wider block">
-                  Total Requests
+                  {t("stats.totalRequests")}
                 </span>
               </div>
             </div>
@@ -702,7 +751,7 @@ export default function FamilyProfile() {
                   {requestsLoading ? "..." : jobs.filter((j: any) => j.status === "open").length}
                 </span>
                 <span className="text-xs font-semibold text-[#3e4949] uppercase tracking-wider block">
-                  Active Requests
+                  {t("stats.activeRequests")}
                 </span>
               </div>
             </div>
@@ -717,7 +766,7 @@ export default function FamilyProfile() {
                   {loading ? "..." : (bookingsData?.past?.filter((b: any) => b.status === "completed").length || 0)}
                 </span>
                 <span className="text-xs font-semibold text-[#3e4949] uppercase tracking-wider block">
-                  Completed Services
+                  {t("stats.completedServices")}
                 </span>
               </div>
             </div>
@@ -732,7 +781,7 @@ export default function FamilyProfile() {
                   {loading ? "..." : beneficiaries.length}
                 </span>
                 <span className="text-xs font-semibold text-[#3e4949] uppercase tracking-wider block">
-                  Family Members
+                  {t("stats.familyMembers")}
                 </span>
               </div>
             </div>
@@ -750,7 +799,7 @@ export default function FamilyProfile() {
                   <div className="flex items-center gap-2.5">
                     <User className="w-5 h-5 text-[#1f8a8a]" />
                     <h3 className="font-stitch-display text-lg font-bold text-[#1b1c1c]">
-                      Personal Information
+                      {t("personalInfo.title")}
                     </h3>
                   </div>
                   <button
@@ -758,7 +807,7 @@ export default function FamilyProfile() {
                     className="flex items-center gap-1.5 text-xs font-bold text-[#1f8a8a] hover:text-[#166f6f] transition-colors cursor-pointer"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
-                    Edit
+                    {t("personalInfo.edit")}
                   </button>
                 </div>
 
@@ -766,48 +815,48 @@ export default function FamilyProfile() {
                   <div className="bg-slate-50/50 p-4 rounded-xl border border-[#eae7e7]/60 flex items-start gap-3">
                     <User className="w-5 h-5 text-[#1f8a8a] mt-0.5" />
                     <div>
-                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">Full Name</span>
-                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1">{profileName || "Not Provided"}</span>
+                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">{t("personalInfo.fullName")}</span>
+                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1">{profileName || t("personalInfo.notProvided")}</span>
                     </div>
                   </div>
 
                   <div className="bg-slate-50/50 p-4 rounded-xl border border-[#eae7e7]/60 flex items-start gap-3">
                     <Mail className="w-5 h-5 text-[#1f8a8a] mt-0.5" />
                     <div>
-                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">Email Address</span>
-                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1 break-all">{profileEmail || "Not Provided"}</span>
+                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">{t("personalInfo.emailAddress")}</span>
+                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1 break-all">{profileEmail || t("personalInfo.notProvided")}</span>
                     </div>
                   </div>
 
                   <div className="bg-slate-50/50 p-4 rounded-xl border border-[#eae7e7]/60 flex items-start gap-3">
                     <Phone className="w-5 h-5 text-[#1f8a8a] mt-0.5" />
                     <div>
-                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">Phone Number</span>
-                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1">{profilePhone || "Not Provided"}</span>
+                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">{t("personalInfo.phoneNumber")}</span>
+                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1">{profilePhone || t("personalInfo.notProvided")}</span>
                     </div>
                   </div>
 
                   <div className="bg-slate-50/50 p-4 rounded-xl border border-[#eae7e7]/60 flex items-start gap-3">
                     <MapPin className="w-5 h-5 text-[#1f8a8a] mt-0.5" />
                     <div>
-                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">City</span>
-                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1">{address.city || "Not Provided"}</span>
+                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">{t("personalInfo.city")}</span>
+                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1">{address.city || t("personalInfo.notProvided")}</span>
                     </div>
                   </div>
 
                   <div className="md:col-span-2 bg-slate-50/50 p-4 rounded-xl border border-[#eae7e7]/60 flex items-start gap-3">
                     <MapPin className="w-5 h-5 text-[#1f8a8a] mt-0.5" />
                     <div>
-                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">Area / District</span>
-                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1">{address.area || "Not Provided"}</span>
+                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">{t("personalInfo.areaDistrict")}</span>
+                      <span className="block text-sm font-bold text-[#1b1c1c] mt-1">{address.area || t("personalInfo.notProvided")}</span>
                     </div>
                   </div>
 
                   <div className="md:col-span-2 bg-slate-50/50 p-4 rounded-xl border border-[#eae7e7]/60 flex items-start gap-3">
                     <MapPin className="w-5 h-5 text-[#1f8a8a] mt-0.5" />
                     <div>
-                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">Residential Address</span>
-                      <span className="block text-sm font-medium text-[#2b2b2b] mt-1 leading-relaxed">{address.fullAddress || "Not Provided"}</span>
+                      <span className="block text-xs font-semibold text-[#3e4949] uppercase tracking-wider">{t("personalInfo.residentialAddress")}</span>
+                      <span className="block text-sm font-medium text-[#2b2b2b] mt-1 leading-relaxed">{address.fullAddress || t("personalInfo.notProvided")}</span>
                     </div>
                   </div>
                 </div>
@@ -820,10 +869,10 @@ export default function FamilyProfile() {
                     <Users className="w-6 h-6 text-[#1f8a8a]" />
                     <div>
                       <h3 className="font-stitch-display text-xl font-bold text-[#1b1c1c]">
-                        Family Members Receiving Care
+                        {t("familyMembers.title")}
                       </h3>
                       <p className="text-xs text-[#3e4949] font-semibold mt-0.5">
-                        Manage registered dependents and care profiles ({beneficiaries.length} total)
+                        {t("familyMembers.subtitle", { count: beneficiaries.length })}
                       </p>
                     </div>
                   </div>
@@ -833,7 +882,7 @@ export default function FamilyProfile() {
                     className="h-[56px] px-6 bg-white hover:bg-slate-50 border-2 border-[#1f8a8a] text-[#1f8a8a] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 text-sm active:scale-[0.98] cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
-                    Add Member
+                    {t("familyMembers.addMember")}
                   </button>
                 </div>
 
@@ -843,10 +892,10 @@ export default function FamilyProfile() {
                       <Heart className="w-8 h-8" />
                     </div>
                     <h4 className="font-stitch-display text-lg font-bold text-[#1b1c1c]">
-                      No family dependents registered
+                      {t("familyMembers.noMembersTitle")}
                     </h4>
                     <p className="text-[#3e4949] text-sm max-w-sm mt-2 leading-relaxed font-semibold">
-                      Register family members requiring companionship, assistance, or medical support.
+                      {t("familyMembers.noMembersDesc")}
                     </p>
                   </div>
                 ) : (
@@ -866,7 +915,7 @@ export default function FamilyProfile() {
                                   {member.name}
                                 </h4>
                                 <p className="text-xs md:text-sm text-[#3e4949] capitalize font-semibold mt-1">
-                                  {member.name.toLowerCase().includes("margaret") ? "Mother" : member.name.toLowerCase().includes("arthur") ? "Father" : "Dependent"} • {member.age} yrs
+                                  {member.name.toLowerCase().includes("margaret") ? t("familyMembers.mother") : member.name.toLowerCase().includes("arthur") ? t("familyMembers.father") : t("familyMembers.dependent")} • {member.age} {t("familyMembers.years")}
                                 </p>
                               </div>
 
@@ -876,14 +925,14 @@ export default function FamilyProfile() {
                                     : "bg-slate-100 text-[#3e4949] border-[#eae7e7]"
                                   }`}
                               >
-                                {isMother ? "ACTIVE CARE" : "NO ACTIVE CARE"}
+                                {isMother ? t("familyMembers.activeCare") : t("familyMembers.noActiveCare")}
                               </span>
                             </div>
 
                             {/* Conditions details */}
                             <div className="bg-white border border-[#eae7e7]/60 p-4 rounded-xl mb-4 text-xs md:text-sm">
                               <p className="text-[10px] text-[#3e4949] font-bold uppercase tracking-wider mb-2">
-                                Conditions & Care Details
+                                {t("familyMembers.conditionsDetails")}
                               </p>
                               <p className="text-[#2b2b2b] font-medium leading-relaxed line-clamp-4">
                                 {member.conditionDetails}
@@ -903,7 +952,7 @@ export default function FamilyProfile() {
                                 ))}
                                 {member.interests.length > 4 && (
                                   <span className="text-xs text-[#3e4949] font-semibold flex items-center">
-                                    +{member.interests.length - 4} more
+                                    +{member.interests.length - 4} {t("familyMembers.more")}
                                   </span>
                                 )}
                               </div>
@@ -917,7 +966,7 @@ export default function FamilyProfile() {
                               className="flex-1 h-11 bg-white hover:bg-slate-50 text-[#3e4949] border border-[#eae7e7] rounded-xl text-xs md:text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                             >
                               <Edit2 className="w-3.5 h-3.5 text-[#1f8a8a]" />
-                              Edit Member
+                              {t("familyMembers.editMember")}
                             </button>
                             <button
                               onClick={() => setConfirmDeleteId(member._id || null)}
@@ -939,10 +988,10 @@ export default function FamilyProfile() {
                   <History className="w-6 h-6 text-[#1f8a8a]" />
                   <div>
                     <h3 className="font-stitch-display text-xl font-bold text-[#1b1c1c]">
-                      Service & Booking History
+                      {t("serviceHistory.title")}
                     </h3>
                     <p className="text-xs text-[#3e4949] font-semibold mt-0.5">
-                      Monitor ongoing care visits and complete active bookings.
+                      {t("serviceHistory.subtitle")}
                     </p>
                   </div>
                 </div>
@@ -952,7 +1001,7 @@ export default function FamilyProfile() {
                   <div className="space-y-4">
                     <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Active Ongoing Services
+                      {t("serviceHistory.activeServices")}
                     </h4>
                     <div className="grid grid-cols-1 gap-4">
                       {bookingsData.upcoming
@@ -964,21 +1013,21 @@ export default function FamilyProfile() {
                           >
                             <div className="flex items-center gap-4">
                               <div className="w-12 h-12 bg-emerald-600/10 border border-emerald-200 text-emerald-700 rounded-xl flex items-center justify-center font-bold text-lg overflow-hidden shrink-0">
-                                {booking.companionId?.avatar ? (
-                                  <img src={booking.companionId.avatar} alt={booking.companionId?.name} className="w-full h-full object-cover" />
+                                {getAvatarUrl(booking.companionId?.avatar) ? (
+                                  <img src={getAvatarUrl(booking.companionId.avatar) || ""} alt={booking.companionId?.name} className="w-full h-full object-cover" />
                                 ) : (
                                   (booking.companionId?.name || "C").charAt(0).toUpperCase()
                                 )}
                               </div>
                               <div>
                                 <h5 className="text-sm font-bold text-[#1b1c1c]">
-                                  Companion: {booking.companionId?.name || "Assigned Companion"}
+                                  {t("serviceHistory.companion")} {booking.companionId?.name || t("serviceHistory.assignedCompanion")}
                                 </h5>
                                 <p className="text-xs text-[#3e4949] font-semibold mt-1">
-                                  Period: {new Date(booking.startDate).toLocaleDateString()} - {new Date(booking.endDate).toLocaleDateString()}
+                                  {t("serviceHistory.period")} {new Date(booking.startDate).toLocaleDateString()} - {new Date(booking.endDate).toLocaleDateString()}
                                 </p>
                                 <p className="text-xs text-[#3e4949] font-semibold mt-0.5">
-                                  Hours: {booking.totalHours} hrs • Rate: £{booking.hourlyRateAtBooking || booking.hourlyRate}/hr
+                                  {t("serviceHistory.hoursRate", { hours: booking.totalHours, rate: booking.hourlyRateAtBooking || booking.hourlyRate })}
                                 </p>
                               </div>
                             </div>
@@ -990,12 +1039,12 @@ export default function FamilyProfile() {
                               {completingId === booking._id ? (
                                 <>
                                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                  Completing...
+                                  {t("serviceHistory.completing")}
                                 </>
                               ) : (
                                 <>
                                   <Check className="w-3.5 h-3.5" />
-                                  Complete Service
+                                  {t("serviceHistory.completeService")}
                                 </>
                               )}
                             </button>
@@ -1008,13 +1057,13 @@ export default function FamilyProfile() {
                 {/* Past / Completed Services */}
                 <div className="space-y-4 pt-2">
                   <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#3e4949]">
-                    Completed & Past Services History
+                    {t("serviceHistory.completedHistory")}
                   </h4>
 
                   {(!bookingsData?.past || bookingsData.past.length === 0) ? (
                     <div className="border-2 border-dashed border-[#bdc9c8]/30 p-10 rounded-[16px] flex flex-col items-center justify-center text-center bg-[#fcf9f8]/20">
                       <p className="text-[#3e4949] text-xs font-semibold">
-                        No past completed services found.
+                        {t("serviceHistory.noHistory")}
                       </p>
                     </div>
                   ) : (
@@ -1028,15 +1077,15 @@ export default function FamilyProfile() {
                           >
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-slate-200 text-[#3e4949] rounded-lg flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
-                                {booking.companionId?.avatar ? (
-                                  <img src={booking.companionId.avatar} alt={booking.companionId?.name} className="w-full h-full object-cover" />
+                                {getAvatarUrl(booking.companionId?.avatar) ? (
+                                  <img src={getAvatarUrl(booking.companionId.avatar) || ""} alt={booking.companionId?.name} className="w-full h-full object-cover" />
                                 ) : (
                                   (booking.companionId?.name || "C").charAt(0).toUpperCase()
                                 )}
                               </div>
                               <div>
                                 <h5 className="text-xs font-bold text-[#1b1c1c]">
-                                  {booking.companionId?.name || "Companion"}
+                                  {booking.companionId?.name || t("serviceHistory.assignedCompanion")}
                                 </h5>
                                 <p className="text-[10px] text-[#3e4949] font-medium mt-0.5">
                                   {new Date(booking.startDate).toLocaleDateString()} - {new Date(booking.endDate).toLocaleDateString()}
@@ -1073,7 +1122,7 @@ export default function FamilyProfile() {
               <div className="bg-white rounded-2xl p-6 md:p-8 border border-[#eae7e7] shadow-soft space-y-6">
                 <div>
                   <h3 className="font-stitch-display text-xs font-bold text-[#3e4949] tracking-wider uppercase">
-                    Quick Settings
+                    {t("quickSettings.title")}
                   </h3>
                 </div>
 
@@ -1081,13 +1130,15 @@ export default function FamilyProfile() {
                   {/* Change Password row */}
                   <button
                     onClick={() => setChangePasswordModalOpen(true)}
+                  <button 
+                    onClick={() => setToast({ message: t("quickSettings.passwordResetSent"), type: "success" })}
                     className="w-full flex items-center justify-between p-4 bg-slate-50 border border-[#eae7e7] rounded-xl hover:bg-slate-100 transition-all text-left cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">
                       <Lock className="w-5 h-5 text-[#1f8a8a]" />
                       <div>
-                        <h4 className="text-sm font-bold text-[#2b2b2b]">Change Password</h4>
-                        <p className="text-[10px] text-[#3e4949]">Update your credentials</p>
+                        <h4 className="text-sm font-bold text-[#2b2b2b]">{t("quickSettings.changePassword")}</h4>
+                        <p className="text-[10px] text-[#3e4949]">{t("quickSettings.changePasswordDesc")}</p>
                       </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-[#6e7979] group-hover:translate-x-0.5 transition-transform" />
@@ -1098,13 +1149,13 @@ export default function FamilyProfile() {
                   {/* Notification Preferences */}
                   <div className="space-y-4">
                     <h4 className="text-xs font-bold text-[#3e4949] tracking-wide uppercase">
-                      Notification Preferences
+                      {t("quickSettings.notificationPreferences")}
                     </h4>
 
                     <div className="flex items-center justify-between py-1">
                       <div>
-                        <h5 className="text-sm font-bold text-[#2b2b2b]">New Applications</h5>
-                        <p className="text-[11px] text-[#3e4949]">Get alerts when companions apply</p>
+                        <h5 className="text-sm font-bold text-[#2b2b2b]">{t("quickSettings.newApplications")}</h5>
+                        <p className="text-[11px] text-[#3e4949]">{t("quickSettings.newApplicationsDesc")}</p>
                       </div>
                       <button
                         onClick={() => handleToggleNotification("email")}
@@ -1116,8 +1167,8 @@ export default function FamilyProfile() {
 
                     <div className="flex items-center justify-between py-1">
                       <div>
-                        <h5 className="text-sm font-bold text-[#2b2b2b]">Messages</h5>
-                        <p className="text-[11px] text-[#3e4949]">Get text messages for new chats</p>
+                        <h5 className="text-sm font-bold text-[#2b2b2b]">{t("quickSettings.messages")}</h5>
+                        <p className="text-[11px] text-[#3e4949]">{t("quickSettings.messagesDesc")}</p>
                       </div>
                       <button
                         onClick={() => handleToggleNotification("sms")}
@@ -1133,10 +1184,12 @@ export default function FamilyProfile() {
                   {/* Delete Account */}
                   <button
                     onClick={() => setConfirmDeleteAccountOpen(true)}
+                  <button 
+                    onClick={() => setToast({ message: t("quickSettings.deleteAccountMsg"), type: "error" })}
                     className="w-full h-[56px] border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
                     <Trash2 className="w-4 h-4" />
-                    Delete Account
+                    {t("quickSettings.deleteAccount")}
                   </button>
                 </div>
               </div>
@@ -1160,10 +1213,10 @@ export default function FamilyProfile() {
             <div className="px-6 py-5 border-b border-[#eae7e7] flex justify-between items-center bg-[#fcf9f8]">
               <div>
                 <h3 className="font-stitch-display text-base font-bold text-[#1b1c1c]">
-                  {editingMember ? "Edit Dependent Details" : "Register New Dependent"}
+                  {editingMember ? t("modal.editMemberTitle") : t("modal.addMemberTitle")}
                 </h3>
                 <p className="text-[11px] text-[#3e4949] mt-0.5 font-medium">
-                  Provide demographic and care requirements for your family member.
+                  {t("modal.modalSubtitle")}
                 </p>
               </div>
               <button
@@ -1182,13 +1235,13 @@ export default function FamilyProfile() {
                 {/* Name */}
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                    Full Name
+                    {t("modal.fullName")}
                   </label>
                   <input
                     type="text"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    placeholder="e.g. Margaret Jenkins"
+                    placeholder={t("modal.fullNamePlaceholder")}
                     className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
                     required
                   />
@@ -1197,13 +1250,13 @@ export default function FamilyProfile() {
                 {/* Age */}
                 <div>
                   <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                    Age
+                    {t("modal.age")}
                   </label>
                   <input
                     type="number"
                     value={formAge}
                     onChange={(e) => setFormAge(e.target.value === "" ? "" : Number(e.target.value))}
-                    placeholder="e.g. 78"
+                    placeholder={t("modal.agePlaceholder")}
                     className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
                     required
                     min={0}
@@ -1213,15 +1266,15 @@ export default function FamilyProfile() {
                 {/* Category Selector */}
                 <div>
                   <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                    Care Category
+                    {t("modal.careCategory")}
                   </label>
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value as any)}
                     className="w-full h-12 px-3 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b]"
                   >
-                    <option value="elderly">Elderly Care</option>
-                    <option value="special_needs">Special Needs</option>
+                    <option value="elderly">{t("modal.elderlyCare")}</option>
+                    <option value="special_needs">{t("modal.specialNeeds")}</option>
                   </select>
                 </div>
               </div>
@@ -1229,7 +1282,7 @@ export default function FamilyProfile() {
               {/* Gender Selector */}
               <div>
                 <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                  Gender
+                  {t("modal.gender")}
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -1240,7 +1293,7 @@ export default function FamilyProfile() {
                         : "bg-white border-[#eae7e7] text-[#3e4949] hover:bg-slate-50"
                       }`}
                   >
-                    👴 Male
+                    {t("modal.male")}
                   </button>
                   <button
                     type="button"
@@ -1250,7 +1303,7 @@ export default function FamilyProfile() {
                         : "bg-white border-[#eae7e7] text-[#3e4949] hover:bg-slate-50"
                       }`}
                   >
-                    👵 Female
+                    {t("modal.female")}
                   </button>
                 </div>
               </div>
@@ -1258,13 +1311,13 @@ export default function FamilyProfile() {
               {/* Medical/Condition Details */}
               <div>
                 <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                  Condition & Health Details
+                  {t("modal.conditionTitle")}
                 </label>
                 <textarea
                   rows={4}
                   value={formCondition}
                   onChange={(e) => setFormCondition(e.target.value)}
-                  placeholder="Describe mobility level, medical assistance required, food restrictions, cognitive health (e.g. Alzheimer's level), or medications."
+                  placeholder={t("modal.conditionPlaceholder")}
                   className="w-full p-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30 resize-none leading-relaxed"
                   required
                 />
@@ -1273,17 +1326,17 @@ export default function FamilyProfile() {
               {/* Interests & Hobbies */}
               <div>
                 <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                  Interests & Hobbies (Comma separated)
+                  {t("modal.interestsTitle")}
                 </label>
                 <input
                   type="text"
                   value={formInterests}
                   onChange={(e) => setFormInterests(e.target.value)}
-                  placeholder="e.g. Reading, Chess, Walking, Music, Gardening"
+                  placeholder={t("modal.interestsPlaceholder")}
                   className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
                 />
                 <p className="text-[10px] text-[#3e4949] mt-1.5 font-medium">
-                  Type hobbies separated by commas. These help us pair them with like-minded companions.
+                  {t("modal.interestsHint")}
                 </p>
               </div>
 
@@ -1295,7 +1348,7 @@ export default function FamilyProfile() {
                   onClick={() => setModalOpen(false)}
                   className="flex-1 h-14 bg-white hover:bg-slate-50 text-[#3e4949] border border-[#eae7e7] rounded-xl text-sm font-bold transition-all active:scale-[0.98] cursor-pointer"
                 >
-                  Cancel
+                  {t("modal.cancel")}
                 </button>
                 <button
                   type="submit"
@@ -1305,10 +1358,10 @@ export default function FamilyProfile() {
                   {savingMember ? (
                     <>
                       <div className="w-4.5 h-4.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Saving...
+                      {t("modal.saving")}
                     </>
                   ) : (
-                    "Save Member Profile"
+                    t("modal.saveMember")
                   )}
                 </button>
               </div>
@@ -1331,10 +1384,10 @@ export default function FamilyProfile() {
             <div className="px-6 py-5 border-b border-[#eae7e7] flex justify-between items-center bg-[#fcf9f8]">
               <div>
                 <h3 className="font-stitch-display text-base font-bold text-[#1b1c1c]">
-                  Edit Profile Details
+                  {t("editModal.title")}
                 </h3>
                 <p className="text-[11px] text-[#3e4949] mt-0.5 font-medium">
-                  Update your personal information and residential address.
+                  {t("editModal.subtitle")}
                 </p>
               </div>
               <button
@@ -1353,13 +1406,13 @@ export default function FamilyProfile() {
                 {/* Full Name */}
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                    Full Name
+                    {t("editModal.fullName")}
                   </label>
                   <input
                     type="text"
                     value={tempProfileName}
                     onChange={(e) => setTempProfileName(e.target.value)}
-                    placeholder="Sarah Jenkins"
+                    placeholder={t("editModal.fullNamePlaceholder")}
                     className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
                     required
                   />
@@ -1368,13 +1421,13 @@ export default function FamilyProfile() {
                 {/* Email Address */}
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                    Email Address
+                    {t("editModal.emailAddress")}
                   </label>
                   <input
                     type="email"
                     value={tempProfileEmail}
                     onChange={(e) => setTempProfileEmail(e.target.value)}
-                    placeholder="s.jenkins@familycare.com"
+                    placeholder={t("editModal.emailPlaceholder")}
                     className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
                     required
                   />
@@ -1383,13 +1436,13 @@ export default function FamilyProfile() {
                 {/* Phone Number */}
                 <div>
                   <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                    Phone Number
+                    {t("editModal.phoneNumber")}
                   </label>
                   <input
                     type="text"
                     value={tempProfilePhone}
                     onChange={(e) => setTempProfilePhone(e.target.value)}
-                    placeholder="+44 20 7946 0123"
+                    placeholder={t("editModal.phonePlaceholder")}
                     className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
                   />
                 </div>
@@ -1397,13 +1450,13 @@ export default function FamilyProfile() {
                 {/* City */}
                 <div>
                   <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                    City
+                    {t("editModal.city")}
                   </label>
                   <input
                     type="text"
                     value={tempAddress.city}
                     onChange={(e) => setTempAddress({ ...tempAddress, city: e.target.value })}
-                    placeholder="London"
+                    placeholder={t("editModal.cityPlaceholder")}
                     className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
                     required
                   />
@@ -1412,13 +1465,14 @@ export default function FamilyProfile() {
                 {/* Area / District */}
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                    Area / District
+                    {t("editModal.areaDistrict")}
                   </label>
                   <input
                     type="text"
                     value={tempAddress.area}
                     onChange={(e) => setTempAddress({ ...tempAddress, area: e.target.value })}
                     placeholder="Heliopolis"
+                    placeholder={t("editModal.areaPlaceholder")}
                     className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
                     required
                   />
@@ -1427,13 +1481,14 @@ export default function FamilyProfile() {
                 {/* Residential Address */}
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-[#3e4949] mb-2">
-                    Residential Address
+                    {t("editModal.residentialAddress")}
                   </label>
                   <textarea
                     rows={3}
                     value={tempAddress.fullAddress}
                     onChange={(e) => setTempAddress({ ...tempAddress, fullAddress: e.target.value })}
                     placeholder="12 El-Galaa St, Heliopolis, Cairo, Egypt"
+                    placeholder={t("editModal.addressPlaceholder")}
                     className="w-full p-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30 resize-none leading-relaxed"
                     required
                   />
@@ -1448,7 +1503,7 @@ export default function FamilyProfile() {
                   onClick={() => setEditProfileModalOpen(false)}
                   className="flex-1 h-14 bg-white hover:bg-slate-50 text-[#3e4949] border border-[#eae7e7] rounded-xl text-sm font-bold transition-all active:scale-[0.98] cursor-pointer"
                 >
-                  Cancel
+                  {t("editModal.cancel")}
                 </button>
                 <button
                   type="submit"
@@ -1458,10 +1513,10 @@ export default function FamilyProfile() {
                   {savingAddress ? (
                     <>
                       <div className="w-4.5 h-4.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Saving...
+                      {t("editModal.saving")}
                     </>
                   ) : (
-                    "Save Details"
+                    t("editModal.saveDetails")
                   )}
                 </button>
               </div>
@@ -1482,10 +1537,10 @@ export default function FamilyProfile() {
               <ShieldAlert className="w-6 h-6" />
             </div>
             <h3 className="font-stitch-display text-base font-bold text-[#1b1c1c]">
-              Remove Family Member?
+              {t("deleteModal.title")}
             </h3>
             <p className="text-[#3e4949] text-xs mt-2 leading-relaxed font-medium">
-              Are you sure you want to remove this dependent profile from your family? This action cannot be undone.
+              {t("deleteModal.message")}
             </p>
             <div className="flex gap-3 mt-6">
               <button
@@ -1493,7 +1548,7 @@ export default function FamilyProfile() {
                 onClick={() => setConfirmDeleteId(null)}
                 className="flex-1 h-12 bg-white hover:bg-slate-50 border border-[#eae7e7] rounded-xl text-xs font-bold text-[#3e4949] transition-all cursor-pointer"
               >
-                Cancel
+                {t("deleteModal.cancel")}
               </button>
               <button
                 disabled={deletingId !== null}
@@ -1503,10 +1558,10 @@ export default function FamilyProfile() {
                 {deletingId ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Removing...
+                    {t("deleteModal.removing")}
                   </>
                 ) : (
-                  "Yes, Remove"
+                  t("deleteModal.confirm")
                 )}
               </button>
             </div>

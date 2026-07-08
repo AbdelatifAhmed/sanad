@@ -11,6 +11,7 @@ import type {
   SendProposalBody,
   UpdateProposalStatusBody,
   PayBookingBody,
+  ApiPagination,
 } from "@/types";
 import { api } from "./services/api";
 
@@ -56,6 +57,21 @@ export const aiSmartSearch = async (data: Record<string, unknown>) => {
   return res.data.data;
 };
 
+export const browseSearchCompanions = async (data: Record<string, unknown>, locale = "ar") => {
+  const res = await api.post("/ai/family/browse-search", data, {
+    headers: { "Accept-Language": locale },
+  });
+  return res.data.data;
+};
+
+export const generateCarePlan = async (data: Record<string, unknown>, locale = "ar") => {
+  const res = await api.post("/ai/family/generate-care-plan", data, {
+    headers: { "Accept-Language": locale },
+    timeout: 45000,
+  });
+  return res.data.data;
+};
+
 export const clearAIChatSession = async () => {
   const res = await api.delete("/ai/session");
   return res.data;
@@ -67,9 +83,9 @@ export const createBooking = async (data: CreateBookingPayload): Promise<Booking
   return res.data.data as Booking;
 };
 
-export const getCompanionRequests = async (): Promise<Booking[]> => {
-  const res = await api.get<ApiResponse<Booking[]>>("/bookings/companion/requests");
-  return res.data.data as Booking[];
+export const getCompanionRequests = async (config?: Record<string, unknown>): Promise<Booking[]> => {
+  const res = await api.get<ApiResponse<{ bookings?: Booking[] }>>("/bookings/companion/requests", config);
+  return (res.data.data?.bookings as Booking[]) || [];
 };
 
 export const respondToBooking = async (id: string, data: Record<string, unknown>): Promise<Booking> => {
@@ -128,7 +144,7 @@ export const getCompanionBookings = async (): Promise<Booking[]> => {
   return res.data.data as Booking[];
 };
 
-export const getCompanionDashboardStats = async (config?: any) => {
+export const getCompanionDashboardStats = async (config?: Record<string, unknown>) => {
   const res = await api.get("/companion/me/dashboard-stats", config);
   return res.data.data;
 };
@@ -183,15 +199,15 @@ export const getJobPostsForCompanions = async (): Promise<JobPost[]> => {
 };
 
 export const getJobPostById = async (id: string): Promise<JobPost> => {
-  const res = await api.get<ApiResponse<any>>(`/job-posts/${id}`);
-  return (res.data.data?.job ?? res.data.data) as JobPost;
+  const res = await api.get<ApiResponse<{ job?: JobPost } | JobPost>>(`/job-posts/${id}`);
+  return ("job" in (res.data.data || {}) ? (res.data.data as { job?: JobPost }).job : res.data.data) as JobPost;
 };
 
 export const updateJobPost = async (id: string, data: Record<string, unknown>): Promise<JobPost> => {
   const res = await api.patch<ApiResponse<JobPost>>(`/job-posts/${id}`, data);
   return res.data.data as JobPost;
 };
-export const deleteJobPost = async (id: string): Promise<any> => {
+export const deleteJobPost = async (id: string): Promise<unknown> => {
   const res = await api.delete(`/job-posts/${id}`);
   return res.data;
 };
@@ -212,8 +228,8 @@ export const updateProposalStatus = async (
 };
 
 export const getProposalsForJob = async (jobId: string): Promise<Proposal[]> => {
-  const res = await api.get<ApiResponse<any>>(`/proposals/job/${jobId}`);
-  return (res.data.data?.proposals ?? res.data.data) as Proposal[];
+  const res = await api.get<ApiResponse<{ proposals?: Proposal[] } | Proposal[]>>(`/proposals/job/${jobId}`);
+  return ("proposals" in (res.data.data || {}) ? (res.data.data as { proposals?: Proposal[] }).proposals : res.data.data) as Proposal[];
 };
 
 
@@ -255,9 +271,23 @@ export const deleteReview = async (id: string) => {
 };
 
 // --- NOTIFICATIONS ROUTER (/notifications) ---
-export const getUserNotifications = async (): Promise<NotificationItem[]> => {
-  const res = await api.get<ApiResponse<NotificationItem[]>>("/notifications");
-  return res.data.data as NotificationItem[];
+export interface GetNotificationsResponse {
+  notifications: NotificationItem[];
+  unreadCount: number;
+  pagination: ApiPagination;
+}
+
+export const getUserNotifications = async (
+  page = 1,
+  limit = 15,
+  unreadOnly = false,
+  config?: Record<string, unknown>,
+): Promise<GetNotificationsResponse> => {
+  const res = await api.get<ApiResponse<GetNotificationsResponse>>(
+    `/notifications?page=${page}&limit=${limit}&unreadOnly=${unreadOnly}`,
+    config,
+  );
+  return res.data.data as GetNotificationsResponse;
 };
 
 export const markAllNotificationsAsRead = async () => {
@@ -321,7 +351,7 @@ export const adminToggleBanUser = async (id: string, data?: Record<string, unkno
 };
 
 // --- CARE REQUESTS (mapped to /job-posts) ---
-export const createCareRequest = async (data: any) => {
+export const createCareRequest = async (data: Record<string, unknown>) => {
   const res = await api.post("/job-posts", data);
   return res.data.data;
 };

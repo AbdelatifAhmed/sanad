@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Star, X, Loader2, MessageSquare, Heart } from "lucide-react";
 import { useLocale } from "next-intl";
 import { api } from "../../lib/services/api";
@@ -10,6 +10,7 @@ interface PostShiftReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  reviewDetails?: { rating: number; comment?: string } | null;
 }
 
 export const PostShiftReviewModal: React.FC<PostShiftReviewModalProps> = ({
@@ -17,6 +18,7 @@ export const PostShiftReviewModal: React.FC<PostShiftReviewModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  reviewDetails,
 }) => {
   const locale = useLocale();
   const [rating, setRating] = useState<number>(5);
@@ -27,11 +29,24 @@ export const PostShiftReviewModal: React.FC<PostShiftReviewModalProps> = ({
   const [success, setSuccess] = useState<boolean>(false);
 
   const isAr = locale === "ar";
+  const isReadOnly = !!reviewDetails;
+
+  useEffect(() => {
+    if (reviewDetails) {
+      setRating(reviewDetails.rating);
+      setComment(reviewDetails.comment || "");
+    } else {
+      setRating(5);
+      setComment("");
+    }
+  }, [reviewDetails, isOpen]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
+
     if (rating < 1 || rating > 5) {
       setError(isAr ? "يرجى تحديد تقييم بين 1 و 5 نجوم." : "Please select a rating between 1 and 5.");
       return;
@@ -109,15 +124,15 @@ export const PostShiftReviewModal: React.FC<PostShiftReviewModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className={`space-y-1 ${isAr ? "text-right" : "text-left"}`}>
               <span className="text-xs font-semibold text-stitch-primary uppercase tracking-widest">
-                {isAr ? "شاركنا تجربتك" : "Share Your Experience"}
+                {isReadOnly ? (isAr ? "تقييمك المسجل" : "Your Submitted Review") : (isAr ? "شاركنا تجربتك" : "Share Your Experience")}
               </span>
               <h3 className="text-xl font-extrabold text-stitch-on-surface">
-                {isAr ? "تقييم أداء المرافق" : "Review Your Companion"}
+                {isReadOnly ? (isAr ? "مراجعة تفاصيل التقييم" : "View Review Details") : (isAr ? "تقييم أداء المرافق" : "Review Your Companion")}
               </h3>
               <p className="text-xs text-stitch-on-surface-variant/80">
-                {isAr 
-                  ? "كيف تقيم أداء وسلوك المرافق الصحي خلال فترة تقديم الخدمة؟" 
-                  : "How would you rate the companion's performance during this shift?"}
+                {isReadOnly 
+                  ? (isAr ? "تفاصيل التقييم والتعليق المسجلة لهذه الخدمة." : "The rating and feedback registered for this care shift.")
+                  : (isAr ? "كيف تقيم أداء وسلوك المرافق الصحي خلال فترة تقديم الخدمة؟" : "How would you rate the companion's performance during this shift?")}
               </p>
             </div>
 
@@ -134,16 +149,17 @@ export const PostShiftReviewModal: React.FC<PostShiftReviewModalProps> = ({
                   <button
                     key={star}
                     type="button"
-                    onClick={() => setRating(star)}
-                    onMouseEnter={() => setHoverRating(star)}
-                    onMouseLeave={() => setHoverRating(null)}
-                    className="p-1 transition-transform active:scale-90"
+                    disabled={isReadOnly}
+                    onClick={() => !isReadOnly && setRating(star)}
+                    onMouseEnter={() => !isReadOnly && setHoverRating(star)}
+                    onMouseLeave={() => !isReadOnly && setHoverRating(null)}
+                    className={`p-1 transition-transform ${isReadOnly ? "cursor-default animate-none" : "active:scale-90"}`}
                   >
                     <Star 
                       className={`w-10 h-10 transition-colors ${
                         (hoverRating !== null ? star <= hoverRating : star <= rating)
                           ? "fill-amber-400 text-amber-400"
-                          : "text-gray-300 hover:text-gray-400"
+                          : "text-gray-300"
                       }`}
                     />
                   </button>
@@ -164,32 +180,43 @@ export const PostShiftReviewModal: React.FC<PostShiftReviewModalProps> = ({
                 isAr ? "justify-start flex-row-reverse" : "justify-start"
               }`}>
                 <MessageSquare className="w-3.5 h-3.5 text-stitch-outline" />
-                <span>{isAr ? "ملاحظات إضافية (اختياري)" : "Comments (Optional)"}</span>
+                <span>{isAr ? "التعليق والتقييم" : "Feedback & Comment"}</span>
               </label>
               <textarea
                 value={comment}
+                disabled={isReadOnly}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder={isAr 
                   ? "ما الذي تميز به المرافق؟ هل هناك أي نقاط تقترح تحسينها؟" 
                   : "What did the companion do well? Any areas of improvement?"}
                 maxLength={1000}
                 rows={4}
-                className="w-full bg-sand-low border border-stitch-outline/30 focus:border-stitch-primary/50 focus:ring-1 focus:ring-stitch-primary/50 rounded-xl px-4 py-3 text-sm text-stitch-on-surface placeholder-stitch-on-surface-variant/50 focus:outline-none transition-all resize-none text-right"
+                className={`w-full bg-sand-low border border-stitch-outline/30 focus:border-stitch-primary/50 focus:ring-1 focus:ring-stitch-primary/50 rounded-xl px-4 py-3 text-sm text-stitch-on-surface placeholder-stitch-on-surface-variant/50 focus:outline-none transition-all resize-none text-right ${isReadOnly ? "opacity-85 cursor-not-allowed bg-slate-50/50" : ""}`}
               />
             </div>
 
             {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3.5 bg-stitch-primary hover:bg-stitch-primary/95 text-white font-bold rounded-2xl shadow-soft hover:shadow-premium active:scale-98 transition-all flex items-center justify-center space-x-2 text-sm disabled:opacity-50 disabled:pointer-events-none"
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <span>{isAr ? "تقديم التقييم والتعليق" : "Submit Feedback"}</span>
-              )}
-            </button>
+            {isReadOnly ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-3.5 bg-slate-200 hover:bg-slate-300 text-stitch-on-surface font-bold rounded-2xl shadow-soft transition-all flex items-center justify-center space-x-2 text-sm cursor-pointer border border-slate-350"
+              >
+                <span>{isAr ? "إغلاق" : "Close"}</span>
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3.5 bg-stitch-primary hover:bg-stitch-primary/95 text-white font-bold rounded-2xl shadow-soft hover:shadow-premium active:scale-98 transition-all flex items-center justify-center space-x-2 text-sm disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <span>{isAr ? "تقديم التقييم والتعليق" : "Submit Feedback"}</span>
+                )}
+              </button>
+            )}
           </form>
         )}
       </div>

@@ -1,5 +1,6 @@
 import RoleGuard from "@/components/auth/RoleGuard";
 import Sidebar, { SidebarItem } from "@/components/layouts/Sidebar";
+import GlobalAIAssistant from "@/components/ai/GlobalAIAssistant";
 
 const navItems: SidebarItem[] = [
   { labelKey: "dashboard", href: "/companion/dashboard", icon: "home" },
@@ -9,6 +10,7 @@ const navItems: SidebarItem[] = [
   { labelKey: "calendar", href: "/companion/schedule", icon: "calendar_today" },
   { labelKey: "messages", href: "/companion/messages", icon: "chat_bubble" },
   { labelKey: "activeShift", href: "/companion/shift", icon: "play_circle" },
+  { labelKey: "notifications", href: "/companion/notifications", icon: "notifications" },
   { labelKey: "wallet", href: "/companion/wallet", icon: "wallet" },
   { labelKey: "profile", href: "/companion/profile", icon: "person" },
 ];
@@ -30,6 +32,7 @@ export default function CompanionLayout({
         <main className="flex-1 p-6 md:p-8 pb-24 md:pb-8 h-screen overflow-y-auto bg-sand/40">
           {children}
         </main>
+        <GlobalAIAssistant userRole="Companion" />
       </div>
     </RoleGuard>
   );

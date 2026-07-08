@@ -324,7 +324,7 @@ export default function FamilyWalletDashboard() {
 
               <div>
                 <div className="text-3xl md:text-4xl font-bold text-[#1f8a8a] tracking-tight font-stitch-display">
-                  {balance.toFixed(2)} <span className="text-sm font-semibold">{t("egp")}</span>
+                  {balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-sm font-semibold">{t("egp")}</span>
                 </div>
                 <p className="text-xs text-[#3e4949]/70 mt-1">
                   {isRtl ? "رصيدك جاهز للاستخدام الفوري لطلب الخدمات" : "Available balance for immediate booking escrow"}
@@ -354,7 +354,7 @@ export default function FamilyWalletDashboard() {
 
               <div>
                 <div className="text-3xl md:text-4xl font-bold text-amber-650 tracking-tight font-stitch-display">
-                  {heldBalance.toFixed(2)} <span className="text-sm font-semibold">{t("egp")}</span>
+                  {heldBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-sm font-semibold">{t("egp")}</span>
                 </div>
                 <p className="text-xs text-[#3e4949]/70 mt-1">
                   {isRtl 
@@ -440,13 +440,25 @@ export default function FamilyWalletDashboard() {
                           <div className="flex flex-wrap items-center gap-2 text-xs text-[#3e4949]/70">
                             <span>{dateStr}</span>
                             <span className="text-[#eae7e7]">|</span>
-                            <span className={`px-1.5 py-0.5 rounded border text-[10px] uppercase font-bold ${statusColors[txn.status]}`}>
-                              {txn.status}
+                            <span className={`px-1.5 py-0.5 rounded border text-[10px] uppercase font-bold ${
+                              txn.bookingId?.status === "cancelled"
+                                ? "bg-rose-50 text-rose-700 border-rose-100"
+                                : statusColors[txn.status]
+                            }`}>
+                              {txn.bookingId?.status === "cancelled"
+                                ? (isRtl ? "مسترد / ملغي" : "REFUNDED")
+                                : txn.status}
                             </span>
                             {subDetailText && (
                               <>
                                 <span className="text-[#eae7e7]">|</span>
-                                <span className={`font-semibold text-[10px] ${txn.bookingId?.status === "completed" ? "text-emerald-700" : "text-amber-700"}`}>
+                                <span className={`font-semibold text-[10px] ${
+                                  txn.bookingId?.status === "completed"
+                                    ? "text-emerald-700"
+                                    : txn.bookingId?.status === "cancelled"
+                                    ? "text-rose-700 font-bold"
+                                    : "text-amber-700"
+                                }`}>
                                   {subDetailText}
                                 </span>
                               </>
@@ -455,7 +467,7 @@ export default function FamilyWalletDashboard() {
                         </div>
                       </div>
                       <div className={`font-mono font-bold text-sm ${isDeposit ? "text-emerald-600" : "text-[#1b1c1c]"}`}>
-                        {isDeposit ? "+" : "-"} {txn.amount.toFixed(2)} {t("egp")}
+                        {isDeposit ? "+" : "-"} {Math.abs(txn.amount).toFixed(2)} {t("egp")}
                       </div>
                     </div>
                   );

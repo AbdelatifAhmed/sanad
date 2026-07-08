@@ -279,7 +279,7 @@ export default function RequestInfoCard({ job, beneficiary }: RequestInfoCardPro
             <div>
               <p className="text-[10px] text-[#3e4949] uppercase font-bold tracking-widest">{t("hourlyRate")}</p>
               <p className="text-lg font-bold text-[#1f8a8a]">
-                {locale === "ar" ? `${job.budgetPerHour} ج.م/ساعة` : `${job.budgetPerHour} EGP/hr`}
+                {locale === "ar" ? `${job.budgetPerHour.toLocaleString("ar-EG")} ج.م/ساعة` : `${job.budgetPerHour.toLocaleString("en-US")} EGP/hr`}
               </p>
             </div>
             <span className="material-symbols-outlined text-[#1f8a8a] opacity-80">sell</span>
@@ -309,7 +309,7 @@ export default function RequestInfoCard({ job, beneficiary }: RequestInfoCardPro
                   <p className="text-[10px] uppercase font-bold tracking-widest opacity-80">{t("estimatedCost")}</p>
                   <p className="text-lg font-bold">
                     {totalBudget > 0 
-                      ? (locale === "ar" ? `${totalBudget.toLocaleString()} ج.م` : `${totalBudget.toLocaleString()} EGP`) 
+                      ? (locale === "ar" ? `${totalBudget.toLocaleString("ar-EG")} ج.م` : `${totalBudget.toLocaleString("en-US")} EGP`) 
                       : t("flexible")}
                   </p>
                 </div>

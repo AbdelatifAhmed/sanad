@@ -1,11 +1,9 @@
-import React from "react";
-import { getTranslations } from "next-intl/server";
-import { serverFetch } from "@/lib/serverAuth";
-import WelcomeHeader from "@/components/dashboard/family/WelcomeHeader";
-import QuickActions from "@/components/dashboard/family/QuickActions";
-import OverviewSection from "@/components/dashboard/family/OverviewSection";
 import CurrentCaregivers from "@/components/dashboard/family/CurrentCaregivers";
-import { getAvatarUrl } from "@/lib/avatar";
+import OverviewSection from "@/components/dashboard/family/OverviewSection";
+import QuickActions from "@/components/dashboard/family/QuickActions";
+import WelcomeHeader from "@/components/dashboard/family/WelcomeHeader";
+import { serverFetch } from "@/lib/serverAuth";
+import { getTranslations } from "next-intl/server";
 
 async function getStats() {
   return serverFetch("/family/me/dashboard-stats");
@@ -43,7 +41,7 @@ export default async function FamilyDashboard() {
   }
 
   const userName = stats?.user?.name ? stats.user.name.split(" ")[0] : "Sarah";
-  const userAvatar = getAvatarUrl(stats?.user?.avatar, "/avatar_1.jpg");
+  const userAvatar = stats?.user?.avatar || null;
 
   return (
     <div className="max-w-6xl w-full mx-auto space-y-8 pb-12 animate-fade-in select-none">

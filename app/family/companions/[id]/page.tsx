@@ -44,7 +44,7 @@ export default async function CompanionProfilePage({ params }: PageProps) {
 
     // Dynamic mapping from database schema , to page/components format
     const name = companion.userId?.name || "Caregiver";
-    const avatar = getAvatarUrl(companion.userId?.avatar, "/avatar_3.jpg");
+    const avatar = companion.userId?.avatar;
     const verified = companion.verificationStatus === "verified";
     
     // Map title dynamically based on specialization
@@ -69,11 +69,10 @@ export default async function CompanionProfilePage({ params }: PageProps) {
                      companion.userId?.location?.city || 
                      (locale === "ar" ? "مدينة دبي الطبية" : "Dubai Healthcare City");
 
-    // Dynamic Experience mapping (fallback if totalWorkHours is 0)
-    const yearsExp = companion.totalWorkHours > 0 
-      ? Math.max(1, Math.round(companion.totalWorkHours / 200)) 
-      : 5;
-    const experience = t("yearsExperience", { years: yearsExp });
+    // Dynamic Experience mapping (remove fallback if totalWorkHours is 0)
+    const experience = companion.totalWorkHours > 0 
+      ? t("yearsExperience", { years: Math.max(1, Math.round(companion.totalWorkHours / 200)) })
+      : null;
 
     // Process biography paragraphs (split by newline)
     const bioParagraphs = companion.bio
@@ -109,6 +108,7 @@ export default async function CompanionProfilePage({ params }: PageProps) {
             id={id}
             hourlyRate={companion.hourlyRate}
             name={name}
+            companionUserId={companion.userId?._id || ""}
           />
         </div>
 
@@ -120,7 +120,7 @@ export default async function CompanionProfilePage({ params }: PageProps) {
         {/* Row 3: Skills, Certifications (Verified Credentials) & Hobbies Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <CompanionSkills skills={skillsList} />
-          <CompanionCertifications documents={companion.documents} />
+          <CompanionCertifications documents={companion.documents} verificationStatus={companion.verificationStatus} />
           <CompanionHobbies hobbies={hobbiesList} />
         </div>
 

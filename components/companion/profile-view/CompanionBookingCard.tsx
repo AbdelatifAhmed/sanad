@@ -3,20 +3,23 @@
 import React from "react";
 import Link from "next/link";
 import { Calendar, MessageSquare } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 interface CompanionBookingCardProps {
   id: string;
   hourlyRate: number;
   name: string;
+  companionUserId: string;
 }
 
 export default function CompanionBookingCard({
   id,
   hourlyRate,
   name,
+  companionUserId,
 }: CompanionBookingCardProps) {
   const t = useTranslations("companionProfile");
+  const locale = useLocale();
   
   // Extract first name for the message button, e.g. "Amina" from "Amina Al-Farsi"
   const firstName = name.split(" ")[0];
@@ -30,7 +33,7 @@ export default function CompanionBookingCard({
         </span>
         <div className="flex items-baseline gap-1">
           <span className="text-4xl font-extrabold text-[#005c53]">
-            ${hourlyRate}
+            ${hourlyRate.toLocaleString(locale === "ar" ? "ar-EG" : "en-US")}
           </span>
           <span className="text-xs text-gray-500 font-bold">
             {t("perHour")}
@@ -49,10 +52,13 @@ export default function CompanionBookingCard({
           <Calendar className="w-4.5 h-4.5" />
           {t("requestCare")}
         </Link>
-        <button className="w-full bg-[#f4f3f0] hover:bg-gray-100 text-gray-800 py-3.5 rounded-xl font-bold transition-all text-sm flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer">
+        <Link 
+          href={`/family/messages?companionId=${companionUserId}`}
+          className="w-full bg-[#f4f3f0] hover:bg-gray-100 text-gray-800 py-3.5 rounded-xl font-bold transition-all text-sm flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+        >
           <MessageSquare className="w-4.5 h-4.5 text-gray-600" />
           {t("messageCompanion", { name: firstName })}
-        </button>
+        </Link>
       </div>
     </div>
   );

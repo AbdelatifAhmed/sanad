@@ -5,6 +5,7 @@ import { getLocale } from "next-intl/server";
 import { Literata, Be_Vietnam_Pro, IBM_Plex_Sans_Arabic, Noto_Sans_Arabic, Plus_Jakarta_Sans, Inter } from "next/font/google";
 import "./globals.css";
 import AuthInit from "@/components/auth/AuthInit";
+// import FamilyAIAssistant from "@/components/ai/FamilyAIAssistant";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { SocketProvider } from "@/components/providers/SocketProvider";
 import { isThemeMode } from "@/lib/theme";
@@ -80,6 +81,7 @@ export default async function RootLayout({
             <AuthInit />
             <SocketProvider>
               {children}
+              {/* <FamilyAIAssistant /> */}
             </SocketProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
