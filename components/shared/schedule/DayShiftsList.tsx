@@ -5,7 +5,6 @@ import {
   Calendar as CalendarIcon,
   Clock,
   MapPin,
-  Phone,
   MessageSquare,
   ArrowRight
 } from "lucide-react";
@@ -152,15 +151,6 @@ export default function DayShiftsList({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {shift.counterparty.phone && (
-                    <a
-                      href={`tel:${shift.counterparty.phone}`}
-                      className="p-2 border border-[#eae7e7] hover:bg-[#eae7e7]/30 rounded-xl transition-all"
-                      title={shift.counterparty.phone}
-                    >
-                      <Phone className="w-4 h-4 text-[#3e4949]" />
-                    </a>
-                  )}
                   <Link
                     href={`/${role}/messages?bookingId=${shift.bookingId}`}
                     className="p-2 border border-[#eae7e7] hover:bg-[#eae7e7]/30 rounded-xl transition-all"

@@ -202,7 +202,7 @@ export const AdminSupportChat: React.FC = () => {
           <span className="material-symbols-outlined text-lg">support_agent</span>
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-gray-800">Sanad Support</h3>
+          <h3 className="text-sm font-bold text-gray-800">{t("sanadSupport")}</h3>
           <p className="text-xs text-gray-500">
             {conversation ? (
               <span
@@ -216,12 +216,12 @@ export const AdminSupportChat: React.FC = () => {
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current inline-block" />
                 {isResolved
-                  ? "Resolved"
+                  ? t("resolved")
                   : isClosed
-                  ? "Closed"
+                  ? t("closed")
                   : conversation.status === "waiting_for_admin"
-                  ? "Waiting for reply"
-                  : "Open"}
+                  ? t("waitingForReply")
+                  : t("open")}
               </span>
             ) : (
               t("startNewConversation")
@@ -306,11 +306,10 @@ export const AdminSupportChat: React.FC = () => {
         <div className="mx-4 mb-3 p-4 bg-green-50 border border-green-100 rounded-xl flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-green-800 mb-0.5">
-              ✅ This issue has been resolved.
+              ✅ {t("resolvedCardTitle")}
             </p>
             <p className="text-xs text-green-600 leading-snug">
-              If you&apos;re experiencing another issue or need additional help, you can reopen this
-              conversation.
+              {t("resolvedCardDesc")}
             </p>
           </div>
           <button
@@ -328,7 +327,7 @@ export const AdminSupportChat: React.FC = () => {
             ) : (
               <span className="material-symbols-outlined text-base">restart_alt</span>
             )}
-            Reopen Conversation
+            {t("reopenConversation")}
           </button>
         </div>
       )}

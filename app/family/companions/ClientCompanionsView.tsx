@@ -198,7 +198,7 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
               }`}
             >
               <span className="material-symbols-outlined text-[15px]">format_list_bulleted</span>
-              {locale === "ar" ? "عرض القائمة" : "List View"}
+              {locale === "ar" ? "القائمة" : "List View"}
             </button>
             <button
               onClick={() => setViewMode("grid")}
@@ -215,13 +215,13 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
 
       {/* Modern Switch Toggle segment with sliding backdrop */}
       <div className="flex justify-center my-2">
-        <div className="bg-[#f0ece9] p-1.5 rounded-2xl border border-sand-high/60 relative flex items-center shadow-inner overflow-hidden w-[310px] h-[52px]">
+        <div className="bg-[#f0ece9] p-1.5 rounded-2xl border border-sand-high/60 relative flex items-center shadow-inner overflow-hidden w-[310px] h-[52px]" dir={locale === "ar" ? "rtl" : "ltr"}>
           {/* Sliding Backdrop */}
           <div
             className={`absolute top-1 bottom-1 rounded-xl shadow-sm border border-sand-high/20 transition-all duration-300 ease-out ${
               searchMode === "normal"
-                ? "left-1.5 w-[146px] bg-white"
-                : "left-[156px] w-[146px] bg-stitch-primary"
+                ? locale === "ar" ? "right-1.5 w-[146px] bg-white" : "left-1.5 w-[146px] bg-white"
+                : locale === "ar" ? "right-[156px] w-[146px] bg-stitch-primary" : "left-[156px] w-[146px] bg-stitch-primary"
             }`}
           />
           <button
@@ -235,6 +235,7 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
                 ? "text-stitch-primary"
                 : "text-stitch-on-surface-variant/80 hover:text-stitch-on-surface"
             }`}
+            dir={locale === "ar" ? "rtl" : "ltr"}
           >
             <span className="material-symbols-outlined text-[16px]">search</span>
             {locale === "ar" ? "البحث العادي" : "Normal Search"}
@@ -252,6 +253,7 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
                 ? "text-white"
                 : "text-stitch-on-surface-variant/80 hover:text-stitch-on-surface"
             }`}
+            dir={locale === "ar" ? "rtl" : "ltr"}
           >
             <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
             {locale === "ar" ? "البحث بالذكاء الاصطناعي" : "AI Search"}

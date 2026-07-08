@@ -1074,7 +1074,13 @@ export default function FamilyProfile() {
                                     : "bg-red-50 text-red-700 border-red-100"
                                   }`}
                               >
-                                {booking.status || "completed"}
+                                {booking.status === "completed"
+                                  ? t("serviceHistory.statusCompleted")
+                                  : booking.status === "cancelled"
+                                    ? t("serviceHistory.statusCancelled")
+                                    : booking.status === "active"
+                                      ? t("serviceHistory.statusActive")
+                                      : t("serviceHistory.statusPending")}
                               </span>
                               <p className="text-xs font-bold text-[#1b1c1c] mt-1.5">
                                 £{booking.totalPrice || (booking.hourlyRateAtBooking * booking.totalHours) || 0}

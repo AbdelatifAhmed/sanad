@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { api } from "../../../lib/services/api";
+import { useTranslations, useLocale } from "next-intl";
 import {
   Wallet,
   TrendingUp,
@@ -44,6 +45,7 @@ function PayoutModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const t = useTranslations("companionWallet");
   const [amount, setAmount] = useState(availableBalance.toFixed(2));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,14 +60,14 @@ function PayoutModal({
     try {
       setSubmitting(true);
       setError(null);
-      const res = await api.post("/payments/companion/payout", { amount: amountNum });
+      await api.post("/payments/companion/payout", { amount: amountNum });
       setSuccess(true);
       setTimeout(() => {
         onSuccess();
       }, 1800);
     } catch (err: any) {
       setError(
-        err.response?.data?.message || err.message || "فشل في تنفيذ عملية السحب."
+        err.response?.data?.message || err.message || t("modalTitle")
       );
     } finally {
       setSubmitting(false);
@@ -79,7 +81,7 @@ function PayoutModal({
         <div className="flex items-center justify-between border-b border-stitch-outline/10 pb-4">
           <h3 className="text-lg font-bold text-stitch-on-surface flex items-center gap-2">
             <BadgeDollarSign className="w-5 h-5 text-stitch-primary" />
-            سحب أرباحك للحساب البنكي
+            {t("modalTitle")}
           </h3>
           <button
             onClick={onClose}
@@ -94,10 +96,10 @@ function PayoutModal({
           <div className="py-10 text-center space-y-4">
             <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto animate-bounce" />
             <h3 className="text-lg font-bold text-stitch-on-surface">
-              تمت عملية السحب بنجاح!
+              {t("modalSuccessTitle")}
             </h3>
             <p className="text-sm text-stitch-on-surface-variant/70">
-              سيتم تحويل المبلغ لحسابك البنكي خلال 1–3 أيام عمل عبر Stripe.
+              {t("modalSuccessDesc")}
             </p>
           </div>
         ) : (
@@ -105,7 +107,7 @@ function PayoutModal({
             {/* Available balance info */}
             <div className="p-4 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-between">
               <span className="text-xs font-semibold text-stitch-on-surface-variant">
-                رصيدك المتاح للسحب
+                {t("modalAvailable")}
               </span>
               <span className="text-lg font-black text-stitch-primary font-mono">
                 EGP {availableBalance.toFixed(2)}
@@ -115,7 +117,7 @@ function PayoutModal({
             {/* Amount input */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-stitch-on-surface-variant block">
-                المبلغ المراد سحبه (بالجنيه المصري){" "}
+                {t("modalAmountLabel")}{" "}
                 <span className="text-rose-500">*</span>
               </label>
               <div className="flex gap-2">
@@ -141,7 +143,7 @@ function PayoutModal({
                   disabled={submitting}
                   className="px-4 h-12 bg-stitch-primary/10 hover:bg-stitch-primary/15 text-stitch-primary font-bold text-xs rounded-2xl transition-all whitespace-nowrap border border-stitch-primary/20 cursor-pointer disabled:opacity-50"
                 >
-                  سحب الكل
+                  {t("modalWithdrawAll")}
                 </button>
               </div>
               {amountNum > availableBalance && (
@@ -176,7 +178,7 @@ function PayoutModal({
                 disabled={submitting}
                 className="px-5 py-3 bg-sand-low hover:bg-sand-high text-stitch-on-surface font-bold text-xs rounded-xl cursor-pointer disabled:opacity-50 transition-all"
               >
-                إلغاء
+                {t("modalCancel")}
               </button>
               <button
                 type="submit"
@@ -188,7 +190,7 @@ function PayoutModal({
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
-                تأكيد السحب
+                {submitting ? t("modalSubmitting") : t("modalConfirm")}
               </button>
             </div>
           </form>
@@ -200,6 +202,8 @@ function PayoutModal({
 
 // ─── Main page content ───────────────────────────────────────────────────────
 function WalletContent() {
+  const t = useTranslations("companionWallet");
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -263,12 +267,12 @@ function WalletContent() {
 
   useEffect(() => {
     if (stripeSetup === "success") {
-      setActionSuccess("تم ربط حسابك البنكي بـ Stripe بنجاح!");
+      setActionSuccess(t("stripeSetupSuccess"));
       const url = new URL(window.location.href);
       url.searchParams.delete("stripe_setup");
       router.replace(url.pathname);
     } else if (stripeSetup === "refresh") {
-      setActionError("انتهت صلاحية جلسة ربط الحساب. يرجى المحاولة مرة أخرى.");
+      setActionError(t("stripeSetupCancelled"));
       const url = new URL(window.location.href);
       url.searchParams.delete("stripe_setup");
       router.replace(url.pathname);
@@ -314,7 +318,7 @@ function WalletContent() {
 
   const handlePayoutSuccess = async () => {
     setShowPayoutModal(false);
-    setActionSuccess("تمت عملية السحب بنجاح! سيصل المبلغ لحسابك البنكي خلال 1–3 أيام.");
+    setActionSuccess(t("modalSuccessTitle"));
     await fetchWalletData();
   };
 
@@ -323,7 +327,7 @@ function WalletContent() {
       <div className="min-h-screen bg-sand flex flex-col items-center justify-center p-6">
         <Loader2 className="w-12 h-12 text-stitch-primary animate-spin mb-4" />
         <p className="text-stitch-on-surface-variant/80 font-medium">
-          جاري تحميل محفظتك...
+          {t("loading")}
         </p>
       </div>
     );
@@ -333,17 +337,17 @@ function WalletContent() {
     <div className="min-h-screen bg-sand text-stitch-on-surface pb-16" dir="rtl">
 
       {/* ─── Banner Header ─────────────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-[#006767] via-[#1f8a8a] to-[#aeedd5]/50 text-white py-12 px-6 shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-l from-[#006767] via-[#1f8a8a] to-[#aeedd5]/50 text-white py-12 px-6 shadow-md relative overflow-hidden">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 text-right">
             <span className="bg-white/20 text-[#aeedd5] text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full backdrop-blur-md">
-              أرباحك المالية — مدفوعات آمنة عبر Stripe
+              {t("headerBadge")}
             </span>
             <h1 className="text-3xl md:text-4xl font-bold font-stitch-display">
-              محفظة أرباحي
+              {t("headerTitle")}
             </h1>
             <p className="text-white/80 text-sm max-w-xl">
-              تتبع أرباحك وسحب مستحقاتك مباشرةً لحسابك البنكي بكل سهولة وأمان.
+              {t("headerSubtitle")}
             </p>
           </div>
         </div>
@@ -390,7 +394,7 @@ function WalletContent() {
                   <TrendingUp className="w-5 h-5 text-stitch-primary" />
                 </div>
                 <h3 className="font-bold text-stitch-on-surface text-sm uppercase tracking-wider">
-                  الرصيد المتاح للسحب
+                  {t("availableBalance")}
                 </h3>
               </div>
 
@@ -403,7 +407,7 @@ function WalletContent() {
                   <span className="text-sm font-semibold">EGP</span>
                 </div>
                 <p className="text-xs text-stitch-on-surface-variant/70 mt-1">
-                  أرباحك الجاهزة للسحب الفوري
+                  {t("pendingDesc")}
                 </p>
               </div>
 
@@ -422,10 +426,10 @@ function WalletContent() {
                       ) : (
                         <Link2 className="w-5 h-5" />
                       )}
-                      ربط حساب البنك (Stripe)
+                      {t("linkBankBtn")}
                     </button>
                     <p className="text-xs text-stitch-on-surface-variant/50 text-center">
-                      يرجى ربط حسابك البنكي أولاً لتتمكن من سحب أرباحك
+                      {t("incompleteSetupDesc")}
                     </p>
                   </>
                 ) : !stripeTransfersActive ? (
@@ -436,10 +440,10 @@ function WalletContent() {
                         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                         <div className="space-y-1">
                           <p className="text-xs font-bold text-amber-800">
-                            إعداد الحساب البنكي غير مكتمل
+                            {t("incompleteSetupAlert")}
                           </p>
                           <p className="text-xs text-amber-700/80 leading-relaxed">
-                            لم تكتمل خطوات التسجيل على Stripe بعد. يجب إتمام إعداد الحساب البنكي قبل أي عملية سحب.
+                            {t("incompleteSetupDesc")}
                           </p>
                         </div>
                       </div>
@@ -453,7 +457,7 @@ function WalletContent() {
                         ) : (
                           <Link2 className="w-4 h-4" />
                         )}
-                        إتمام إعداد الحساب البنكي
+                        {t("completeBankSetupBtn")}
                       </button>
                     </div>
                     <button
@@ -466,7 +470,7 @@ function WalletContent() {
                       ) : (
                         <Link2 className="w-4 h-4 text-stitch-primary" />
                       )}
-                      فتح لوحة تحكم Stripe
+                      {t("manageBankBtn")}
                     </button>
                   </>
                 ) : (
@@ -478,7 +482,7 @@ function WalletContent() {
                       className="w-full h-14 bg-stitch-primary hover:bg-stitch-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Send className="w-5 h-5" />
-                      سحب رصيد للحساب البنكي
+                      {t("payoutBtn")}
                     </button>
                     <button
                       onClick={handleManageStripe}
@@ -490,7 +494,7 @@ function WalletContent() {
                       ) : (
                         <Link2 className="w-4 h-4 text-stitch-primary" />
                       )}
-                      إدارة وتعديل الحساب البنكي (Stripe)
+                      {t("manageBankBtn")}
                     </button>
                   </>
                 )}
@@ -506,7 +510,7 @@ function WalletContent() {
                   <Wallet className="w-5 h-5 text-emerald-600" />
                 </div>
                 <h3 className="font-bold text-stitch-on-surface text-sm uppercase tracking-wider">
-                  إجمالي المسحوب
+                  {t("totalWithdrawn")}
                 </h3>
               </div>
 
@@ -519,7 +523,7 @@ function WalletContent() {
                   <span className="text-sm font-semibold">EGP</span>
                 </div>
                 <p className="text-xs text-stitch-on-surface-variant/70 mt-1">
-                  إجمالي ما حولته لحسابك البنكي حتى الآن
+                  {t("pendingDesc")}
                 </p>
               </div>
             </div>
@@ -530,7 +534,7 @@ function WalletContent() {
             <div className="flex items-center gap-3 pb-2 border-b border-stitch-outline/10">
               <History className="w-5 h-5 text-stitch-primary" />
               <h3 className="font-bold text-stitch-on-surface text-base">
-                سجل المعاملات
+                {t("paymentHistoryTitle")}
               </h3>
             </div>
 
@@ -538,13 +542,16 @@ function WalletContent() {
               <div className="space-y-3">
                 {transactions.map((txn, idx) => {
                   const isIncoming = txn.amount > 0;
-                  const dateStr = new Date(txn.createdAt).toLocaleDateString("ar-EG", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
+                  const dateStr = new Date(txn.createdAt).toLocaleDateString(
+                    locale === "ar" ? "ar-EG" : "en-US",
+                    {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }
+                  );
 
                   const statusColors: Record<string, string> = {
                     completed: "bg-emerald-50 text-emerald-700 border-emerald-100",
@@ -553,11 +560,23 @@ function WalletContent() {
                   };
 
                   const typeLabels: Record<string, string> = {
-                    payout: isIncoming ? "إيداع من حجز" : "سحب بنكي",
-                    debt: "رسوم منصة",
-                    refund: "استرداد",
-                    deposit: "إيداع",
+                    payout: isIncoming ? t("transactionTypeDeposit") : t("transactionTypePayout"),
+                    debt: t("transactionTypeDebt"),
+                    refund: t("transactionTypeRefund"),
+                    deposit: t("transactionTypeDeposit"),
                   };
+
+                  const statusLabel =
+                    txn.status === "completed"
+                      ? t("statusCompleted")
+                      : txn.status === "pending"
+                        ? t("statusPending")
+                        : t("statusFailed");
+
+                  const description =
+                    locale === "ar"
+                      ? txn.descriptionAr || typeLabels[txn.type] || txn.type
+                      : txn.descriptionEn || typeLabels[txn.type] || txn.type;
 
                   return (
                     <div
@@ -580,7 +599,7 @@ function WalletContent() {
                         </div>
                         <div className="space-y-0.5 text-right">
                           <h4 className="font-bold text-stitch-on-surface text-sm">
-                            {txn.descriptionAr || typeLabels[txn.type] || txn.type}
+                            {description}
                           </h4>
                           <div className="flex flex-wrap items-center gap-2 text-xs text-stitch-on-surface-variant/70">
                             <span className="font-mono">{dateStr}</span>
@@ -591,11 +610,7 @@ function WalletContent() {
                                 "bg-sand-low text-stitch-on-surface-variant border-stitch-outline/20"
                               }`}
                             >
-                              {txn.status === "completed"
-                                ? "مكتملة"
-                                : txn.status === "pending"
-                                ? "معلقة"
-                                : "فشلت"}
+                              {statusLabel}
                             </span>
                           </div>
                         </div>
@@ -614,8 +629,7 @@ function WalletContent() {
             ) : (
               <div className="py-16 text-center text-stitch-on-surface-variant/50 text-sm bg-sand/30 border border-dashed border-stitch-outline/20 rounded-3xl space-y-3">
                 <Wallet className="w-12 h-12 mx-auto text-stitch-outline/40" />
-                <p>لا توجد معاملات مسجلة في محفظتك حالياً.</p>
-                <p className="text-xs">ستظهر هنا أرباحك وعمليات السحب تلقائياً.</p>
+                <p>{t("noTransactions")}</p>
               </div>
             )}
           </div>
@@ -636,13 +650,14 @@ function WalletContent() {
 
 // ─── Page wrapper with Suspense ──────────────────────────────────────────────
 export default function CompanionWallet() {
+  const t = useTranslations("companionWallet");
   return (
     <Suspense
       fallback={
         <div className="min-h-screen bg-sand flex flex-col items-center justify-center p-6">
           <Loader2 className="w-12 h-12 text-stitch-primary animate-spin mb-4" />
           <p className="text-stitch-on-surface-variant/80 font-medium">
-            تحميل المحفظة...
+            {t("loading")}
           </p>
         </div>
       }

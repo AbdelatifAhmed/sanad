@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useAIStore } from "@/store/aiStore";
 import { api } from "@/lib/services/api";
 
 export default function SmartSearchBar() {
   const t = useTranslations("companionsPage");
+  const locale = useLocale();
   const [query, setQuery] = useState("");
   const { setSearchResults, setSearchActive, setSearchLoading, setAiQuery, isSearchLoading } = useAIStore();
 
@@ -58,9 +59,10 @@ export default function SmartSearchBar() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder= "Describe what you're looking for..."
+            placeholder={locale === "ar" ? "اوصف ما تبحث عنه..." : "Describe what you're looking for..."}
             className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-sm py-2 px-1 text-stitch-on-surface placeholder:text-stitch-on-surface-variant/50"
             disabled={isSearchLoading}
+            dir={locale === "ar" ? "rtl" : "ltr"}
           />
           
           <button
@@ -73,7 +75,7 @@ export default function SmartSearchBar() {
                 progress_activity
               </span>
             ) : (
-              <span>Search</span>
+              <span>{locale === "ar" ? "بحث" : "Search"}</span>
             )}
           </button>
         </form>

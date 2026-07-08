@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/services/api";
+import { useTranslations, useLocale } from "next-intl";
 
 interface ServiceRequest {
   id: string;
@@ -17,18 +18,21 @@ interface ServiceRequest {
   distance: number; // in km
 }
 
-const formatTimeAgo = (dateStr: string) => {
-  if (!dateStr) return "Just now";
-  const diffMs = new Date().getTime() - new Date(dateStr).getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${Math.floor(diffHours / 24)}d ago`;
-};
-
 export default function CompanionRequests() {
+  const t = useTranslations("companionRequests");
+  const locale = useLocale();
+
+  const formatTimeAgo = (dateStr: string) => {
+    if (!dateStr) return t("justNow");
+    const diffMs = new Date().getTime() - new Date(dateStr).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return t("justNow");
+    if (diffMins < 60) return t("minutesAgo", { mins: diffMins });
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return t("hoursAgo", { hours: diffHours });
+    return t("daysAgo", { days: Math.floor(diffHours / 24) });
+  };
+
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +47,12 @@ export default function CompanionRequests() {
     message: string;
     type: "success" | "info";
   } | null>(null);
+
+  const getLocalizedTitle = (type: "Medical" | "Companion" | "Personal Care") => {
+    if (type === "Medical") return t("medicalAssistance");
+    if (type === "Personal Care") return t("personalCareHygiene");
+    return t("companionCareTitle");
+  };
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -95,13 +105,15 @@ export default function CompanionRequests() {
         const dateObj = scheduleItem?.date
           ? new Date(scheduleItem.date)
           : new Date();
-        const formattedDate = dateObj.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        });
+        const formattedDate = dateObj.toLocaleDateString(
+          locale === "ar" ? "ar-EG" : "en-US",
+          {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }
+        );
 
-        // Use backend's user city or compute simulated distance
         const familyLocation = (b.familyId as { location?: { city?: string } })
           ?.location;
         const distance = familyLocation?.city
@@ -112,18 +124,13 @@ export default function CompanionRequests() {
           id: b._id,
           type,
           urgency: isUrgent ? "High Urgency" : "Standard",
-          title:
-            type === "Medical"
-              ? "Medical Assistance"
-              : type === "Personal Care"
-                ? "Personal Care & Hygiene"
-                : "Companion Care",
+          title: getLocalizedTitle(type),
           location:
             b.familyId?.location?.readableAddress ||
             b.familyId?.location?.city ||
             "Client Residence",
           rate: b.hourlyRateAtBooking || 120,
-          postedAgo: b.createdAt ? formatTimeAgo(b.createdAt) : "Just now",
+          postedAgo: b.createdAt ? formatTimeAgo(b.createdAt) : t("justNow"),
           date: formattedDate,
           time: `${b.schedule?.[0]?.startTime || "09:00 AM"} - ${b.schedule?.[0]?.endTime || "05:00 PM"}`,
           description:
@@ -134,7 +141,7 @@ export default function CompanionRequests() {
       setRequests(mapped);
     } catch (err: any) {
       console.error("Failed to load requests", err);
-      setError("Could not retrieve incoming requests. Please try again later.");
+      setError(t("loadError"));
     } finally {
       setLoading(false);
     }
@@ -164,7 +171,7 @@ export default function CompanionRequests() {
         setRequests((prev) => prev.filter((r) => r.id !== id));
         setActiveBookingsCount((prev) => prev + 1);
         setToast({
-          message: `You accepted the "${request.title}" request! Added to calendar.`,
+          message: t("acceptedToast", { title: request.title }),
           type: "success",
         });
         setAnimatingId(null);
@@ -174,7 +181,7 @@ export default function CompanionRequests() {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.message ||
-        "Failed to accept booking. Please try again.";
+        t("acceptError");
       setToast({
         message: msg,
         type: "info",
@@ -192,7 +199,7 @@ export default function CompanionRequests() {
       setTimeout(() => {
         setRequests((prev) => prev.filter((r) => r.id !== id));
         setToast({
-          message: `Request for "${request.title}" declined.`,
+          message: t("declinedToast", { title: request.title }),
           type: "info",
         });
         setAnimatingId(null);
@@ -202,7 +209,7 @@ export default function CompanionRequests() {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.message ||
-        "Failed to decline booking. Please try again.";
+        t("declineError");
       setToast({
         message: msg,
         type: "info",
@@ -251,16 +258,16 @@ export default function CompanionRequests() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
         <div>
           <h2 className="text-3xl font-stitch-display font-bold text-[#012d1d]">
-            Incoming Requests
+            {t("title")}
           </h2>
           <p className="text-stitch-on-surface-variant/70 mt-1.5 text-sm">
             {loading
-              ? "Fetching incoming bookings from database..."
+              ? t("loadingDesc")
               : error
                 ? error
                 : filteredRequests.length > 0
-                  ? `You have ${filteredRequests.length} service requests matching your criteria.`
-                  : "No incoming requests match your active filters."}
+                  ? t("countDesc", { count: filteredRequests.length })
+                  : t("noMatchDesc")}
           </p>
         </div>
 
@@ -276,9 +283,9 @@ export default function CompanionRequests() {
               onChange={(e) => setUrgencyFilter(e.target.value)}
               className="bg-transparent border-none text-xs font-semibold focus:ring-0 focus:outline-none p-0 cursor-pointer text-[#2b2b2b]"
             >
-              <option value="All">Urgency: All</option>
-              <option value="High Urgency">High Urgency</option>
-              <option value="Standard">Standard</option>
+              <option value="All">{t("urgencyAll")}</option>
+              <option value="High Urgency">{t("highUrgency")}</option>
+              <option value="Standard">{t("standard")}</option>
             </select>
           </div>
 
@@ -292,9 +299,9 @@ export default function CompanionRequests() {
               onChange={(e) => setDistanceFilter(Number(e.target.value))}
               className="bg-transparent border-none text-xs font-semibold focus:ring-0 focus:outline-none p-0 cursor-pointer text-[#2b2b2b]"
             >
-              <option value={5}>Within 5 km</option>
-              <option value={10}>Within 10 km</option>
-              <option value={25}>Within 25 km</option>
+              <option value={5}>{t("withinKm", { km: 5 })}</option>
+              <option value={10}>{t("withinKm", { km: 10 })}</option>
+              <option value={25}>{t("withinKm", { km: 25 })}</option>
             </select>
           </div>
 
@@ -308,10 +315,10 @@ export default function CompanionRequests() {
               onChange={(e) => setTypeFilter(e.target.value)}
               className="bg-transparent border-none text-xs font-semibold focus:ring-0 focus:outline-none p-0 cursor-pointer text-[#2b2b2b]"
             >
-              <option value="All">Category: All</option>
-              <option value="Medical">Medical Care</option>
-              <option value="Companion">Companion Care</option>
-              <option value="Personal Care">Personal Care</option>
+              <option value="All">{t("categoryAll")}</option>
+              <option value="Medical">{t("medicalCare")}</option>
+              <option value="Companion">{t("companionCare")}</option>
+              <option value="Personal Care">{t("personalCare")}</option>
             </select>
           </div>
         </div>
@@ -380,7 +387,9 @@ export default function CompanionRequests() {
                             : "bg-[#aeedd5]/60 text-[#1d503f] border border-[#96d3bd]/30"
                         }`}
                       >
-                        {req.urgency}
+                        {req.urgency === "High Urgency"
+                          ? t("highUrgency")
+                          : t("standard")}
                       </span>
                       <h3 className="font-stitch-display text-lg font-bold text-[#1b1c1c]">
                         {req.title}
@@ -391,7 +400,7 @@ export default function CompanionRequests() {
                         </span>
                         {req.location} •{" "}
                         <span className="font-semibold text-stitch-primary">
-                          {req.distance} km away
+                          {t("kmAway", { km: req.distance })}
                         </span>
                       </p>
                     </div>
@@ -411,14 +420,14 @@ export default function CompanionRequests() {
                 <div className="flex gap-6 bg-slate-50/70 border border-slate-100 p-4 rounded-2xl text-xs">
                   <div className="flex flex-col">
                     <span className="text-stitch-on-surface-variant/50 font-bold uppercase tracking-wider text-[9px] mb-0.5">
-                      DATE
+                      {t("date")}
                     </span>
                     <span className="font-bold text-[#2b2b2b]">{req.date}</span>
                   </div>
                   <div className="w-px bg-slate-200" />
                   <div className="flex flex-col">
                     <span className="text-stitch-on-surface-variant/50 font-bold uppercase tracking-wider text-[9px] mb-0.5">
-                      TIME
+                      {t("time")}
                     </span>
                     <span className="font-bold text-[#2b2b2b]">{req.time}</span>
                   </div>
@@ -435,13 +444,13 @@ export default function CompanionRequests() {
                     onClick={() => handleAccept(req.id)}
                     className="flex-1 bg-stitch-primary hover:bg-[#166f6f] text-white py-3.5 rounded-2xl font-bold transition-all shadow-soft hover:shadow-premium active:scale-[0.98] cursor-pointer"
                   >
-                    Accept Request
+                    {t("acceptRequest")}
                   </button>
                   <button
                     onClick={() => handleReject(req.id)}
                     className="flex-1 border border-stitch-outline/40 hover:bg-slate-50 text-stitch-on-surface py-3.5 rounded-2xl font-semibold transition-all active:scale-[0.98] cursor-pointer"
                   >
-                    Decline
+                    {t("decline")}
                   </button>
                 </div>
               </div>
@@ -455,12 +464,12 @@ export default function CompanionRequests() {
                 cloud_off
               </span>
               <h3 className="font-stitch-display text-lg font-bold text-stitch-on-surface-variant/80">
-                No incoming requests
+                {t("noRequests")}
               </h3>
               <p className="text-stitch-on-surface-variant/60 text-sm max-w-sm mt-1">
                 {requests.length === 0
-                  ? "You have processed all incoming requests. We'll alert you as soon as new family jobs are posted!"
-                  : "Try adjusting your filters to see more requests in your service area."}
+                  ? t("allProcessedDesc")
+                  : t("filterDesc")}
               </p>
               <button
                 onClick={fetchRequests}
@@ -469,7 +478,7 @@ export default function CompanionRequests() {
                 <span className="material-symbols-outlined text-sm">
                   refresh
                 </span>
-                Refresh List
+                {t("refreshList")}
               </button>
             </div>
           )}
@@ -503,13 +512,13 @@ export default function CompanionRequests() {
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-stitch-primary animate-pulse"></div>
           <span className="font-semibold text-[10px] text-stitch-on-surface-variant uppercase tracking-wider">
-            Live Status
+            {t("liveStatus")}
           </span>
         </div>
         <div className="flex gap-6 mt-1">
           <div>
             <p className="text-[9px] uppercase tracking-wider text-stitch-on-surface-variant/50">
-              NEW JOBS
+              {t("newJobs")}
             </p>
             <p className="text-xl font-bold text-stitch-primary">
               {requests.length}
@@ -518,7 +527,7 @@ export default function CompanionRequests() {
           <div className="border-l border-stitch-outline/20 h-8"></div>
           <div>
             <p className="text-[9px] uppercase tracking-wider text-stitch-on-surface-variant/50">
-              BOOKED
+              {t("booked")}
             </p>
             <p className="text-xl font-bold text-stitch-on-surface">
               {activeBookingsCount}

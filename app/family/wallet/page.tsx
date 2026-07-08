@@ -294,9 +294,9 @@ export default function FamilyWalletDashboard() {
   return (
     <div className="min-h-screen bg-sand text-[#1b1c1c] pb-16" dir={isRtl ? "rtl" : "ltr"}>
       {/* Upper Header Banner */}
-      <div className="bg-gradient-to-r from-[#006767] via-[#1f8a8a] to-[#aeedd5]/50 text-white py-12 px-6 shadow-md relative overflow-hidden">
+      <div className={`${isRtl ? "bg-gradient-to-l" : "bg-gradient-to-r"} from-[#006767] via-[#1f8a8a] to-[#aeedd5]/50 text-white py-12 px-6 shadow-md relative overflow-hidden`}>
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-2 text-right">
+          <div className={`space-y-2 ${isRtl ? "text-right" : "text-left"}`}>
             <span className="bg-white/20 text-[#aeedd5] text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full backdrop-blur-md">
               {isRtl ? "المدفوعات الآمنة عبر Stripe" : "Secure Payments via Stripe"}
             </span>
@@ -446,8 +446,16 @@ export default function FamilyWalletDashboard() {
                                 : statusColors[txn.status]
                             }`}>
                               {txn.bookingId?.status === "cancelled"
-                                ? (isRtl ? "مسترد / ملغي" : "REFUNDED")
-                                : txn.status}
+                                ? isRtl
+                                  ? "مسترد / ملغي"
+                                  : "REFUNDED"
+                                : isRtl
+                                  ? txn.status === "completed"
+                                    ? "مكتمل"
+                                    : txn.status === "failed"
+                                      ? "فشل"
+                                      : "قيد الانتظار"
+                                  : txn.status}
                             </span>
                             {subDetailText && (
                               <>
