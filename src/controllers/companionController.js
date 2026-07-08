@@ -760,6 +760,28 @@ const getCompanionDashboardStats = async (req, res) => {
 
     completion = Math.round(completion);
 
+    // Translateable keys (frontend will map them through next-intl)
+    let completionMessageKey = "profileCompletionDefault";
+
+    if (completion === 100) {
+      completionMessageKey = "profileCompletionComplete";
+    } else if (
+      companion.companionType === "specialized" &&
+      !docs.syndicateCardUrl
+    ) {
+      completionMessageKey = "profileCompletionSpecializedCertificates";
+    } else if (
+      !docs.nationalIdUrl ||
+      docs.nationalIdUrl === "placeholder_national_id.jpg" ||
+      !docs.criminalRecordUrl ||
+      docs.criminalRecordUrl === "placeholder_criminal_record.jpg"
+    ) {
+      completionMessageKey = "profileCompletionIdentificationDocuments";
+    } else {
+      completionMessageKey = "profileCompletionDefault";
+    }
+
+    // Backward compatible raw message (in case frontend doesn't support keys yet)
     let completionMessage =
       lang === "en"
         ? "Complete your profile details to start receiving bookings."
@@ -820,6 +842,9 @@ const getCompanionDashboardStats = async (req, res) => {
         },
         profileCompletion: {
           percentage: completion,
+          // key used by frontend i18n under companionDashboard
+          messageKey: completionMessageKey,
+          // raw text fallback (legacy)
           message: completionMessage,
           missingFields,
         },
