@@ -1,8 +1,7 @@
-import React from "react";
+import { getAvatarUrl } from "@/lib/avatar";
+import { getTranslations } from "next-intl/server";
 import Image from "next/image";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
-import { getAvatarUrl } from "@/lib/avatar";
 
 interface WelcomeHeaderProps {
   userName: string;

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Headphones, ArrowLeft } from "lucide-react";
 import { useRegisterStore } from "@/store/registerStore";
+import { useLocale } from "next-intl";
 
 // Steps
 import BasicInfoStep from "@/components/auth/BasicInfoStep";
@@ -20,16 +21,35 @@ export default function RegisterPage() {
   const role = useRegisterStore((state) => state.role);
   const prevStep = useRegisterStore((state) => state.prevStep);
   const [mounted, setMounted] = useState(false);
+  const locale = useLocale();
+  const isAr = locale === "ar";
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const t = {
+    stepIndicator: isAr ? `الخطوة ${step} من 6` : `Step ${step} of 6`,
+    followSteps: isAr ? "يرجى اتباع الخطوات لإكمال ملفك الشخصي." : "Please follow the steps to complete your profile.",
+    alreadyHaveAccount: isAr ? "لديك حساب بالفعل؟" : "Already have an account?",
+    logIn: isAr ? "تسجيل الدخول" : "Log in",
+    roleSelectionLabel: isAr ? "أنا أسجل كـ:" : "I am registering as a:",
+    familyUser: isAr ? "مستخدم عائلة" : "Family User",
+    lookingForCare: isAr ? "أبحث عن رعاية" : "Looking for care",
+    caregiver: isAr ? "مرافق رعاية" : "Caregiver",
+    providingCare: isAr ? "أقدم خدمات الرعاية" : "Providing care",
+    continueReg: isAr ? "متابعة التسجيل" : "Continue Registration",
+    joinNetwork: isAr ? "انضم إلى شبكتنا من مرافقي الرعاية المحترفين." : "Join our network of professional caregivers.",
+    dignifiedCare: isAr ? "رعاية كريمة، قريبة من منزلك." : "Dignified care, closer to home.",
+    makeDifference: isAr ? "اصنع فرقاً حقيقياً في حياة كبار السن وعائلاتهم." : "Make a meaningful difference in the lives of elderly individuals and their families.",
+    connectingFamilies: isAr ? "نربط العائلات بمرافقين رحماء وموثوقين لرعاية كبار السن." : "Connecting families with compassionate, reliable caregivers for the elderly.",
+  };
+
   const StepComponent = useMemo(() => {
     if (!mounted) return null;
     switch (step) {
       case 1:
-        return <RoleSelectionStep />;
+        return <RoleSelectionStep isAr={isAr} t={t} />;
       case 2:
         return <BasicInfoStep />;
       case 3:
@@ -49,30 +69,30 @@ export default function RegisterPage() {
       case 6:
         return <ReviewStep />;
       default:
-        return <RoleSelectionStep />;
+        return <RoleSelectionStep isAr={isAr} t={t} />;
     }
-  }, [step, role, mounted]);
+  }, [step, role, mounted, isAr]);
 
   const getStepTitle = () => {
     switch (step) {
       case 1:
-        return "Create an account";
+        return isAr ? "إنشاء حساب جديد" : "Create an account";
       case 2:
-        return "Basic Information";
+        return isAr ? "المعلومات الأساسية" : "Basic Information";
       case 3:
-        return "Your Location";
+        return isAr ? "تحديد الموقع الجغرافي" : "Your Location";
       case 4:
         return role === "companion"
-          ? "Professional Info"
-          : "Beneficiary Details";
+          ? (isAr ? "الخبرة والمهارات" : "Professional Info")
+          : (isAr ? "تفاصيل المستفيد" : "Beneficiary Details");
       case 5:
         return role === "companion"
-          ? "Verification Documents"
-          : "Address Details";
+          ? (isAr ? "وثائق التحقق" : "Verification Documents")
+          : (isAr ? "العنوان بالتفصيل" : "Address Details");
       case 6:
-        return "Review & Submit";
+        return isAr ? "المراجعة والإرسال" : "Review & Submit";
       default:
-        return "Registration";
+        return isAr ? "التسجيل" : "Registration";
     }
   };
 
@@ -81,7 +101,7 @@ export default function RegisterPage() {
   return (
     <div
       className="h-screen flex flex-col md:flex-row font-body bg-sand overflow-hidden"
-      dir="ltr"
+      dir={isAr ? "rtl" : "ltr"}
     >
       {/* Left Side: Branding / Hero – fixed, never affected by scroll */}
       <section className="relative hidden md:flex md:w-[40%] h-full flex-col justify-between p-8 md:p-10 overflow-hidden shrink-0">
@@ -111,16 +131,16 @@ export default function RegisterPage() {
           />
         </div>
 
-        <div className="z-10 relative max-w-xl space-y-4 mt-auto">
+        <div className={`z-10 relative max-w-xl space-y-4 mt-auto ${isAr ? "text-right" : "text-left"}`}>
           <h1 className="font-display text-2.5xl md:text-3.5xl lg:text-4xl font-bold text-primary leading-[1.2] tracking-tight">
             {role === "companion"
-              ? "Join our network of professional caregivers."
-              : "Dignified care, closer to home."}
+              ? t.joinNetwork
+              : t.dignifiedCare}
           </h1>
           <p className="text-gray-700 text-sm md:text-base font-medium leading-relaxed">
             {role === "companion"
-              ? "Make a meaningful difference in the lives of elderly individuals and their families."
-              : "Connecting families with compassionate, reliable caregivers for the elderly."}
+              ? t.makeDifference
+              : t.connectingFamilies}
           </p>
         </div>
       </section>
@@ -133,7 +153,7 @@ export default function RegisterPage() {
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
-                  Step {step} of 6
+                  {t.stepIndicator}
                 </span>
               </div>
               <div className="flex gap-1">
@@ -151,7 +171,7 @@ export default function RegisterPage() {
                 {getStepTitle()}
               </h2>
               <p className="text-gray-500 text-sm font-medium">
-                Please follow the steps to complete your profile.
+                {t.followSteps}
               </p>
             </div>
 
@@ -159,12 +179,12 @@ export default function RegisterPage() {
 
             {step === 1 && (
               <p className="text-center text-sm text-gray-500 pt-2 font-medium">
-                <span className="mr-1">Already have an account?</span>
+                <span className={`${isAr ? "ml-1" : "mr-1"}`}>{t.alreadyHaveAccount}</span>
                 <Link
                   href="/login"
                   className="text-button font-bold hover:underline decoration-2 underline-offset-4"
                 >
-                  Log in
+                  {t.logIn}
                 </Link>
               </p>
             )}
@@ -176,7 +196,7 @@ export default function RegisterPage() {
   );
 }
 
-function RoleSelectionStep() {
+function RoleSelectionStep({ isAr, t }: { isAr: boolean; t: any }) {
   const role = useRegisterStore((state) => state.role);
   const setRole = useRegisterStore((state) => state.setRole);
   const nextStep = useRegisterStore((state) => state.nextStep);
@@ -188,8 +208,8 @@ function RoleSelectionStep() {
   return (
     <div className="space-y-6">
       <div className="space-y-2.5">
-        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 text-left">
-          I am registering as a:
+        <label className={`block text-xs font-bold uppercase tracking-wider text-gray-500 ${isAr ? "text-right" : "text-left"}`}>
+          {t.roleSelectionLabel}
         </label>
         <div className="grid grid-cols-2 gap-4">
           <button
@@ -218,9 +238,9 @@ function RoleSelectionStep() {
                 />
               </svg>
             </div>
-            <span className="text-sm font-bold block">Family User</span>
+            <span className="text-sm font-bold block">{t.familyUser}</span>
             <span className="text-[11px] text-gray-400 font-semibold">
-              Looking for care
+              {t.lookingForCare}
             </span>
           </button>
 
@@ -250,9 +270,9 @@ function RoleSelectionStep() {
                 />
               </svg>
             </div>
-            <span className="text-sm font-bold block">Caregiver</span>
+            <span className="text-sm font-bold block">{t.caregiver}</span>
             <span className="text-[11px] text-gray-400 font-semibold">
-              Providing care
+              {t.providingCare}
             </span>
           </button>
         </div>
@@ -264,7 +284,7 @@ function RoleSelectionStep() {
         disabled={!role}
         className="w-full bg-button text-white py-3.5 px-8 rounded-xl font-bold text-base hover:bg-button-hover transition-all active:scale-[0.99] shadow-md shadow-button/20 flex items-center justify-center gap-2 mt-8 disabled:opacity-50 cursor-pointer"
       >
-        <span>Continue Registration</span>
+        <span>{t.continueReg}</span>
       </button>
     </div>
   );

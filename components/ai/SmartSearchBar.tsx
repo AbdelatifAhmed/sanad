@@ -8,7 +8,7 @@ import { api } from "@/lib/services/api";
 export default function SmartSearchBar() {
   const t = useTranslations("companionsPage");
   const [query, setQuery] = useState("");
-  const { setSearchResults, setSearchActive, setSearchLoading, isSearchLoading } = useAIStore();
+  const { setSearchResults, setSearchActive, setSearchLoading, setAiQuery, isSearchLoading } = useAIStore();
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -16,12 +16,15 @@ export default function SmartSearchBar() {
 
     setSearchActive(true);
     setSearchLoading(true);
+    setAiQuery(query);
 
     try {
       const response = await api.post("/ai/family/browse-search", {
         query,
         page: 1,
         limit: 10,
+      }, {
+        timeout: 45000,
       });
 
       const results = response.data?.data?.companions || [];

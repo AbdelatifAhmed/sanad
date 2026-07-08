@@ -239,7 +239,13 @@ export default function StepCareDetails({ defaultValues, onNext }: StepCareDetai
               setTaskList((prev) => Array.from(new Set([...prev, ...aiTasks])));
             }
             if (aiSkills?.length) {
-              setRequiredSkills((prev) => Array.from(new Set([...prev, ...aiSkills])));
+              const skillNames = aiSkills.map((s: any) => {
+                if (typeof s === "object" && s !== null) {
+                  return locale === "ar" ? s.nameAr : s.nameEn;
+                }
+                return s;
+              }).filter(Boolean);
+              setRequiredSkills((prev) => Array.from(new Set([...prev, ...skillNames])));
             }
           }}
         />
