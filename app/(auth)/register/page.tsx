@@ -109,6 +109,8 @@ export default function RegisterPage() {
           <Image
             src={
               role === "companion"
+                ? "/hero-companion.png"
+                : "/hero-family.png"
                 ? "/hero-caregiver.png"
                 : "/hero_care.jpg"
             }
