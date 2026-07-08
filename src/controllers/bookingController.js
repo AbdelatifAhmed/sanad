@@ -9,6 +9,8 @@ const Family = require('../models/family.schema');
 const User = require('../models/user.schema');
 const { hasBookingConflict, hasComprehensiveConflict } = require("../utils/checkConflict");
 const messages = require("../utils/messages");
+const complaintAgent = require("../services/ai/agents/complaintAgent");
+const ActivityLog = require("../models/activityLog.schema");
 const createBooking = async (req, res) => {
   try {
     const lang = req.lang || "en";
@@ -725,8 +727,62 @@ const fileComplaint = async (req, res) => {
       });
     }
     const complaintTitle = title || (lang === "ar" ? "شكوى عامة" : "General Complaint");
-    booking.complaints.push({ title: complaintTitle, description });
+
+    // Analyze using complaintAgent
+    let aiAnalysis = null;
+    try {
+      aiAnalysis = await complaintAgent.analyzeComplaint(complaintTitle, description);
+    } catch (aiErr) {
+      console.error("AI Analysis failed:", aiErr);
+    }
+
+    const complaintObj = {
+      title: complaintTitle,
+      description,
+      aiAnalysis: aiAnalysis || {
+        category: "Other",
+        sentiment: "negative",
+        urgencyLevel: "Medium",
+        aiConfidence: 50,
+        recommendedAction: "Manual Review",
+        aiSummary: "Guardian AI analysis failed due to system limit or warning. Manual review is recommended."
+      }
+    };
+
+    booking.complaints.push(complaintObj);
     await booking.save();
+
+    // Log the AI analysis activity in ActivityLog
+    try {
+      await ActivityLog.create({
+        category: "ai",
+        type: "ai_analyzed_complaint",
+        title: "Booking Complaint Analyzed",
+        description: `Guardian AI analyzed booking complaint for booking ref #${booking._id}. Category: ${complaintObj.aiAnalysis.category}.`,
+        actorName: "Guardian AI",
+        actorRole: "ai",
+        relatedId: booking._id,
+        relatedModel: "Booking",
+        icon: "gpp_bad",
+        iconBg: "bg-red-100",
+        iconColor: "text-red-700",
+        badgeLabel: "AI Audit",
+        badgeClass: "bg-red-50 text-red-700 border-red-200",
+      });
+    } catch (logErr) {
+      console.error("Failed to log AI activity:", logErr);
+    }
+
+    // Emit real-time socket event for admins
+    if (global.io) {
+      global.io.emit("newComplaintAlert", {
+        bookingId: booking._id,
+        companionId: booking.companionId,
+        familyId: booking.familyId,
+        complaint: complaintObj,
+        createdAt: new Date()
+      });
+    }
 
     return res.status(200).json({
       status: "success",
