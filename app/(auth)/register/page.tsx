@@ -3,9 +3,9 @@
 import React, { useMemo, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Headphones, ArrowLeft } from "lucide-react";
 import { useRegisterStore } from "@/store/registerStore";
 import { useLocale } from "next-intl";
+import { useSearchParams } from "next/navigation";
 
 // Steps
 import BasicInfoStep from "@/components/auth/BasicInfoStep";
@@ -19,14 +19,26 @@ import ReviewStep from "@/components/auth/ReviewStep";
 export default function RegisterPage() {
   const step = useRegisterStore((state) => state.step);
   const role = useRegisterStore((state) => state.role);
-  const prevStep = useRegisterStore((state) => state.prevStep);
+  const setRole = useRegisterStore((state) => state.setRole);
+  const nextStep = useRegisterStore((state) => state.nextStep);
   const [mounted, setMounted] = useState(false);
   const locale = useLocale();
+  const searchParams = useSearchParams();
   const isAr = locale === "ar";
+  const requestedRole = searchParams.get("type");
 
   useEffect(() => {
-    setMounted(true);
+    const timer = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (step !== 1) return;
+    if (requestedRole !== "family" && requestedRole !== "companion") return;
+
+    setRole(requestedRole);
+    nextStep();
+  }, [nextStep, requestedRole, role, setRole, step]);
 
   const t = {
     stepIndicator: isAr ? `الخطوة ${step} من 6` : `Step ${step} of 6`,
@@ -71,7 +83,7 @@ export default function RegisterPage() {
       default:
         return <RoleSelectionStep isAr={isAr} t={t} />;
     }
-  }, [step, role, mounted, isAr]);
+  }, [step, role, mounted, isAr, t]);
 
   const getStepTitle = () => {
     switch (step) {
@@ -110,9 +122,9 @@ export default function RegisterPage() {
             src={
               role === "companion"
                 ? "/hero-companion.png"
-                : "/hero-family.png"
-                ? "/hero-caregiver.png"
-                : "/hero_care.jpg"
+                : role === "family"
+                ? "/hero-family.png"
+                : "/hero-caregiver.png"
             }
             alt="Registration hero"
             fill
@@ -198,7 +210,7 @@ export default function RegisterPage() {
   );
 }
 
-function RoleSelectionStep({ isAr, t }: { isAr: boolean; t: any }) {
+function RoleSelectionStep({ isAr, t }: { isAr: boolean; t: Record<string, string> }) {
   const role = useRegisterStore((state) => state.role);
   const setRole = useRegisterStore((state) => state.setRole);
   const nextStep = useRegisterStore((state) => state.nextStep);

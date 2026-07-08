@@ -15,15 +15,11 @@ import {
 import { api } from "@/lib/services/api";
 import { useAuthStore } from "@/store/authStore";
 import Image from "next/image";
-import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
+import { useGoogleLogin } from "@react-oauth/google";
 import { useLocale } from "next-intl";
 
 export default function LoginPage() {
-  return (
-    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "542081770205-vt7vuo4u66v9rlphbjj3fn7m073pcugr.apps.googleusercontent.com"}>
-      <LoginContent />
-    </GoogleOAuthProvider>
-  );
+  return <LoginContent />;
 }
 
 function LoginContent() {
@@ -43,6 +39,27 @@ function LoginContent() {
   const [success, setSuccess] = useState(false);
   const [serverError, setServerError] = useState("");
 
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    if (typeof error === "object" && error !== null) {
+      const maybeResponse = error as {
+        response?: { data?: { message?: string; error?: string } };
+        message?: string;
+      };
+      const message = maybeResponse.response?.data?.message || maybeResponse.response?.data?.error;
+      if (message) return message;
+
+      if (typeof maybeResponse.message === "string" && maybeResponse.message.trim()) {
+        return maybeResponse.message;
+      }
+    }
+
+    if (error instanceof Error && error.message.trim()) {
+      return error.message;
+    }
+
+    return fallback;
+  };
+
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
@@ -50,7 +67,7 @@ function LoginContent() {
       setServerError("");
       try {
         const response = await api.post(
-          "/auth/google-login",
+          "/auth/google-signin",
           {
             accessToken: tokenResponse.access_token,
           },
@@ -61,22 +78,22 @@ function LoginContent() {
         const data = response.data;
 
         setSuccess(true);
-        if (data.accessToken) {
-          localStorage.setItem("token", data.accessToken);
-          localStorage.setItem("user", JSON.stringify(data.user));
-          useAuthStore.getState().setAuth(data.user, data.accessToken);
-        }
+      if (data.accessToken) {
+        localStorage.setItem("token", data.accessToken);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        useAuthStore.getState().setAuth(data.user, data.accessToken);
+      }
 
-        setTimeout(() => {
-          const role = data.user.role;
-          if (data.isNewUser) {
-            router.push(role === "companion" ? "/companion/profile" : "/family/profile");
-          } else {
-            router.push(role === "companion" ? "/companion/dashboard" : "/family/dashboard");
-          }
-        }, 1500);
-      } catch (err: any) {
-        const message = err.response?.data?.message || err.response?.data?.error || err.message || "Google Sign-In failed. Please try again.";
+      setTimeout(() => {
+        const role = data.user.role;
+        if (data.isNewUser || data.needsProfileCompletion) {
+          router.push(role === "companion" ? "/companion/profile" : "/family/profile");
+        } else {
+          router.push(role === "companion" ? "/companion/dashboard" : "/family/dashboard");
+        }
+      }, 1500);
+      } catch (error: unknown) {
+        const message = getErrorMessage(error, "Google Sign-In failed. Please try again.");
         setServerError(message);
       } finally {
         setLoading(false);
@@ -167,8 +184,8 @@ function LoginContent() {
         const role = data.user.role;
         router.push(role === "companion" ? "/companion/dashboard" : "/family/dashboard");
       }, 1500);
-    } catch (err: any) {
-      const message = err.response?.data?.message || err.response?.data?.error || err.message || t.invalidCredentials;
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, t.invalidCredentials);
       setServerError(message);
     } finally {
       setLoading(false);

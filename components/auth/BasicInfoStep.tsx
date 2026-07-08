@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, ArrowLeft } from "lucide-react";
+import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import { useRegisterStore } from "@/store/registerStore";
 import { useTranslations, useLocale } from "next-intl";
+import { useGoogleLogin } from "@react-oauth/google";
 
 const basicInfoSchema = z.object({
   name: z.string().min(1, "الاسم مطلوب بالكامل"),
@@ -22,12 +23,6 @@ const basicInfoSchema = z.object({
 });
 
 type BasicInfoData = z.infer<typeof basicInfoSchema>;
-interface BasicInfoData {
-  name: string;
-  email: string;
-  password: string;
-  phone: string;
-}
 
 export default function BasicInfoStep() {
   const t = useTranslations("validation");
@@ -35,6 +30,8 @@ export default function BasicInfoStep() {
   const isAr = locale === "ar";
   const { name, email, password, phone, updateBasicInfo, nextStep, prevStep } = useRegisterStore();
   const [showPassword, setShowPassword] = React.useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleError, setGoogleError] = useState("");
 
   const basicInfoSchema = useMemo(() => z.object({
     name: z.string().min(1, t("nameRequired")),
@@ -47,6 +44,9 @@ export default function BasicInfoStep() {
     register,
     handleSubmit,
     watch,
+    setValue,
+    clearErrors,
+    setFocus,
     formState: { errors },
   } = useForm<BasicInfoData>({
     resolver: zodResolver(basicInfoSchema),
@@ -70,6 +70,55 @@ export default function BasicInfoStep() {
     hasSymbol
   ].filter(Boolean).length;
 
+  const handleGoogleProfile = async (accessToken: string) => {
+    const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to fetch Google profile.");
+    }
+
+    return response.json();
+  };
+
+  const applyGoogleProfile = async (accessToken: string) => {
+    setGoogleLoading(true);
+    setGoogleError("");
+
+    try {
+      const profile = await handleGoogleProfile(accessToken);
+      const resolvedName = profile?.name || profile?.given_name || profile?.email?.split("@")?.[0] || "";
+      const resolvedEmail = profile?.email || "";
+
+      if (!resolvedName || !resolvedEmail) {
+        throw new Error("Google account did not return a usable name or email.");
+      }
+
+      updateBasicInfo({ name: resolvedName, email: resolvedEmail });
+      setValue("name", resolvedName, { shouldDirty: true, shouldValidate: true });
+      setValue("email", resolvedEmail, { shouldDirty: true, shouldValidate: true });
+      clearErrors(["name", "email"]);
+      setFocus("phone");
+    } catch (error: unknown) {
+      setGoogleError(error instanceof Error ? error.message : "Google sign-in failed. Please try again.");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = useGoogleLogin({
+    scope: "profile email",
+    onSuccess: async (tokenResponse) => {
+      await applyGoogleProfile(tokenResponse.access_token);
+    },
+    onError: () => {
+      setGoogleError("Google sign-in failed. Please try again.");
+    },
+  });
+
   const onSubmit = (data: BasicInfoData) => {
     updateBasicInfo(data);
     nextStep();
@@ -87,6 +136,37 @@ export default function BasicInfoStep() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" dir={isAr ? "rtl" : "ltr"}>
+      <div className="space-y-3 rounded-2xl border border-dashed border-outline-variant bg-sand-low/40 p-4">
+        <div className={`flex items-center justify-between gap-3 ${isAr ? "flex-row-reverse" : ""}`}>
+          <div className={`space-y-1 ${isAr ? "text-right" : "text-left"}`}>
+            <p className="text-sm font-bold text-gray-800">
+              {isAr ? "التعبئة التلقائية من Google" : "Fill details with Google"}
+            </p>
+            <p className="text-xs text-gray-500 font-medium">
+              {isAr
+                ? "سنملأ الاسم والبريد الإلكتروني تلقائيًا، وباقي البيانات تكتبها يدويًا."
+                : "We will fill your name and email automatically, and you complete the rest manually."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleGoogleLogin()}
+            disabled={googleLoading}
+            className="flex items-center justify-center gap-2 rounded-xl border border-outline-variant bg-white px-4 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-sand-low disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {googleLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+            ) : (
+              <svg className="h-4.5 w-4.5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
+              </svg>
+            )}
+            {isAr ? "استكمال عبر Google" : "Continue with Google"}
+          </button>
+        </div>
+        {googleError && <p className={`text-xs font-semibold text-red-500 ${isAr ? "text-right" : "text-left"}`}>{googleError}</p>}
+      </div>
+
       <div className="space-y-3">
         {/* Name */}
         <div className="space-y-1">
