@@ -35,6 +35,7 @@ const registerRateLimiter = rateLimit({
 router.post("/register", registerRateLimiter, authController.register);
 router.post("/login", loginRateLimiter, authController.login);
 router.post("/google-login", authController.googleLogin);
+router.post("/google-signin", authController.googleSignIn);
 router.post("/refresh-token", authController.refreshToken);
 router.post("/logout", authController.logout);
 

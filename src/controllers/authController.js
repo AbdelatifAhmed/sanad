@@ -17,7 +17,7 @@ const userResponse = (user, profileRecord = null) => {
     id: user._id,
     name: user.name,
     email: user.email,
-    phone: user.phone,
+    phone: user.phone || "",
     role: user.role,
     avatar: user.avatar || null,
     location: user.location || null, 
@@ -127,6 +127,7 @@ exports.register = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
+      path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -192,6 +193,7 @@ exports.login = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
+      path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -239,6 +241,7 @@ exports.logout = (req, res) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
+    path: "/",
   });
 
   return res.status(200).json({ message: messages.auth.logoutSuccess[lang] });
@@ -600,6 +603,7 @@ exports.googleLogin = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
+      path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -612,6 +616,152 @@ exports.googleLogin = async (req, res) => {
     await session.abortTransaction();
     session.endSession();
     console.error("Google Login Error:", err);
+    return res.status(500).json({ message: messages.common.serverError[req.lang || "en"] });
+  }
+};
+
+exports.googleSignIn = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const lang = req.lang || "en";
+    const { idToken, accessToken: googleAccessToken, role: preferredRole } = req.body;
+
+    if (!idToken && !googleAccessToken) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: "Google ID Token or Access Token is required." });
+    }
+
+    let googleId, email, name, picture;
+
+    if (idToken) {
+      let ticket;
+      try {
+        ticket = await googleClient.verifyIdToken({
+          idToken,
+          audience: process.env.GOOGLE_CLIENT_ID || "542081770205-vt7vuo4u66v9rlphbjj3fn7m073pcugr.apps.googleusercontent.com",
+        });
+        const payload = ticket.getPayload();
+        googleId = payload.sub;
+        email = payload.email;
+        name = payload.name;
+        picture = payload.picture;
+      } catch (err) {
+        console.error("Google ID Token verification failed:", err);
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ message: "Invalid Google ID Token." });
+      }
+    } else {
+      try {
+        const response = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${googleAccessToken}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch userinfo from Google API");
+        }
+        const data = await response.json();
+        googleId = data.sub;
+        email = data.email;
+        name = data.name;
+        picture = data.picture;
+      } catch (err) {
+        console.error("Google Access Token verification failed:", err);
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ message: "Invalid Google Access Token." });
+      }
+    }
+
+    if (!email) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: "Google account did not return an email address." });
+    }
+
+    const emailNormalized = email.trim().toLowerCase();
+
+    let user = await User.findOne({
+      $or: [{ googleId }, { email: emailNormalized }],
+    }).session(session);
+
+    let isNewUser = false;
+    let role = preferredRole || "family";
+    if (role !== "family" && role !== "companion") {
+      role = "family";
+    }
+
+    if (!user) {
+      isNewUser = true;
+
+      const randomPassword = Math.random().toString(36).slice(-10) + "A1!#$";
+      const generatedPasswordHash = await bcrypt.hash(randomPassword, 12);
+
+      const [newCreatedUser] = await User.create(
+        [{
+          name: name || "Google User",
+          email: emailNormalized,
+          googleId,
+          role,
+          avatar: picture ? { url: picture } : undefined,
+          passwordHash: generatedPasswordHash,
+        }],
+        { session }
+      );
+      user = newCreatedUser;
+    } else {
+      if (!user.googleId) {
+        user.googleId = googleId;
+      }
+      if (picture && (!user.avatar || !user.avatar.url)) {
+        user.avatar = { url: picture };
+      }
+
+      if (name && !user.name) {
+        user.name = name;
+      }
+
+      await user.save({ session });
+
+      if (user.isBanned) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(403).json({
+          message: messages.auth.banned[lang],
+        });
+      }
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    const profileRecord = user.role === "companion"
+      ? await Companion.findOne({ userId: user._id })
+      : user.role === "family"
+      ? await Family.findOne({ familyId: user._id })
+      : null;
+
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      accessToken,
+      user: userResponse(user, profileRecord),
+      isNewUser,
+      needsProfileCompletion: !profileRecord,
+    });
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("Google Sign-In Error:", err);
     return res.status(500).json({ message: messages.common.serverError[req.lang || "en"] });
   }
 };
