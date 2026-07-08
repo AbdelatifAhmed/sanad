@@ -1,6 +1,5 @@
 import { getAvatarUrl } from "@/lib/avatar";
 import { getTranslations } from "next-intl/server";
-import Image from "next/image";
 import Link from "next/link";
 
 interface WelcomeHeaderProps {
@@ -32,11 +31,10 @@ export default async function WelcomeHeader({ userName, userAvatar }: WelcomeHea
       <Link href="/family/profile" className="relative group cursor-pointer block shrink-0">
         <div className="w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden border-2 border-primary/10 shadow-md transition-all duration-300 group-hover:scale-105 group-hover:border-primary/30 relative flex items-center justify-center bg-stitch-primary text-white font-bold text-lg md:text-xl">
           {resolvedAvatar ? (
-            <Image 
-              src={resolvedAvatar} 
-              alt={userName} 
-              fill
-              className="w-full h-full object-cover" 
+            <img
+              src={resolvedAvatar}
+              alt={userName}
+              className="w-full h-full object-cover"
             />
           ) : (
             <span>{initials}</span>

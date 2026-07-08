@@ -7,17 +7,6 @@ import { api } from "@/lib/services/api";
 import { uploadUserAvatar } from "@/lib/api/upload.api";
 import { getAvatarUrl } from "@/lib/avatar";
 import { useFamilyCareRequests } from "@/lib/hooks";
-import {
-  User,
-  MapPin,
-  Plus,
-  Trash2,
-  Edit2,
-  Heart,
-  ShieldAlert,
-  X,
-import { uploadUserAvatar } from "@/lib/api/upload.api";
-import { getAvatarUrl } from "@/lib/avatar";
 import { useTranslations } from "next-intl";
 import { 
   User, 
@@ -196,23 +185,12 @@ export default function FamilyProfile() {
 
     try {
       setUploadingPhoto(true);
-      const res = await uploadUserAvatar(file);
-      if (res && res.avatar) {
       const result = await uploadUserAvatar(file);
       if (result && result.avatar) {
         if (user) {
           useAuthStore.setState({
             user: {
               ...user,
-              avatar: res.avatar,
-            }
-          });
-        }
-        setToast({ message: "Profile photo updated successfully!", type: "success" });
-      }
-    } catch (err: any) {
-      console.error("Failed to update photo:", err);
-      const msg = err.response?.data?.message || "Failed to update profile photo.";
               avatar: result.avatar,
             }
           });
@@ -472,9 +450,6 @@ export default function FamilyProfile() {
         setBeneficiaries(res.data.profile.beneficiaries || []);
         setModalOpen(false);
         setToast({
-          message: editingMember
-            ? "Dependent profile updated successfully!"
-            : "New family dependent registered successfully!",
           message: editingMember 
             ? t("toast.memberUpdated")
             : t("toast.memberAdded"),
@@ -659,7 +634,6 @@ export default function FamilyProfile() {
                     <div className="w-6 h-6 border-2 border-[#1f8a8a] border-t-transparent rounded-full animate-spin" />
                   ) : getAvatarUrl(user?.avatar) ? (
                     <img src={getAvatarUrl(user?.avatar)!} alt="Profile" className="w-full h-full object-cover" />
-                    <img src={getAvatarUrl(user?.avatar) || ""} alt={profileName || t("personalInfo.fullName")} className="w-full h-full object-cover" />
                   ) : (
                     (profileName || "FA").slice(0, 2).toUpperCase()
                   )}
@@ -1130,8 +1104,6 @@ export default function FamilyProfile() {
                   {/* Change Password row */}
                   <button
                     onClick={() => setChangePasswordModalOpen(true)}
-                  <button 
-                    onClick={() => setToast({ message: t("quickSettings.passwordResetSent"), type: "success" })}
                     className="w-full flex items-center justify-between p-4 bg-slate-50 border border-[#eae7e7] rounded-xl hover:bg-slate-100 transition-all text-left cursor-pointer group"
                   >
                     <div className="flex items-center gap-3">
@@ -1184,8 +1156,6 @@ export default function FamilyProfile() {
                   {/* Delete Account */}
                   <button
                     onClick={() => setConfirmDeleteAccountOpen(true)}
-                  <button 
-                    onClick={() => setToast({ message: t("quickSettings.deleteAccountMsg"), type: "error" })}
                     className="w-full h-[56px] border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1471,7 +1441,6 @@ export default function FamilyProfile() {
                     type="text"
                     value={tempAddress.area}
                     onChange={(e) => setTempAddress({ ...tempAddress, area: e.target.value })}
-                    placeholder="Heliopolis"
                     placeholder={t("editModal.areaPlaceholder")}
                     className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30"
                     required
@@ -1487,7 +1456,6 @@ export default function FamilyProfile() {
                     rows={3}
                     value={tempAddress.fullAddress}
                     onChange={(e) => setTempAddress({ ...tempAddress, fullAddress: e.target.value })}
-                    placeholder="12 El-Galaa St, Heliopolis, Cairo, Egypt"
                     placeholder={t("editModal.addressPlaceholder")}
                     className="w-full p-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b] placeholder-[#3e4949]/30 resize-none leading-relaxed"
                     required

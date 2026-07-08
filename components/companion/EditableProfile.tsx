@@ -14,10 +14,24 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/services/api";
 import { 
-  Star, MapPin, Edit2, Check, X, Camera, Plus, Loader2, Upload, Calendar, Clock, FileText, VerifiedIcon, CheckCircle2,
-  UploadCloud, Lock, Trash2, ShieldAlert, AlertCircle, Info, ChevronRight
-  Star, MapPin, Edit2, Check, X, Plus, Loader2, Calendar, Clock, FileText, CheckCircle2,
-  UploadCloud
+  Star,
+  MapPin,
+  Edit2,
+  Check,
+  X,
+  Plus,
+  Loader2,
+  Calendar,
+  Clock,
+  FileText,
+  CheckCircle2,
+  UploadCloud,
+  Lock,
+  Trash2,
+  ShieldAlert,
+  AlertCircle,
+  Info,
+  ChevronRight
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { calculateCompanionProfileCompletion } from "@/lib/profileCompletion";
@@ -127,6 +141,9 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
       fetchProfile();
     } else if (initialData.userId?._id) {
       fetchReviews(initialData.userId._id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   const fetchReviews = async (userId: string) => {
     try {
@@ -139,7 +156,6 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
       console.error("Failed to load reviews", error);
     } finally {
       setReviewsLoading(false);
-
     }
   };
 
@@ -521,8 +537,6 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
             disabled={!profile?._id}
             className="px-6 py-3 bg-stitch-primary text-white font-bold rounded-xl hover:bg-stitch-primary-container transition-colors shadow-sm w-full md:w-auto disabled:opacity-50"
           >
-            View Public Profile
-          <button className="px-6 py-3 bg-stitch-primary text-white font-bold rounded-xl hover:bg-stitch-primary-container transition-colors shadow-sm w-full md:w-auto">
             {t("viewPublicProfile")}
           </button>
         </div>
