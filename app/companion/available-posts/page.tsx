@@ -151,9 +151,9 @@ export default function AvailablePostsPage() {
 
                 {/* Location and schedule details */}
                 <div className="grid grid-cols-2 gap-3 text-xs text-[#3e4949] mb-4 bg-[#eae7e7]/30 p-3 rounded-2xl">
-                  <div className="flex items-center gap-1.5 font-medium">
+                  <div className="flex items-center gap-1.5 font-medium col-span-2">
                     <span className="material-symbols-outlined text-[#1f8a8a] text-sm">location_on</span>
-                    <span>{job.location?.city || "المنطقة"}</span>
+                    <span>{job.location?.readableAddress || job.location?.city || "المنطقة"}</span>
                   </div>
                   <div className="flex items-center gap-1.5 font-medium">
                     <span className="material-symbols-outlined text-[#1f8a8a] text-sm">calendar_today</span>

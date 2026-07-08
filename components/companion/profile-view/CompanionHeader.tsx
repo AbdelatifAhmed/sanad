@@ -13,7 +13,7 @@ interface CompanionHeaderProps {
   rating: number;
   reviewsCount: number;
   location: string;
-  experience: string;
+  experience: string | null;
 }
 
 export default function CompanionHeader({
@@ -33,11 +33,20 @@ export default function CompanionHeader({
       {/* Round Avatar with online indicator */}
       <div className="relative shrink-0">
         <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-2 border-[#005c53]/10 shadow-md">
-          <img 
-            src={getAvatarUrl(avatar, "/avatar_3.jpg") || "/avatar_3.jpg"} 
-            alt={name} 
-            className="w-full h-full object-cover" 
-          />
+          {(() => {
+            const avatarUrl = getAvatarUrl(avatar);
+            return avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-600 font-bold text-2xl uppercase">
+                {name.slice(0, 2)}
+              </div>
+            );
+          })()}
         </div>
         <span className="absolute bottom-1.5 right-1.5 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
       </div>
@@ -76,10 +85,12 @@ export default function CompanionHeader({
             <span className="text-gray-300 font-light px-1">•</span>
           </div>
           
-          <div className="flex items-center justify-center md:justify-start gap-1.5 text-gray-500">
-            <Briefcase className="w-4 h-4 text-gray-400" />
-            <span>{experience}</span>
-          </div>
+          {experience && (
+            <div className="flex items-center justify-center md:justify-start gap-1.5 text-gray-500">
+              <Briefcase className="w-4 h-4 text-gray-400" />
+              <span>{experience}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

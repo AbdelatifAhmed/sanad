@@ -13,7 +13,7 @@ import { useSearchParams } from "next/navigation";
 
 // Decoupled sub-components and pagination
 import BookingCard from "@/components/family/bookings/list/BookingCard";
-import ComplaintModal from "@/components/family/bookings/list/ComplaintModal";
+import ComplaintModal from "@/components/complaint/ComplaintModal";
 import Pagination from "@/components/shared/Pagination";
 
 interface BookingItem {
@@ -80,13 +80,10 @@ export default function FamilyBookingsConsole() {
   
   // Complaint dialog state
   const [complaintBookingId, setComplaintBookingId] = useState<string | null>(null);
-  const [complaintText, setComplaintText] = useState("");
-  const [submittingComplaint, setSubmittingComplaint] = useState(false);
-  const [complaintSuccess, setComplaintSuccess] = useState(false);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 8;
 
   const fetchBookings = async (isBackground = false) => {
     try {
@@ -207,32 +204,6 @@ export default function FamilyBookingsConsole() {
 
   const handleFileComplaint = (bookingId: string) => {
     setComplaintBookingId(bookingId);
-    setComplaintText("");
-    setComplaintSuccess(false);
-  };
-
-  const submitComplaint = async () => {
-    if (!complaintBookingId) return;
-    try {
-      setSubmittingComplaint(true);
-      await api.post(`/bookings/${complaintBookingId}/complaints`, {
-        description: complaintText
-      });
-      setComplaintSuccess(true);
-      fetchBookings(true);
-      setTimeout(() => {
-        setComplaintBookingId(null);
-        setComplaintSuccess(false);
-      }, 2000);
-    } catch (err) {
-      setComplaintSuccess(true);
-      setTimeout(() => {
-        setComplaintBookingId(null);
-        setComplaintSuccess(false);
-      }, 2000);
-    } finally {
-      setSubmittingComplaint(false);
-    }
   };
 
   if (loading) {
@@ -333,13 +304,10 @@ export default function FamilyBookingsConsole() {
 
       {/* Complaint Modal Dialog */}
       <ComplaintModal
+        bookingId={complaintBookingId || ""}
         isOpen={!!complaintBookingId}
-        submitting={submittingComplaint}
-        success={complaintSuccess}
-        text={complaintText}
-        onChangeText={setComplaintText}
-        onSubmit={submitComplaint}
         onClose={() => setComplaintBookingId(null)}
+        onSuccess={() => fetchBookings(true)}
       />
     </div>
   );

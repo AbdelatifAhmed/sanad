@@ -115,7 +115,7 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
     return raw.map((c: any) => ({
       id: String(c._id ?? c.id ?? ""),
       name: c.userId?.name ?? "Caregiver",
-      avatar: c.userId?.avatar ?? "/avatar_1.jpg",
+      avatar: c.userId?.avatar,
       title: deriveTitle(t, c.specialization, c.companionType),
       rating: c.rating ?? 5.0,
       reviewsCount: c.reviewCount ?? 0,

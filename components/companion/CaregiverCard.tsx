@@ -100,7 +100,7 @@ export default function CaregiverCard({
                 <span className="truncate">{location}</span>
               </div>
               <div className="flex items-center gap-1.5 bg-sand-low text-stitch-primary px-2.5 py-1 rounded-md font-bold text-xs border border-sand-high/30">
-                {t("rateDisplay", { rate: hourlyRate })}
+                {t("rateDisplay", { rate: hourlyRate.toLocaleString(locale === "ar" ? "ar-EG" : "en-US") })}
               </div>
             </div>
 
@@ -170,7 +170,7 @@ export default function CaregiverCard({
 
         {/* Rate Badge */}
         <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm text-stitch-primary text-xs font-bold px-3 py-1.5 rounded-full shadow-md border border-stitch-outline/20">
-          {t("rateDisplay", { rate: hourlyRate })}
+          {t("rateDisplay", { rate: hourlyRate.toLocaleString(locale === "ar" ? "ar-EG" : "en-US") })}
         </div>
       </div>
 

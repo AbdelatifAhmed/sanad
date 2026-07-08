@@ -324,7 +324,7 @@ export default function FamilyWalletDashboard() {
 
               <div>
                 <div className="text-3xl md:text-4xl font-bold text-[#1f8a8a] tracking-tight font-stitch-display">
-                  {balance.toFixed(2)} <span className="text-sm font-semibold">{t("egp")}</span>
+                  {balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-sm font-semibold">{t("egp")}</span>
                 </div>
                 <p className="text-xs text-[#3e4949]/70 mt-1">
                   {isRtl ? "رصيدك جاهز للاستخدام الفوري لطلب الخدمات" : "Available balance for immediate booking escrow"}
@@ -354,7 +354,7 @@ export default function FamilyWalletDashboard() {
 
               <div>
                 <div className="text-3xl md:text-4xl font-bold text-amber-650 tracking-tight font-stitch-display">
-                  {heldBalance.toFixed(2)} <span className="text-sm font-semibold">{t("egp")}</span>
+                  {heldBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-sm font-semibold">{t("egp")}</span>
                 </div>
                 <p className="text-xs text-[#3e4949]/70 mt-1">
                   {isRtl 

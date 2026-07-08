@@ -102,12 +102,17 @@ export default function RequestCard({ job }: { job: JobPost }) {
               <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>calendar_today</span>
               {formatDate(job.createdAt, locale)}
             </span>
-            {job.location?.city && (
-              <span className="flex items-center gap-1">
-                <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>location_on</span>
-                {tForm.has(`cities.${job.location.city}` as any) ? tForm(`cities.${job.location.city}` as any) : job.location.city}
-              </span>
-            )}
+            {job.location?.readableAddress ? (
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>location_on</span>
+                  {job.location.readableAddress}
+                </span>
+              ) : (job.location?.city && (
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>location_on</span>
+                  {tForm.has(`cities.${job.location.city}` as any) ? tForm(`cities.${job.location.city}` as any) : job.location.city}
+                </span>
+              ))}
             {job.schedule?.workingDays?.length > 0 && (
               <span className="flex items-center gap-1">
                 <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>event_repeat</span>
@@ -116,7 +121,7 @@ export default function RequestCard({ job }: { job: JobPost }) {
             )}
             <span className="flex items-center gap-1 font-semibold text-[#1f8a8a]">
               <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>payments</span>
-              {locale === "ar" ? tList("perHourAr", { count: job.budgetPerHour }) : tList("perHour", { count: job.budgetPerHour })}
+              {locale === "ar" ? `${job.budgetPerHour.toLocaleString("ar-EG")} ج.م/ساعة` : `${job.budgetPerHour.toLocaleString("en-US")} EGP/hr`}
             </span>
           </div>
         </div>

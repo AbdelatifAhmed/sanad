@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
-import type { BookingScheduleEntry, UserData } from "@/types";
+import type { UserData } from "@/types";
 import { getServerAuthToken } from "@/lib/serverAuth";
 import {
   getCompanionDashboardStats,
   getCompanionSchedule,
   getMyCompanionProfile,
 } from "@/lib/API";
+import { mergeScheduleDerivedStats } from "@/lib/companionDashboard";
+import { calculateCompanionProfileCompletion, type CompanionProfileCompletionInput } from "@/lib/profileCompletion";
 import { StatsSection, ProfileCompletion, type DashboardStats } from "@/components/dashboard/companion/StatsOverview";
 import { RecentActivity } from "@/components/dashboard/companion/RecentActivity";
-import { ScheduleOverview } from "@/components/dashboard/companion/ScheduleOverview";
+import { ScheduleOverview, type Booking } from "@/components/dashboard/companion/ScheduleOverview";
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -20,7 +22,7 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
   const viewMode = (searchParamsVal.view as "list" | "timeline") || "list";
 
   let stats: DashboardStats | null = null;
-  let schedule: any[] = [];
+  let schedule: Booking[] = [];
   let profile: { userId?: UserData; [key: string]: unknown } | null = null;
   let errorStatus: number | null = null;
   let errorMessage = "";
@@ -46,6 +48,14 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
     stats = statsData;
     schedule = scheduleData?.schedule || [];
     profile = profileData?.companion;
+
+    stats = mergeScheduleDerivedStats(statsData, schedule, locale);
+    if (stats && profile) {
+      stats = {
+        ...stats,
+        profileCompletion: calculateCompanionProfileCompletion(profile as CompanionProfileCompletionInput),
+      };
+    }
   } catch (err: unknown) {
     const error = err as { response?: { status?: number; data?: { message?: string } }; status?: number; message?: string };
     console.error("Error loading dashboard data:", err);

@@ -12,7 +12,6 @@ const navItems: SidebarItem[] = [
   { labelKey: "notifications", href: "/family/notifications", icon: "notifications" },
   { labelKey: "wallet", href: "/family/wallet", icon: "wallet" },
   { labelKey: "profile", href: "/family/profile", icon: "person" },
-  { label: "Contact Admin", href: "/family/support", icon: "support_agent" },
 ];
 
 export default function FamilyLayout({

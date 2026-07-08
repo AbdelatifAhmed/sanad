@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Calendar, MessageSquare } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 interface CompanionBookingCardProps {
   id: string;
@@ -19,6 +19,7 @@ export default function CompanionBookingCard({
   companionUserId,
 }: CompanionBookingCardProps) {
   const t = useTranslations("companionProfile");
+  const locale = useLocale();
   
   // Extract first name for the message button, e.g. "Amina" from "Amina Al-Farsi"
   const firstName = name.split(" ")[0];
@@ -32,7 +33,7 @@ export default function CompanionBookingCard({
         </span>
         <div className="flex items-baseline gap-1">
           <span className="text-4xl font-extrabold text-[#005c53]">
-            ${hourlyRate}
+            ${hourlyRate.toLocaleString(locale === "ar" ? "ar-EG" : "en-US")}
           </span>
           <span className="text-xs text-gray-500 font-bold">
             {t("perHour")}

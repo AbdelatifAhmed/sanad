@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useBookingRealtime } from "../../../../hooks/useBookingRealtime";
 import { PostShiftReviewModal } from "../../../../components/review/PostShiftReviewModal";
-import ComplaintModal from "@/components/family/bookings/list/ComplaintModal";
+import ComplaintModal from "@/components/complaint/ComplaintModal";
 import { 
   Clock, 
   MapPin, 
@@ -22,13 +22,15 @@ import {
   CreditCard
 } from "lucide-react";
 import Link from "next/link";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { getAvatarUrl } from "@/lib/avatar";
 import { api } from "../../../../lib/services/api";
 
 export default function FamilyTrackingPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const t = useTranslations("familyBookings");
   
   const { booking: rawBooking, isLoading, error, refresh } = useBookingRealtime(id);
   const booking = rawBooking as any;
@@ -37,34 +39,8 @@ export default function FamilyTrackingPage() {
   const [hasClosedAutoModal, setHasClosedAutoModal] = useState(false);
   const [isFromSchedule, setIsFromSchedule] = useState(false);
 
-  // Complaint modal states
+  // Complaint modal state
   const [isComplaintOpen, setIsComplaintOpen] = useState(false);
-  const [complaintText, setComplaintText] = useState("");
-  const [complaintTitle, setComplaintTitle] = useState("");
-  const [submittingComplaint, setSubmittingComplaint] = useState(false);
-  const [complaintSuccess, setComplaintSuccess] = useState(false);
-
-  const submitComplaint = async () => {
-    if (!complaintText) return;
-    try {
-      setSubmittingComplaint(true);
-      await api.post(`/bookings/${booking._id}/complaints`, {
-        title: complaintTitle,
-        description: complaintText
-      });
-      setComplaintSuccess(true);
-      refresh();
-      setTimeout(() => {
-        setIsComplaintOpen(false);
-        setComplaintSuccess(false);
-        setComplaintTitle("");
-      }, 2000);
-    } catch (err) {
-      alert(isRtl ? "فشل تقديم الشكوى، يرجى المحاولة لاحقاً." : "Failed to submit complaint, please try again.");
-    } finally {
-      setSubmittingComplaint(false);
-    }
-  };
 
   const locale = useLocale();
   const isRtl = locale === "ar";
@@ -273,9 +249,6 @@ export default function FamilyTrackingPage() {
                 ) : (
                   <button
                     onClick={() => {
-                      setComplaintText("");
-                      setComplaintTitle("");
-                      setComplaintSuccess(false);
                       setIsComplaintOpen(true);
                     }}
                     className="px-4 py-2 bg-rose-500 hover:bg-rose-600 border border-rose-600/10 text-white font-bold rounded-xl text-xs transition-all flex items-center space-x-1.5 shadow-soft"
@@ -329,19 +302,19 @@ export default function FamilyTrackingPage() {
               <div className="md:col-span-2 space-y-6">
                 <div className="bg-sand-low/50 p-5 rounded-2xl border border-stitch-outline/10 space-y-4">
                   <h3 className="font-bold text-stitch-on-surface text-base">
-                    {isRtl ? "ملخص الرسوم والتكلفة" : "Fees & Pricing Summary"}
+                    {t("feesSummary")}
                   </h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-stitch-on-surface-variant/80">{isRtl ? "تكلفة الرعاية الأساسية:" : "Base Care Hours Cost:"}</span>
+                      <span className="text-stitch-on-surface-variant/80">{t("baseCost")}</span>
                       <span className="font-bold">{(booking.totalHours * booking.hourlyRateAtBooking).toFixed(2)} USD</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-stitch-on-surface-variant/80">{isRtl ? "رسوم الخدمة الإدارية (10%):" : "Platform Administrative Fee (10%):"}</span>
+                      <span className="text-stitch-on-surface-variant/80">{t("adminFeeLabel")}</span>
                       <span className="font-bold">{(booking.totalHours * booking.hourlyRateAtBooking * 0.1).toFixed(2)} USD</span>
                     </div>
                     <div className="border-t border-stitch-outline/15 pt-2 flex justify-between text-base font-extrabold text-stitch-primary">
-                      <span>{isRtl ? "إجمالي المبلغ المستحق:" : "Total Amount Due:"}</span>
+                      <span>{t("totalAmountDue")}</span>
                       <span>{(booking.totalHours * booking.hourlyRateAtBooking * 1.1).toFixed(2)} USD</span>
                     </div>
                   </div>
@@ -349,7 +322,7 @@ export default function FamilyTrackingPage() {
 
                 <div className="space-y-3">
                   <h3 className="font-bold text-stitch-on-surface text-sm">
-                    {isRtl ? "اختر طريقة الدفع المناسبة:" : "Select Payment Method:"}
+                    {t("selectPayment")}
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
@@ -361,7 +334,7 @@ export default function FamilyTrackingPage() {
                       }`}
                     >
                       <CreditCard className="w-6 h-6" />
-                      <span>{isRtl ? "بطاقة دفع / الائتمان" : "Credit / Debit Card"}</span>
+                      <span>{t("creditCard")}</span>
                     </button>
 
                     <button
@@ -373,7 +346,7 @@ export default function FamilyTrackingPage() {
                       }`}
                     >
                       <ShieldCheck className="w-6 h-6 animate-pulse" />
-                      <span>{isRtl ? "المحفظة الإلكترونية" : "E-Wallet"}</span>
+                      <span>{t("eWallet")}</span>
                     </button>
                   </div>
                 </div>
@@ -393,12 +366,12 @@ export default function FamilyTrackingPage() {
                   {paying ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>{isRtl ? "جاري تحويلك لبوابة الدفع..." : "Redirecting to payment gateway..."}</span>
+                      <span>{t("redirectingPayment")}</span>
                     </>
                   ) : (
                     <>
                       <CreditCard className="w-5 h-5" />
-                      <span>{isRtl ? "تأكيد الدفع والسداد" : "Confirm and Proceed to Pay"}</span>
+                      <span>{t("confirmPay")}</span>
                     </>
                   )}
                 </button>
@@ -406,13 +379,13 @@ export default function FamilyTrackingPage() {
 
               <div className="bg-sand-low/30 p-5 rounded-2xl border border-dashed border-stitch-outline/20 space-y-4 h-fit">
                 <h3 className="font-bold text-stitch-on-surface text-sm">
-                  {isRtl ? "معلومات الحجز" : "Booking Details"}
+                  {t("bookingInfo")}
                 </h3>
-                <div className="space-y-2 text-xs leading-relaxed text-right" dir="rtl">
-                  <div><strong>{isRtl ? "تاريخ البدء:" : "Start Date:"}</strong> {new Date(booking.startDate).toLocaleDateString(undefined, { dateStyle: 'medium' })}</div>
-                  <div><strong>{isRtl ? "تاريخ الانتهاء:" : "End Date:"}</strong> {new Date(booking.endDate).toLocaleDateString(undefined, { dateStyle: 'medium' })}</div>
-                  <div><strong>{isRtl ? "إجمالي الساعات:" : "Total Hours:"}</strong> {booking.totalHours} {isRtl ? "ساعة" : "hours"}</div>
-                  <div><strong>{isRtl ? "سعر الساعة:" : "Hourly Rate:"}</strong> ${booking.hourlyRateAtBooking}/hr</div>
+                <div className={`space-y-2 text-xs leading-relaxed ${isRtl ? "text-right" : "text-left"}`} dir={isRtl ? "rtl" : "ltr"}>
+                  <div><strong>{t("startDateLabel")}</strong> {new Date(booking.startDate).toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US", { dateStyle: 'medium' })}</div>
+                  <div><strong>{t("endDateLabel")}</strong> {new Date(booking.endDate).toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US", { dateStyle: 'medium' })}</div>
+                  <div><strong>{t("totalHours")}</strong> {booking.totalHours} {t("hours")}</div>
+                  <div><strong>{t("hourlyRateLabel")}</strong> {booking.hourlyRateAtBooking?.toLocaleString(locale === "ar" ? "ar-EG" : "en-US")} {isRtl ? "ج.م/ساعة" : "EGP/hr"}</div>
                 </div>
               </div>
             </div>
@@ -445,16 +418,16 @@ export default function FamilyTrackingPage() {
                         <div className="mt-1">
                           <span className="inline-block text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-100 px-2 py-0.5 rounded font-semibold">
                             {activeSchedule.checkInMethod === "passcode"
-                              ? "✓ تم التحقق عبر رمز المرور (OTP Verified)"
+                              ? t("verifiedOtpCode")
                               : activeSchedule.checkInMethod === "geolocation"
-                              ? "✓ تم التحقق من الموقع الجغرافي للجهاز (Geo-location Verified)"
-                              : "✓ تم التحقق بنجاح"}
+                              ? t("verifiedGeoLocation")
+                              : t("verifiedSuccess")}
                           </span>
                         </div>
                       )}
                       {activeSchedule && !activeSchedule.checkInTime && booking.verificationPasscode && (
                         <div className="mt-1.5 inline-block text-xs font-bold text-[#1f8a8a] bg-teal-50 border border-teal-100 px-2.5 py-1 rounded-xl">
-                          رمز الحضور المؤقت (OTP): {booking.verificationPasscode}
+                          {t("otpCodeLabel", { code: booking.verificationPasscode })}
                         </div>
                       )}
                       {(() => {
@@ -468,29 +441,26 @@ export default function FamilyTrackingPage() {
                             const diffMins = (currentTime.getTime() - start.getTime()) / (1000 * 60);
                             if (diffMins > 10) {
                               return (
-                                <div className="mt-3 p-3.5 bg-amber-50 border border-amber-250 rounded-2xl space-y-2.5 animate-pulse text-right" dir="rtl">
+                                <div className={`mt-3 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl space-y-2.5 animate-pulse ${isRtl ? "text-right" : "text-left"}`} dir={isRtl ? "rtl" : "ltr"}>
                                   <p className="text-xs font-bold text-amber-700 flex items-center gap-1">
                                     <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                                    المرافق متأخر عن الموعد ({Math.floor(diffMins)} دقيقة)
+                                    {t("lateMinsAlertWithCount", { mins: Math.floor(diffMins) })}
                                   </p>
                                   {booking.complaints && booking.complaints.length > 0 ? (
                                      <button
                                        disabled
                                        className="w-full py-2 bg-gray-300 text-gray-500 font-bold text-xs rounded-xl border border-gray-400/20 cursor-not-allowed opacity-75"
                                      >
-                                       {isRtl ? "تم تقديم شكوى بالفعل وهي قيد المراجعة" : "Complaint already filed and under review"}
+                                       {t("complaintAlreadyFiled")}
                                      </button>
                                    ) : (
                                      <button
                                        onClick={() => {
-                                         setComplaintText("");
-                                         setComplaintTitle("");
-                                         setComplaintSuccess(false);
                                          setIsComplaintOpen(true);
                                        }}
                                        className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
                                      >
-                                       {isRtl ? "تقديم شكوى للمنصة" : "File Platform Complaint"}
+                                       {t("fileComplaintToPlatform")}
                                      </button>
                                    )}
                                 </div>
@@ -565,17 +535,17 @@ export default function FamilyTrackingPage() {
           <div className="bg-white border border-stitch-outline/10 shadow-soft rounded-2xl p-5 space-y-4">
             <h3 className="text-sm font-semibold text-stitch-on-surface-variant flex items-center space-x-2">
               <UserIcon className="w-4 h-4 text-stitch-primary" />
-              <span>Care Details</span>
+              <span>{isRtl ? "تفاصيل الرعاية" : "Care Details"}</span>
             </h3>
             {booking.beneficiary ? (
-              <div className="p-3 bg-sand-low rounded-xl border border-stitch-outline/10 text-xs space-y-1.5 text-right" dir="rtl">
-                <div className="font-bold text-stitch-on-surface text-center pb-1 border-b border-stitch-outline/10">تفاصيل متلقي الرعاية</div>
-                <div><strong>الاسم:</strong> {booking.beneficiary.name}</div>
-                <div><strong>العمر:</strong> {booking.beneficiary.age} سنة ({booking.beneficiary.gender === 'male' ? 'ذكر' : 'أنثى'})</div>
-                <div className="leading-relaxed"><strong>الحالة الصحية:</strong> {booking.beneficiary.conditionDetails}</div>
+              <div className={`p-3 bg-sand-low rounded-xl border border-stitch-outline/10 text-xs space-y-1.5 ${isRtl ? "text-right" : "text-left"}`} dir={isRtl ? "rtl" : "ltr"}>
+                <div className="font-bold text-stitch-on-surface text-center pb-1 border-b border-stitch-outline/10">{t("careRecipientDetails")}</div>
+                <div><strong>{t("nameLabel")}</strong> {booking.beneficiary.name}</div>
+                <div><strong>{t("ageLabel")}</strong> {booking.beneficiary.age} {t("yearsOld")} ({booking.beneficiary.gender === 'male' ? t("genderMale") : t("genderFemale")})</div>
+                <div className="leading-relaxed"><strong>{t("healthCondition")}</strong> {booking.beneficiary.conditionDetails}</div>
               </div>
             ) : (
-              <p className="text-xs text-stitch-on-surface-variant/80">No beneficiary details populated</p>
+              <p className="text-xs text-stitch-on-surface-variant/80">{isRtl ? "لا توجد بيانات متلقي الرعاية" : "No beneficiary details populated"}</p>
             )}
           </div>
 
@@ -583,14 +553,14 @@ export default function FamilyTrackingPage() {
           <div className="bg-white border border-stitch-outline/10 shadow-soft rounded-2xl p-5 space-y-4">
             <h3 className="text-sm font-semibold text-stitch-on-surface-variant flex items-center space-x-2">
               <MapPin className="w-4 h-4 text-stitch-primary" />
-              <span>Location</span>
+              <span>{isRtl ? "الموقع" : "Location"}</span>
             </h3>
             <div className="space-y-2">
               <p className="text-stitch-on-surface font-semibold text-sm">
-                {booking.location?.readableAddress || "No address details available"}
+                {booking.location?.readableAddress || (isRtl ? "لا تتوفر تفاصيل العنوان" : "No address details available")}
               </p>
               <p className="text-xs text-stitch-on-surface-variant/80">
-                {booking.location?.city || "City"}, {booking.location?.governorate || "Governorate"}
+                {booking.location?.city || (isRtl ? "المدينة" : "City")}, {booking.location?.governorate || (isRtl ? "المحافظة" : "Governorate")}
               </p>
 
               {/* View map redirection button using coordinates */}
@@ -602,7 +572,7 @@ export default function FamilyTrackingPage() {
                   className="flex items-center justify-center space-x-2 w-full py-2 bg-teal-50 hover:bg-teal-100 text-stitch-primary rounded-xl text-xs font-semibold transition-all border border-teal-100 mt-2"
                 >
                   <MapPin className="w-3.5 h-3.5 shrink-0" />
-                  <span>عرض الموقع على الخريطة</span>
+                  <span>{t("viewMap")}</span>
                 </a>
               )}
             </div>
@@ -612,18 +582,26 @@ export default function FamilyTrackingPage() {
           <div className="bg-white border border-stitch-outline/10 shadow-soft rounded-2xl p-5 space-y-4">
             <h3 className="text-sm font-semibold text-stitch-on-surface-variant flex items-center space-x-2">
               <Clock className="w-4 h-4 text-stitch-primary" />
-              <span>Current Slot</span>
+              <span>{isRtl ? "الموعد الحالي" : "Current Slot"}</span>
             </h3>
             <div className="space-y-2">
               <div className="flex items-center space-x-2 text-stitch-on-surface text-sm font-semibold">
                 <Calendar className="w-4 h-4 text-stitch-on-surface-variant/60" />
-                <span>{activeSchedule ? new Date(activeSchedule.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : "—"}</span>
+                <span>{activeSchedule ? new Date(activeSchedule.date).toLocaleDateString(locale === "ar" ? "ar-EG" : "en-US", { weekday: 'short', month: 'short', day: 'numeric' }) : "—"}</span>
               </div>
               <div className="text-stitch-on-surface font-bold text-lg">
-                {activeSchedule ? `${activeSchedule.startTime} - ${activeSchedule.endTime}` : "—"}
+                {activeSchedule ? (() => {
+                  const fmtTime = (t: string) => {
+                    const [h, m] = t.split(":").map(Number);
+                    const ampm = h >= 12 ? (locale === "ar" ? "م" : "PM") : (locale === "ar" ? "ص" : "AM");
+                    const h12 = h % 12 || 12;
+                    return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+                  };
+                  return `${fmtTime(activeSchedule.startTime)} – ${fmtTime(activeSchedule.endTime)}`;
+                })() : "—"}
               </div>
               <span className="inline-block text-[10px] bg-sand-low text-stitch-on-surface-variant border border-stitch-outline/20 px-2 py-0.5 rounded font-mono">
-                Slot {activeScheduleIndex + 1} of {booking.schedule?.length || 0}
+                {isRtl ? `موعد ${activeScheduleIndex + 1} من ${booking.schedule?.length || 0}` : `Slot ${activeScheduleIndex + 1} of ${booking.schedule?.length || 0}`}
               </span>
             </div>
           </div>
@@ -679,42 +657,66 @@ export default function FamilyTrackingPage() {
         </div>
 
         {/* Companion Profile Card */}
-        {companionUser && (
-          <div className="bg-white border border-stitch-outline/10 shadow-soft rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center space-x-4">
-              {companionUser.avatar ? (
-                <img 
-                  src={companionUser.avatar.url || companionUser.avatar} 
-                  alt={companionUser.name} 
-                  className="w-14 h-14 rounded-full object-cover border border-stitch-outline/25"
-                />
-              ) : (
-                <div className="w-14 h-14 rounded-full bg-teal-50 text-stitch-primary flex items-center justify-center font-bold text-lg border border-teal-100">
-                  {companionUser.name.charAt(0)}
-                </div>
-              )}
-              <div>
-                <h3 className="font-bold text-stitch-on-surface">{companionUser.name}</h3>
-                <p className="text-xs text-stitch-on-surface-variant/80">Assigned Companion Caregiver</p>
-                <div className="flex items-center space-x-2 mt-1">
-                  <span className="text-[10px] bg-teal-50 text-stitch-primary border border-teal-100 px-2 py-0.5 rounded font-semibold">
-                    Verified ID
-                  </span>
+        {companionUser && (() => {
+          const companionAvatar = getAvatarUrl(companionUser.avatar);
+          const rate = booking.hourlyRateAtBooking || 0;
+          const specialization = companionUser.specialization || booking.companionProfile?.specialization || companionUser.companionProfile?.specialization;
+          const rating = companionUser.rating || booking.companionProfile?.rating || companionUser.companionProfile?.rating || booking.rating || 5.0;
+
+          const getSpecializationLabel = (spec: string, isRtl: boolean) => {
+            if (spec === "nursing") return isRtl ? "ممرض مسجل" : "Registered Nurse";
+            if (spec === "physiotherapy") return isRtl ? "أخصائي علاج طبيعي" : "Physiotherapist";
+            if (spec === "companionship_companion") return isRtl ? "مرافق رعاية" : "Companion";
+            return isRtl ? "مرافق رعاية" : "Companion Caregiver";
+          };
+
+          return (
+            <div className="bg-white border border-stitch-outline/10 shadow-soft rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center space-x-4">
+                {companionAvatar ? (
+                  <img 
+                    src={companionAvatar} 
+                    alt={companionUser.name} 
+                    className="w-14 h-14 rounded-full object-cover border border-stitch-outline/25"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-[#1f8a8a]/10 text-[#1f8a8a] flex items-center justify-center font-bold text-lg border border-[#1f8a8a]/20 uppercase">
+                    {companionUser.name.slice(0, 2)}
+                  </div>
+                )}
+                <div>
+                  <h3 className="font-bold text-stitch-on-surface">{companionUser.name}</h3>
+                  <p className="text-xs text-stitch-on-surface-variant/80">{isRtl ? "المرافق المعين للرعاية" : "Assigned Companion Caregiver"}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
+                    {specialization && (
+                      <span className="text-[10px] bg-[#1f8a8a]/10 text-[#1f8a8a] border border-[#1f8a8a]/20 px-2 py-0.5 rounded font-semibold">
+                        {getSpecializationLabel(specialization, isRtl)}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-0.5 text-amber-500 font-bold text-[11px]">
+                      <Star className="w-3 h-3 fill-current text-amber-500" />
+                      <span className="text-gray-800">{Number(rating).toFixed(1)}</span>
+                    </span>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-gray-800 font-bold text-[11px]">
+                      {isRtl ? `${rate.toLocaleString("ar-EG")} ج.م/ساعة` : `${rate.toLocaleString("en-US")} EGP/hr`}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-3">
-              <Link 
-                href={`/family/messages?companionId=${companionUser._id || companionUser.id}`}
-                className="flex items-center space-x-2 px-4 py-2.5 bg-stitch-primary hover:bg-stitch-primary/95 text-white rounded-xl text-xs font-bold transition-all border border-stitch-primary/10 shadow-soft"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>{isRtl ? "مراسلة المرافق" : "Message Companion"}</span>
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link 
+                  href={`/family/messages?companionId=${companionUser._id || companionUser.id}`}
+                  className="flex items-center space-x-2 px-4 py-2.5 bg-stitch-primary hover:bg-stitch-primary/95 text-white rounded-xl text-xs font-bold transition-all border border-stitch-primary/10 shadow-soft"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>{isRtl ? "مراسلة المرافق" : "Message Companion"}</span>
+                </Link>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
       </div>
 
@@ -735,15 +737,10 @@ export default function FamilyTrackingPage() {
 
       {/* Complaint Modal Trigger */}
       <ComplaintModal
+        bookingId={id}
         isOpen={isComplaintOpen}
-        submitting={submittingComplaint}
-        success={complaintSuccess}
-        text={complaintText}
-        onChangeText={setComplaintText}
-        titleText={complaintTitle}
-        onChangeTitleText={setComplaintTitle}
-        onSubmit={submitComplaint}
         onClose={() => setIsComplaintOpen(false)}
+        onSuccess={refresh}
       />
     </div>
   );

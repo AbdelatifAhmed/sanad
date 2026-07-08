@@ -9,6 +9,7 @@ import { useAuthStore } from "@/store/authStore";
 
 import { logoutUser } from "@/lib/API";
 import { api } from "@/lib/services/api";
+import { getAvatarUrl } from "@/lib/avatar";
 
 type NavLabelKey =
   | "dashboard"
@@ -24,7 +25,8 @@ type NavLabelKey =
   | "settings"
   | "applications"
   | "activeShift"
-  | "notifications";
+  | "notifications"
+  | "contactAdmin";
 
 type AppLabelKey = "name" | "familyDashboard" | "careDashboard";
 
@@ -134,7 +136,7 @@ export default function Sidebar({
     <>
       <aside className="hidden md:flex w-72 bg-stitch-surface flex-col border-s border-stitch-outline/20 h-screen sticky top-0 font-stitch-body select-none shrink-0">
         <div className="p-8 pb-6">
-          <h1 className="text-2xl font-stitch-display font-bold text-primary tracking-tight">
+          <h1 className="text-2xl font-stitch-display font-bold text-primary tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
             {resolvedTitle}
           </h1>
           <p className="text-xs font-medium text-stitch-on-surface-variant/60 mt-1 uppercase tracking-wider">
@@ -184,6 +186,13 @@ export default function Sidebar({
                 <span className="material-symbols-outlined text-xl">settings</span>
                 <span>{tNav("settings")}</span>
               </Link>
+              <Link 
+                href={`${rolePrefix}/support`} 
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stitch-secondary-container/15 text-stitch-on-surface hover:text-stitch-on-secondary-container text-sm font-medium transition-colors"
+              >
+                <span className="material-symbols-outlined text-xl">support_agent</span>
+                <span>{tNav("contactAdmin")}</span>
+              </Link>
               <div className="h-px bg-stitch-outline/10 my-1" />
               <button 
                 onClick={handleLogout}
@@ -199,12 +208,25 @@ export default function Sidebar({
             onClick={toggleMenu}
             className="flex items-center gap-3 cursor-pointer hover:bg-stitch-secondary-container/10 p-2 -m-2 rounded-2xl transition-colors"
           >
-            <div className="w-10 h-10 rounded-full bg-stitch-primary/10 flex items-center justify-center text-stitch-primary shrink-0">
-              <span className="material-symbols-outlined">person</span>
+            <div className="w-10 h-10 rounded-full bg-stitch-primary/10 flex items-center justify-center text-stitch-primary shrink-0 overflow-hidden">
+              {getAvatarUrl(user?.avatar) ? (
+                <img 
+                  src={getAvatarUrl(user?.avatar)!} 
+                  alt={user?.name || tNav("userAccount")}
+                  className="w-10 h-10 rounded-full object-cover"
+                  draggable={false}
+                />
+              ) : (
+                <span className="material-symbols-outlined">person</span>
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-stitch-on-surface truncate">{tNav("userAccount")}</p>
-              <p className="text-xs text-stitch-on-surface-variant/60 truncate">user@sanad.com</p>
+              <p className="text-sm font-semibold text-stitch-on-surface truncate">
+                {user?.name || tNav("userAccount")}
+              </p>
+              <p className="text-xs text-stitch-on-surface-variant/60 truncate">
+                {user?.email || "user@sanad.com"}
+              </p>
             </div>
             <span className="material-symbols-outlined text-stitch-on-surface-variant/50 text-lg transition-transform duration-200 rtl:-rotate-180" style={{ transform: menuOpen ? 'rotate(180deg)' : 'none' }}>
               expand_less
@@ -274,6 +296,13 @@ export default function Sidebar({
                 <span className="material-symbols-outlined text-lg">settings</span>
                 <span>{tNav("settings")}</span>
               </Link>
+              <Link 
+                href={`${rolePrefix}/support`} 
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stitch-secondary-container/15 text-stitch-on-surface hover:text-stitch-on-secondary-container text-sm font-medium transition-colors"
+              >
+                <span className="material-symbols-outlined text-lg">support_agent</span>
+                <span>{tNav("contactAdmin")}</span>
+              </Link>
               <div className="h-px bg-stitch-outline/10 my-1" />
               <button 
                 onClick={handleLogout}
@@ -293,8 +322,17 @@ export default function Sidebar({
                 : "text-stitch-on-surface/60 hover:text-stitch-primary"
             }`}
           >
-            <div className="w-8 h-8 rounded-full bg-stitch-primary/10 flex items-center justify-center text-stitch-primary shrink-0">
-              <span className="material-symbols-outlined text-xl">person</span>
+            <div className="w-8 h-8 rounded-full bg-stitch-primary/10 flex items-center justify-center text-stitch-primary shrink-0 overflow-hidden">
+              {getAvatarUrl(user?.avatar) ? (
+                <img 
+                  src={getAvatarUrl(user?.avatar)!} 
+                  alt={user?.name || tNav("userAccount")}
+                  className="w-8 h-8 rounded-full object-cover"
+                  draggable={false}
+                />
+              ) : (
+                <span className="material-symbols-outlined text-xl">person</span>
+              )}
             </div>
             <span className="text-[10px] font-semibold tracking-tight">{tNav("account")}</span>
           </button>
