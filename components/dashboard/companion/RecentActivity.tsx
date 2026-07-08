@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
-import { getUserNotifications } from "@/lib/API";
-import { getServerAuthToken } from "@/lib/serverAuth";
+import { isNextRedirectError, serverFetch } from "@/lib/serverAuth";
 import type { NotificationItem } from "@/types";
 
 const activityStyles: Record<string, { icon: string; className: string }> = {
@@ -44,15 +43,16 @@ export async function RecentActivity() {
   let notifications: NotificationItem[] = [];
 
   try {
-    const accessToken = await getServerAuthToken();
-    const data = await getUserNotifications(1, 4, false, {
+    const data = await serverFetch("/notifications?page=1&limit=4&unreadOnly=false", {
       headers: {
-        Authorization: `Bearer ${accessToken}`,
         "Accept-Language": locale,
       },
     });
     notifications = data.notifications || [];
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
     console.error("Error loading recent activity:", error);
   }
 

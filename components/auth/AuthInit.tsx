@@ -15,10 +15,11 @@ export default function AuthInit() {
           useAuthStore.getState().setAuth(user, accessToken);
         }
       } catch {
-        // Silent catch: if refresh fails (guest or expired), api interceptor
-        // handles logout if needed, or we just stay unauthenticated.
-        useAuthStore.getState().clearAuth();
-        console.debug('AuthInit: No valid session found, cleared auth state');
+        const { accessToken, isAuthenticated } = useAuthStore.getState();
+        if (!isAuthenticated || !accessToken) {
+          useAuthStore.getState().clearAuth();
+          console.debug("AuthInit: No valid session found, cleared auth state");
+        }
       }
     };
 
