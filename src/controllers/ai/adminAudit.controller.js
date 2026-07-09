@@ -35,15 +35,49 @@ const analyzeReviews = async (req, res) => {
     // Process batch audit using the sub-agent
     const auditedResults = await auditAgent.batchAuditReviews(reviews);
 
+    // ── Normalise helpers ─────────────────────────────────────────────────────
+    /**
+     * Convert numeric sentimentScore (1.0–5.0) → SentimentType string.
+     * Also accepts an already-normalised string so re-runs are idempotent.
+     */
+    const toSentimentType = (score, rating) => {
+      if (typeof score === 'string' && ['positive','neutral','negative','critical'].includes(score)) return score;
+      const n = typeof score === 'number' ? score : rating || 3;
+      if (n >= 4.0) return 'positive';
+      if (n >= 3.0) return 'neutral';
+      if (n >= 2.0) return 'negative';
+      return 'critical';
+    };
+
+    /**
+     * Convert free-text alertLevel → ReviewPriority enum.
+     * Also accepts already-normalised values so re-runs are idempotent.
+     */
+    const toReviewPriority = (alertLevel, sentimentNum, rating) => {
+      if (typeof alertLevel === 'string' && ['critical','high','medium','low'].includes(alertLevel)) return alertLevel;
+      const isUrgent = alertLevel === 'Urgent Action Required'
+        || (typeof sentimentNum === 'number' && sentimentNum <= 2.0)
+        || (rating != null && rating <= 2);
+      if (!isUrgent) {
+        const n = typeof sentimentNum === 'number' ? sentimentNum : rating || 3;
+        return n >= 3.5 ? 'low' : 'medium';
+      }
+      // Differentiate critical vs high based on numeric score or star rating
+      const n = typeof sentimentNum === 'number' ? sentimentNum : rating || 2;
+      return (n <= 1.5 || rating === 1) ? 'critical' : 'high';
+    };
+
     // Map audit reports back into original reviews data for dashboard convenience
     const payload = reviews.map((rev, index) => {
       const audit = auditedResults[index] || {};
+      const normSentiment = toSentimentType(audit.sentimentScore, rev.rating);
+      const normPriority  = toReviewPriority(audit.alertLevel, audit.sentimentScore, rev.rating);
       return {
         ...rev,
-        sentimentScore: audit.sentimentScore,
-        alertLevel: audit.alertLevel,
-        flaggedViolations: audit.flaggedViolations,
-        auditSummary: audit.auditSummary
+        sentimentScore:    normSentiment,
+        alertLevel:        normPriority,
+        flaggedViolations: audit.flaggedViolations ?? [],
+        auditSummary:      audit.auditSummary ?? ''
       };
     });
 
