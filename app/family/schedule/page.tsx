@@ -4,31 +4,13 @@ import React, { useState, useEffect, useMemo } from "react";
 import { api } from "@/lib/services/api";
 import { useTranslations, useLocale } from "next-intl";
 import { Loader2 } from "lucide-react";
-import CalendarGrid from "@/components/family/schedule/CalendarGrid";
-import DayShiftsList from "@/components/family/schedule/DayShiftsList";
-import AllShiftsList from "@/components/family/schedule/AllShiftsList";
-
-interface ScheduleItem {
-  bookingId: string;
-  bookingStatus: string;
-  companionId: {
-    _id: string;
-    name: string;
-    avatar?: any;
-    phone?: string;
-  };
-  location: any;
-  date: string;
-  startTime: string;
-  endTime: string;
-  checkInTime?: string;
-  checkOutTime?: string;
-  tasksList: any[];
-  slotIndex: number;
-}
+import CalendarGrid from "@/components/shared/schedule/CalendarGrid";
+import DayShiftsList from "@/components/shared/schedule/DayShiftsList";
+import AllShiftsList from "@/components/shared/schedule/AllShiftsList";
+import type { ScheduleItem } from "@/components/shared/schedule/types";
 
 export default function FamilySchedule() {
-  const t = useTranslations("familySchedule");
+  const t = useTranslations("schedule");
   const locale = useLocale();
   const isRtl = locale === "ar";
 
@@ -67,8 +49,8 @@ export default function FamilySchedule() {
           shifts.push({
             bookingId: booking._id,
             bookingStatus: booking.status,
-            companionId: typeof booking.companionId === "object" && booking.companionId
-              ? booking.companionId 
+            counterparty: typeof booking.companionId === "object" && booking.companionId
+              ? booking.companionId
               : { _id: String(booking.companionId || ""), name: "مقدم الرعاية" },
             location: booking.location,
             date: slot.date,
@@ -126,7 +108,7 @@ export default function FamilySchedule() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto font-stitch-body p-4" dir={isRtl ? "rtl" : "ltr"}>
-      
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -162,7 +144,7 @@ export default function FamilySchedule() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Column: Calendar Grid */}
         <CalendarGrid
           selectedDate={selectedDate}
@@ -182,6 +164,7 @@ export default function FamilySchedule() {
             shifts={selectedDayShifts}
             locale={locale}
             isRtl={isRtl}
+            role="family"
           />
 
           {/* Complete filtered shifts list */}
@@ -189,6 +172,7 @@ export default function FamilySchedule() {
             shifts={filteredShiftsList}
             filterType={filterType}
             locale={locale}
+            role="family"
           />
         </div>
 

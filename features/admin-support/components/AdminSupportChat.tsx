@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useAuthStore } from "../../../store/authStore";
 import { useAdminSupport } from "../hooks/useAdminSupport";
 import { AdminMessage } from "../types";
+import { useTranslations } from "next-intl";
 
 /* ─── helpers ───────────────────────────────────────────────────────── */
 function formatTime(iso: string) {
@@ -26,6 +27,7 @@ function formatFileSize(bytes: number | null | undefined) {
 export const AdminSupportChat: React.FC = () => {
   const { user } = useAuthStore();
   const userId = user?.id ?? (user as any)?._id ?? null;
+  const t = useTranslations("adminSupport");
 
   const {
     conversation,
@@ -107,7 +109,7 @@ export const AdminSupportChat: React.FC = () => {
 
         <div className={`flex flex-col max-w-[72%] ${isSelf ? "items-end" : "items-start"}`}>
           {!isSelf && (
-            <span className="text-[10px] text-gray-400 mb-1 px-1">Admin</span>
+            <span className="text-[10px] text-gray-400 mb-1 px-1">{t("admin")}</span>
           )}
 
           <div
@@ -124,7 +126,7 @@ export const AdminSupportChat: React.FC = () => {
               <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer">
                 <img
                   src={msg.attachment.url}
-                  alt={msg.attachment.fileName ?? "image"}
+                  alt={msg.attachment.fileName ?? t("image")}
                   className="max-w-[240px] max-h-[180px] rounded-xl object-cover"
                   loading="lazy"
                 />
@@ -200,7 +202,7 @@ export const AdminSupportChat: React.FC = () => {
           <span className="material-symbols-outlined text-lg">support_agent</span>
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-gray-800">Sanad Support</h3>
+          <h3 className="text-sm font-bold text-gray-800">{t("sanadSupport")}</h3>
           <p className="text-xs text-gray-500">
             {conversation ? (
               <span
@@ -214,15 +216,15 @@ export const AdminSupportChat: React.FC = () => {
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current inline-block" />
                 {isResolved
-                  ? "Resolved"
+                  ? t("resolved")
                   : isClosed
-                  ? "Closed"
+                  ? t("closed")
                   : conversation.status === "waiting_for_admin"
-                  ? "Waiting for reply"
-                  : "Open"}
+                  ? t("waitingForReply")
+                  : t("open")}
               </span>
             ) : (
-              "Start a new conversation"
+              t("startNewConversation")
             )}
           </p>
         </div>
@@ -264,7 +266,7 @@ export const AdminSupportChat: React.FC = () => {
         {!isLoadingMsgs && conversation && messages.length === 0 && (
           <div className="flex flex-col items-center justify-center flex-1 gap-2 text-gray-400">
             <span className="material-symbols-outlined text-4xl text-gray-300">forum</span>
-            <p className="text-sm">No messages yet. Say hello!</p>
+            <p className="text-sm">{t("noMessagesYet")}</p>
           </div>
         )}
 
@@ -304,11 +306,10 @@ export const AdminSupportChat: React.FC = () => {
         <div className="mx-4 mb-3 p-4 bg-green-50 border border-green-100 rounded-xl flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-green-800 mb-0.5">
-              ✅ This issue has been resolved.
+              ✅ {t("resolvedCardTitle")}
             </p>
             <p className="text-xs text-green-600 leading-snug">
-              If you&apos;re experiencing another issue or need additional help, you can reopen this
-              conversation.
+              {t("resolvedCardDesc")}
             </p>
           </div>
           <button
@@ -326,7 +327,7 @@ export const AdminSupportChat: React.FC = () => {
             ) : (
               <span className="material-symbols-outlined text-base">restart_alt</span>
             )}
-            Reopen Conversation
+            {t("reopenConversation")}
           </button>
         </div>
       )}
@@ -346,7 +347,7 @@ export const AdminSupportChat: React.FC = () => {
         <div className="px-4 pb-2">
           <input
             type="text"
-            placeholder="Subject (optional)"
+            placeholder={t("subjectOptional")}
             value={firstSubject}
             onChange={(e) => setFirstSubject(e.target.value)}
             maxLength={200}
@@ -364,7 +365,7 @@ export const AdminSupportChat: React.FC = () => {
         {!conversation && (
           <button
             onClick={() => setShowSubjectInput((s) => !s)}
-            title="Add subject"
+            title={t("addSubject")}
             className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:text-teal-600 hover:border-teal-300 transition shrink-0"
           >
             <span className="material-symbols-outlined text-lg">label</span>
@@ -374,7 +375,7 @@ export const AdminSupportChat: React.FC = () => {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading || !conversation}
-          title="Attach file"
+          title={t("attachFile")}
           className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:text-teal-600 hover:border-teal-300 transition shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isUploading ? (

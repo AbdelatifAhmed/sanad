@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useAIStore } from "@/store/aiStore";
 import { api } from "@/lib/services/api";
 
 export default function SmartSearchBar() {
   const t = useTranslations("companionsPage");
+  const locale = useLocale();
   const [query, setQuery] = useState("");
   const { setSearchResults, setSearchActive, setSearchLoading, setAiQuery, isSearchLoading } = useAIStore();
 
@@ -48,7 +49,7 @@ export default function SmartSearchBar() {
         <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_0_340deg,white_360deg)] animate-[spin_2s_linear_infinite]" />
       </div>
 
-      <div className="relative bg-white dark:bg-zinc-900 rounded-full border border-sand-high/60 shadow-soft p-2 flex items-center z-10 overflow-hidden focus-within:ring-2 focus-within:ring-stitch-primary">
+      <div className="relative bg-white rounded-full border border-sand-high/60 shadow-soft p-2 flex items-center z-10 overflow-hidden focus-within:ring-2 focus-within:ring-stitch-primary">
         <span className="material-symbols-outlined text-stitch-primary/50 ml-3 mr-2">
           auto_awesome
         </span>
@@ -58,9 +59,10 @@ export default function SmartSearchBar() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder= "Describe what you're looking for..."
+            placeholder={locale === "ar" ? "اوصف ما تبحث عنه..." : "Describe what you're looking for..."}
             className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-sm py-2 px-1 text-stitch-on-surface placeholder:text-stitch-on-surface-variant/50"
             disabled={isSearchLoading}
+            dir={locale === "ar" ? "rtl" : "ltr"}
           />
           
           <button
@@ -73,7 +75,7 @@ export default function SmartSearchBar() {
                 progress_activity
               </span>
             ) : (
-              <span>Search</span>
+              <span>{locale === "ar" ? "بحث" : "Search"}</span>
             )}
           </button>
         </form>

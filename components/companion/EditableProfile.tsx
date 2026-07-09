@@ -10,24 +10,84 @@ import {
   SkillItem
 } from "@/lib/api/companion.api";
 import { uploadUserAvatar } from "@/lib/api/upload.api";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
+import { api } from "@/lib/services/api";
 import { 
-  Star, MapPin, Edit2, Check, X, Camera, Plus, Loader2, Upload, Calendar, Clock, FileText, VerifiedIcon, CheckCircle2,
-  UploadCloud
+  Star,
+  MapPin,
+  Edit2,
+  Check,
+  X,
+  Plus,
+  Loader2,
+  Calendar,
+  Clock,
+  FileText,
+  CheckCircle2,
+  UploadCloud,
+  Lock,
+  Trash2,
+  ShieldAlert,
+  AlertCircle,
+  Info,
+  ChevronRight
 } from "lucide-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { calculateCompanionProfileCompletion } from "@/lib/profileCompletion";
 
 interface EditableProfileProps {
   initialData: CompanionProfile | null;
 }
 
+interface ReviewItem {
+  familyId?: { name?: string };
+  createdAt: string | Date;
+  rating: number;
+  comment: string;
+}
+
+interface ProfileSkill {
+  nameAr?: string;
+  nameEn?: string;
+}
+
+interface CertificateDocument {
+  name: string;
+  url: string;
+}
+
+type WeekdayKey = "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
+const WEEKDAYS: WeekdayKey[] = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 export default function EditableProfile({ initialData }: EditableProfileProps) {
   const locale = useLocale();
+  const router = useRouter();
+  const t = useTranslations("companionProfileEdit");
+  const isRtl = locale === "ar";
   const [profile, setProfile] = useState<CompanionProfile | null>(initialData);
   const [loading, setLoading] = useState(!initialData);
   const [saving, setSaving] = useState(false);
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [docUploading, setDocUploading] = useState(false);
+
+  // Toast notification state
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
+
+  // Change Password state
+  const [changePasswordModalOpen, setChangePasswordModalOpen] = useState<boolean>(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState<boolean>(false);
+
+  // Delete Account state
+  const [confirmDeleteAccountOpen, setConfirmDeleteAccountOpen] = useState<boolean>(false);
+  const [deletingAccount, setDeletingAccount] = useState<boolean>(false);
   
   // Edit states
   const [editMode, setEditMode] = useState<{
@@ -44,6 +104,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
   const [scheduleEdit, setScheduleEdit] = useState<Array<{ day: string; slots: string[] }>>([]);
   const [dbSkills, setDbSkills] = useState<SkillItem[]>([]);
   const [hourlyRateEdit, setHourlyRateEdit] = useState<number>(0);
+  const [phoneEdit, setPhoneEdit] = useState("");
 
   // New Certificate Upload State
   const [showCertUpload, setShowCertUpload] = useState(false);
@@ -53,13 +114,133 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [dragActive, setDragActive] = useState<{ [key: string]: boolean }>({});
 
+
+  // Online / Offline Status State
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("caregiver_online_status");
+      return saved !== null ? saved === "true" : true;
+    }
+    return true;
+  });
+
+  const toggleOnlineStatus = () => {
+    const nextStatus = !isOnline;
+    setIsOnline(nextStatus);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("caregiver_online_status", String(nextStatus));
+    }
+    setToast({
+      message: `You are now ${nextStatus ? "Online" : "Offline"}`,
+      type: "info",
+    });
+  };
+
   useEffect(() => {
     if (!initialData) {
       fetchProfile();
     } else if (initialData.userId?._id) {
       fetchReviews(initialData.userId._id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData]);
+
+  const fetchReviews = async (userId: string) => {
+    try {
+      setReviewsLoading(true);
+      const data = await getCompanionReviews(userId);
+      if (data && data.reviews) {
+        setReviews(data.reviews);
+      }
+    } catch (error) {
+      console.error("Failed to load reviews", error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  // Auto-clear toast
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      setToast({
+        message: locale === "ar" ? "يرجى ملء جميع الحقول." : "Please fill in all fields.",
+        type: "error"
+      });
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setToast({
+        message: locale === "ar" ? "كلمتا المرور الجديدتان غير متطابقتين." : "New passwords do not match.",
+        type: "error"
+      });
+      return;
+    }
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      setToast({
+        message: locale === "ar" 
+          ? "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل، وتحتوي على حرف كبير، وحرف صغير، ورقم، ورمز خاص واحد على الأقل." 
+          : "Password must be at least 8 characters long, containing at least one uppercase letter, one lowercase letter, one number, and one symbol.",
+        type: "error"
+      });
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      const res = await api.put("/auth/change-password", {
+        currentPassword,
+        newPassword
+      });
+      if (res.data) {
+        setToast({ 
+          message: locale === "ar" ? "تم تغيير كلمة المرور بنجاح." : (res.data.message || "Password changed successfully."), 
+          type: "success" 
+        });
+        setChangePasswordModalOpen(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+      }
+    } catch (err: any) {
+      console.error("Failed to change password:", err);
+      const msg = err.response?.data?.message || err.response?.data?.error || "Failed to change password.";
+      setToast({ message: msg, type: "error" });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setDeletingAccount(true);
+      const res = await api.delete("/auth/delete-account");
+      if (res.data) {
+        setToast({ 
+          message: locale === "ar" ? "تم حذف الحساب بنجاح." : (res.data.message || "Account deleted successfully."), 
+          type: "success" 
+        });
+        // Clear auth store
+        useAuthStore.getState().clearAuth();
+        // Redirect to login page after a short delay
+        setTimeout(() => {
+          router.push("/login");
+        }, 1500);
+      }
+    } catch (err: any) {
+      console.error("Failed to delete account:", err);
+      const msg = err.response?.data?.message || err.response?.data?.error || "Failed to delete account.";
+      setToast({ message: msg, type: "error" });
+      setDeletingAccount(false);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -76,19 +257,15 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
     }
   };
 
-  const fetchReviews = async (userId: string) => {
-    try {
-      setReviewsLoading(true);
-      const data = await getCompanionReviews(userId);
-      if (data && data.reviews) {
-        setReviews(data.reviews);
-      }
-    } catch (error) {
-      console.error("Failed to load reviews", error);
-    } finally {
-      setReviewsLoading(false);
+  useEffect(() => {
+    if (!initialData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchProfile();
+    } else if (initialData.userId?._id) {
+      fetchReviews(initialData.userId._id);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -179,6 +356,12 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
     try {
       setSaving(true);
       const hobbiesArray = hobbiesEdit.split(",").map(h => h.trim()).filter(h => h !== "");
+      
+      // Update User collection details (phone number)
+      await api.put("/auth/profile", {
+        phone: phoneEdit.trim()
+      });
+
       const result = await updateProfileInfo({ 
         bio: bioEdit, 
         hobbies: hobbiesArray,
@@ -189,7 +372,11 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
           ...profile, 
           bio: result.bio || bioEdit, 
           hobbies: result.hobbies || hobbiesArray,
-          hourlyRate: result.hourlyRate !== undefined ? result.hourlyRate : Number(hourlyRateEdit)
+          hourlyRate: result.hourlyRate !== undefined ? result.hourlyRate : Number(hourlyRateEdit),
+          userId: {
+            ...profile.userId,
+            phone: phoneEdit.trim()
+          }
         });
       }
       setEditMode({ ...editMode, info: false });
@@ -203,7 +390,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
   const saveSkills = async () => {
     try {
       setSaving(true);
-      const result = await updateProfileInfo({ skills: skillsEdit });
+      await updateProfileInfo({ skills: skillsEdit });
       // Fetch profile again to get populated skills
       await fetchProfile();
       setEditMode({ ...editMode, skills: false });
@@ -251,14 +438,9 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
     return <div className="text-center py-10">Failed to load profile.</div>;
   }
 
-  // Calculate Profile Strength
-  let strength = 0;
-  if (profile.bio) strength += 20;
-  if (profile.hobbies && profile.hobbies.length > 0) strength += 10;
-  if (profile.skills && profile.skills.length > 0) strength += 20;
-  if (profile.availability && profile.availability.length > 0) strength += 20;
-  if (profile.documents?.nationalIdCard && profile.documents.nationalIdCard.public_id) strength += 15;
-  if (profile.documents?.criminalRecord && profile.documents.criminalRecord.public_id) strength += 15;
+  const profileCompletion = calculateCompanionProfileCompletion(profile);
+  const strength = profileCompletion.percentage;
+  const translateDay = (day: string) => (WEEKDAYS.includes(day as WeekdayKey) ? t(`days.${day as WeekdayKey}`) : day);
 
   const hasNationalId = profile.documents?.nationalIdCard && profile.documents.nationalIdCard.url && !profile.documents.nationalIdCard.url.includes("placeholder");
   const hasCriminalRecord = profile.documents?.criminalRecord && profile.documents.criminalRecord.url && !profile.documents.criminalRecord.url.includes("placeholder");
@@ -280,43 +462,43 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
               <span className="text-4xl text-gray-300 font-bold">{profile.userId?.name?.charAt(0) || "U"}</span>
             )}
           </div>
-          <label className="absolute -bottom-2 -right-2 w-10 h-10 bg-stitch-primary text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:bg-stitch-primary-container transition-colors z-10">
+          <label className="absolute -bottom-2 -end-2 w-10 h-10 bg-stitch-primary text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:bg-stitch-primary-container transition-colors z-10">
             <Edit2 className="w-4 h-4" />
             <input type="file" className="hidden" accept="image/jpeg, image/png" onChange={handleAvatarChange} disabled={avatarLoading} />
           </label>
         </div>
 
         {/* Info */}
-        <div className="flex-1 text-center md:text-left md:mt-2">
+        <div className="flex-1 text-center md:text-start md:mt-2">
           <div className="flex flex-col md:flex-row md:items-center gap-3 mb-1">
             <h1 className="text-3xl font-bold text-gray-900">{profile.userId?.name}</h1>
             {profile.verificationStatus === 'verified' && (
               <span className="inline-flex items-center gap-1 bg-teal-50 text-stitch-primary text-xs font-bold px-3 py-1 rounded-full border border-teal-100">
-                Verified
+                {t("verified")}
               </span>
             )}
           </div>
           
           <p className="text-gray-600 text-lg mb-4">
-            {profile.companionType === 'specialized' ? 'Compassionate Specialist' : 'General Care Provider'} 
-            {profile.specialization && profile.specialization !== 'none' && ` in ${profile.specialization.replace("_", " ")}`}
+            {profile.companionType === 'specialized' ? t("specializedCompanion") : t("generalCompanion")} 
+            {profile.specialization && profile.specialization !== 'none' && ` ${t("specializedIn", { specialization: profile.specialization.replace("_", " ") })}`}
           </p>
           
           <div className="flex items-center justify-center md:justify-start gap-4 text-sm text-gray-600 font-medium">
             <div className="flex items-center gap-1">
               <Star className="w-5 h-5 text-teal-600 fill-teal-600" />
               <span className="text-gray-900 font-bold">{profile.rating || 5.0}</span>
-              <span className="text-gray-500 font-normal">({profile.reviewCount || 0} reviews)</span>
+              <span className="text-gray-500 font-normal">({t("reviewsCount", { count: profile.reviewCount || 0 })})</span>
             </div>
             <div className="w-px h-4 bg-gray-300"></div>
             <div className="flex items-center gap-1">
               <MapPin className="w-5 h-5 text-gray-400" />
-              <span>{profile.userId?.location?.city ? `${profile.userId.location.city}, Egypt` : "Location not set"}</span>
+              <span>{profile.userId?.location?.readableAddress ? `${profile.userId.location.readableAddress}` : t("locationNotSet")}</span>
             </div>
             <div className="w-px h-4 bg-gray-300"></div>
             <div className="flex items-center gap-1">
               <span className="text-gray-900 font-bold">${profile.hourlyRate || 0}</span>
-              <span className="text-gray-500 font-normal">/ hour</span>
+              <span className="text-gray-500 font-normal">{t("perHour")}</span>
             </div>
           </div>
         </div>
@@ -324,17 +506,38 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
         {/* Top Right Actions */}
         <div className="flex flex-col items-center md:items-end gap-4 shrink-0">
           <div className="flex items-center gap-3 bg-gray-100 px-4 py-2 rounded-full">
-            <span className="text-sm font-bold text-gray-700">Status:</span>
+            <span className="text-sm font-bold text-gray-700">{t("status")}</span>
             <div className="flex flex-col text-xs">
-              <span className="font-bold text-gray-900">Online</span>
+              <span className={`font-bold transition-colors ${isOnline ? "text-teal-600" : "text-gray-500"}`}>
+                {isOnline ? "Online" : "Offline"}
+              </span>
+              <span className="font-bold text-gray-900">{t("online")}</span>
             </div>
             {/* Fake toggle for UI matching */}
             <div className="w-10 h-6 bg-gray-300 rounded-full flex items-center p-1 cursor-not-allowed opacity-50">
-              <div className="w-4 h-4 bg-white rounded-full translate-x-4 shadow-sm"></div>
+              <div className={`w-4 h-4 bg-white rounded-full shadow-sm ${isRtl ? "-translate-x-4" : "translate-x-4"}`}></div>
             </div>
+            {/* Interactive Toggle */}
+            <button 
+              onClick={toggleOnlineStatus}
+              className={`w-10 h-6 rounded-full flex items-center p-1 transition-all duration-300 ${isOnline ? "bg-teal-500 justify-end" : "bg-gray-300 justify-start"}`}
+              title="Toggle Online Status"
+            >
+              <div className="w-4 h-4 bg-white rounded-full shadow-md transition-all duration-300"></div>
+            </button>
           </div>
-          <button className="px-6 py-3 bg-stitch-primary text-white font-bold rounded-xl hover:bg-stitch-primary-container transition-colors shadow-sm w-full md:w-auto">
-            View Public Profile
+          <button 
+            onClick={() => {
+              if (profile?._id) {
+                router.push(`/family/companions/${profile._id}`);
+              } else {
+                setToast({ message: "Unable to resolve profile ID", type: "error" });
+              }
+            }}
+            disabled={!profile?._id}
+            className="px-6 py-3 bg-stitch-primary text-white font-bold rounded-xl hover:bg-stitch-primary-container transition-colors shadow-sm w-full md:w-auto disabled:opacity-50"
+          >
+            {t("viewPublicProfile")}
           </button>
         </div>
       </div>
@@ -347,15 +550,16 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
           {/* Personal Information */}
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Personal Information</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t("personalInfo.title")}</h2>
               {!editMode.info ? (
                 <button onClick={() => { 
                   setBioEdit(profile.bio || ""); 
                   setHobbiesEdit(profile.hobbies?.join(", ") || "");
                   setHourlyRateEdit(profile.hourlyRate || 0);
+                  setPhoneEdit(profile.userId?.phone || "");
                   setEditMode({ ...editMode, info: true }); 
                 }} className="text-stitch-primary font-bold text-sm hover:underline">
-                  Edit Info
+                  {t("personalInfo.editInfo")}
                 </button>
               ) : (
                 <div className="flex gap-2">
@@ -371,19 +575,35 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="space-y-2 col-span-2 md:col-span-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">Full Name</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t("personalInfo.fullName")}</label>
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 cursor-not-allowed">
                   {profile.userId?.name}
                 </div>
               </div>
               <div className="space-y-2 col-span-2 md:col-span-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">Email Address</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t("personalInfo.emailAddress")}</label>
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 cursor-not-allowed">
                   {profile.userId?.email}
                 </div>
               </div>
+              <div className="space-y-2 col-span-2 md:col-span-1">
+                <label className="text-xs font-bold text-gray-500 uppercase">Phone Number</label>
+                {editMode.info ? (
+                  <input 
+                    type="tel"
+                    className="w-full p-4 border border-stitch-outline rounded-xl focus:ring-2 focus:ring-stitch-primary focus:border-transparent outline-none text-gray-700"
+                    value={phoneEdit}
+                    onChange={(e) => setPhoneEdit(e.target.value)}
+                    placeholder="e.g. 01012345678"
+                  />
+                ) : (
+                  <div className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 leading-relaxed font-bold">
+                    {profile.userId?.phone || "Not set"}
+                  </div>
+                )}
+              </div>
               <div className="space-y-2 col-span-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">Hourly Rate ($/hr)</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t("personalInfo.hourlyRate")}</label>
                 {editMode.info ? (
                   <input 
                     type="number"
@@ -391,11 +611,11 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                     className="w-full p-4 border border-stitch-outline rounded-xl focus:ring-2 focus:ring-stitch-primary focus:border-transparent outline-none text-gray-700"
                     value={hourlyRateEdit}
                     onChange={(e) => setHourlyRateEdit(Number(e.target.value))}
-                    placeholder="e.g. 150"
+                    placeholder={t("personalInfo.hourlyRatePlaceholder")}
                   />
                 ) : (
                   <div className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 leading-relaxed font-bold">
-                    ${profile.hourlyRate || 0}/hr
+                    {t("hourlyRateValue", { rate: profile.hourlyRate || 0 })}
                   </div>
                 )}
               </div>
@@ -403,34 +623,34 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
 
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">Bio & Philosophy</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t("personalInfo.bio")}</label>
                 {editMode.info ? (
                   <textarea 
                     className="w-full p-4 border border-stitch-outline rounded-xl focus:ring-2 focus:ring-stitch-primary focus:border-transparent outline-none min-h-[140px] text-gray-700"
                     value={bioEdit}
                     onChange={(e) => setBioEdit(e.target.value)}
-                    placeholder="Tell families about yourself..."
+                    placeholder={t("personalInfo.bioPlaceholder")}
                   />
                 ) : (
                   <div className="w-full p-6 bg-gray-50 border border-gray-100 rounded-2xl text-gray-700 leading-relaxed min-h-[120px]">
-                    {profile.bio || "No bio provided yet. Add a bio to attract more families!"}
+                    {profile.bio || t("personalInfo.noBio")}
                   </div>
                 )}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">Hobbies</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t("personalInfo.hobbies")}</label>
                 {editMode.info ? (
                   <input 
                     type="text"
                     className="w-full p-4 border border-stitch-outline rounded-xl focus:ring-2 focus:ring-stitch-primary focus:border-transparent outline-none text-gray-700"
                     value={hobbiesEdit}
                     onChange={(e) => setHobbiesEdit(e.target.value)}
-                    placeholder="Reading, Chess, Walking... (comma separated)"
+                    placeholder={t("personalInfo.hobbiesPlaceholder")}
                   />
                 ) : (
                   <div className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 leading-relaxed">
-                    {profile.hobbies && profile.hobbies.length > 0 ? profile.hobbies.join(", ") : "No hobbies listed."}
+                    {profile.hobbies && profile.hobbies.length > 0 ? profile.hobbies.join(", ") : t("personalInfo.noHobbies")}
                   </div>
                 )}
               </div>
@@ -440,7 +660,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
           {/* Specialties & Skills */}
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Specialties & Skills</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t("skills.title")}</h2>
               {!editMode.skills ? (
                 <button onClick={() => { 
                   // Map existing skills to their names for editing
@@ -449,7 +669,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                   setEditMode({ ...editMode, skills: true }); 
                   loadDbSkills();
                 }} className="text-stitch-primary font-bold text-sm hover:underline">
-                  Manage Tags
+                  {t("skills.manageTags")}
                 </button>
               ) : (
                 <div className="flex gap-2">
@@ -465,10 +685,10 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
 
             <div className="flex flex-wrap gap-3">
               {!editMode.skills ? (
-                profile.skills && profile.skills.length > 0 ? profile.skills.map((skill: any, index) => {
+                profile.skills && profile.skills.length > 0 ? profile.skills.map((skill: string | ProfileSkill, index) => {
                   const skillName = typeof skill === 'string' 
                     ? skill 
-                    : (locale === 'ar' ? skill.nameAr : skill.nameEn) || "Skill";
+                    : (locale === 'ar' ? skill.nameAr : skill.nameEn) || t("skills.skillFallback");
                   
                   return (
                     <div key={index} className="bg-stitch-secondary-container/50 text-stitch-on-secondary-container px-4 py-2 rounded-full text-sm font-bold border border-stitch-secondary-container">
@@ -476,7 +696,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                     </div>
                   );
                 }) : (
-                  <span className="text-gray-400 text-sm italic">No skills listed yet.</span>
+                  <span className="text-gray-400 text-sm italic">{t("skills.noSkills")}</span>
                 )
               ) : (
                 <div className="w-full space-y-4">
@@ -494,7 +714,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                     <input 
                       type="text" 
                       className="flex-1 p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-stitch-primary"
-                      placeholder="Type a skill..."
+                      placeholder={t("skills.skillPlaceholder")}
                       value={newSkillText}
                       onChange={(e) => setNewSkillText(e.target.value)}
                       onKeyDown={(e) => {
@@ -516,7 +736,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                       }}
                       className="px-4 py-2 bg-stitch-primary text-white rounded-xl font-bold hover:bg-stitch-primary-container"
                     >
-                      Add Custom
+                      {t("skills.addCustom")}
                     </button>
                   </div>
 
@@ -528,7 +748,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                     return matchesQuery && notSelected;
                   }).length > 0 && (
                     <div className="space-y-2 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                      <p className="text-xs font-bold text-gray-500 uppercase">Suggested Skills</p>
+                      <p className="text-xs font-bold text-gray-500 uppercase">{t("skills.suggestedSkills")}</p>
                       <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                         {dbSkills.filter(s => {
                           const name = locale === 'ar' ? s.nameAr : s.nameEn;
@@ -547,7 +767,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                               }}
                               className="px-3 py-1.5 bg-white hover:bg-stitch-primary/10 hover:text-stitch-primary text-gray-600 rounded-full text-xs font-bold border border-gray-200 transition-colors shadow-sm"
                             >
-                              + {name}
+                              {t("skills.addSuggested", { name })}
                             </button>
                           );
                         })}
@@ -562,18 +782,18 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
           {/* Schedule (Modern UI Redesign) */}
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Weekly Schedule</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t("schedule.title")}</h2>
               {!editMode.schedule ? (
                 <button onClick={() => { setScheduleEdit(profile.availability || []); setEditMode({ ...editMode, schedule: true }); }} className="text-stitch-primary font-bold text-sm hover:underline">
-                  Edit Schedule
+                  {t("schedule.editSchedule")}
                 </button>
               ) : (
                 <div className="flex gap-2">
                   <button onClick={() => setEditMode({ ...editMode, schedule: false })} className="px-3 py-1.5 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-lg">
-                    Cancel
+                    {t("actions.cancel")}
                   </button>
                   <button onClick={saveSchedule} disabled={saving} className="px-3 py-1.5 text-sm font-bold text-white bg-stitch-primary hover:bg-stitch-primary-container rounded-lg flex items-center gap-1">
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : t("actions.save")}
                   </button>
                 </div>
               )}
@@ -581,7 +801,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
 
             {editMode.schedule ? (
               <div className="space-y-3">
-                {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(day => {
+                {WEEKDAYS.map(day => {
                   const currentDay = scheduleEdit.find(s => s.day === day);
                   const isWorking = !!currentDay && currentDay.slots.length > 0;
 
@@ -601,7 +821,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                               }
                             }}
                           />
-                          <span className={`font-bold ${isWorking ? 'text-gray-900' : 'text-gray-500'}`}>{day}</span>
+                          <span className={`font-bold ${isWorking ? 'text-gray-900' : 'text-gray-500'}`}>{translateDay(day)}</span>
                         </label>
                       </div>
                       
@@ -610,7 +830,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                           <input 
                             type="text" 
                             className="w-full text-sm p-2.5 border border-gray-200 rounded-xl focus:border-stitch-primary outline-none"
-                            placeholder="e.g. 09:00-17:00"
+                            placeholder={t("schedule.slotPlaceholder")}
                             value={currentDay.slots.join(", ")}
                             onChange={(e) => {
                               const slots = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
@@ -631,7 +851,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                     <div key={i} className="flex flex-col p-5 bg-gray-50 border border-gray-100 rounded-2xl">
                       <div className="flex items-center gap-2 mb-2">
                         <Calendar className="w-5 h-5 text-stitch-primary" />
-                        <p className="font-bold text-gray-900">{a.day}</p>
+                        <p className="font-bold text-gray-900">{translateDay(a.day)}</p>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <Clock className="w-4 h-4 text-gray-400" />
@@ -640,7 +860,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 italic col-span-2">No schedule set. Please add your availability.</p>
+                  <p className="text-gray-500 italic col-span-2">{t("schedule.noSchedule")}</p>
                 )}
               </div>
             )}
@@ -649,10 +869,10 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
           {/* Reviews from Families */}
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Reviews from Families</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t("reviews.title")}</h2>
               <div className="flex items-center gap-2 text-sm font-bold text-gray-600">
-                <span>Sort by:</span>
-                <span className="text-stitch-primary cursor-pointer">Recent</span>
+                <span>{t("reviews.sortBy")}</span>
+                <span className="text-stitch-primary cursor-pointer">{t("reviews.recent")}</span>
               </div>
             </div>
 
@@ -685,11 +905,11 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                 ))}
                 
                 <button className="w-full py-3 mt-4 border border-gray-200 rounded-xl text-stitch-primary font-bold hover:bg-gray-50 transition-colors">
-                  View All {profile.reviewCount || reviews.length} Reviews
+                  {t("reviews.viewAll", { count: profile.reviewCount || reviews.length })}
                 </button>
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-6">No reviews yet.</p>
+              <p className="text-gray-500 text-center py-6">{t("reviews.noReviews")}</p>
             )}
           </div>
 
@@ -842,7 +1062,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                   {locale === "ar" ? "الشهادات المهنية والتراخيص الطبية" : "Professional Certificates & Medical Licenses"}
                 </label>
                 
-                {profile.documents?.Certificates?.map((cert: any, i: number) => (
+                {profile.documents?.Certificates?.map((cert: CertificateDocument, i: number) => (
                   <div key={i} className="bg-gray-50 p-4 rounded-2xl border border-gray-200 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600">
@@ -861,7 +1081,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
                       </div>
                     </div>
                     <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded-full uppercase">
-                      {locale === "ar" ? "موثق" : "Verified"}
+                      {t("verified")}
                     </span>
                   </div>
                 ))}
@@ -948,9 +1168,9 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
 
           {/* Profile Strength */}
           <div className="bg-stitch-primary rounded-3xl p-8 shadow-sm text-white">
-            <h2 className="text-xl font-bold mb-2">Profile Strength</h2>
+            <h2 className="text-xl font-bold mb-2">{t("profileStrength.title")}</h2>
             <p className="text-sm text-teal-100 mb-6 leading-relaxed">
-              Complete your profile to increase visibility to families.
+              {t("profileStrength.description")}
             </p>
             
             <div className="mb-2 h-2 w-full bg-teal-800 rounded-full overflow-hidden">
@@ -958,15 +1178,233 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
             </div>
             
             <div className="flex items-center justify-between font-bold text-sm">
-              <span>{Math.min(strength, 100)}% Complete</span>
+              <span>{t("profileStrength.complete", { percentage: Math.min(strength, 100) })}</span>
               {strength < 100 && (
-                <button className="underline hover:text-teal-200">Complete Now</button>
+                <button className="underline hover:text-teal-200">{t("profileStrength.completeNow")}</button>
               )}
+            </div>
+          </div>
+
+          {/* Account Security Settings */}
+          <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 space-y-6 font-stitch-body">
+            <h2 className="text-xl font-bold text-gray-900">
+              {locale === "ar" ? "إعدادات الأمان" : "Security Settings"}
+            </h2>
+            <div className="space-y-4">
+              {/* Change Password Button */}
+              <button 
+                onClick={() => setChangePasswordModalOpen(true)}
+                className="w-full flex items-center justify-between p-4 bg-slate-50 border border-gray-200 rounded-2xl hover:bg-slate-100 transition-all text-left cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900">
+                      {locale === "ar" ? "تغيير كلمة المرور" : "Change Password"}
+                    </h4>
+                    <p className="text-[10px] text-gray-500">
+                      {locale === "ar" ? "تحديث بيانات الاعتماد الخاصة بك" : "Update your credentials"}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              {/* Delete Account Button */}
+              <button 
+                onClick={() => setConfirmDeleteAccountOpen(true)}
+                className="w-full flex items-center justify-between p-4 bg-red-50/50 border border-red-100 rounded-2xl hover:bg-red-50 transition-all text-left cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center">
+                    <Trash2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-red-600">
+                      {locale === "ar" ? "حذف الحساب" : "Delete Account"}
+                    </h4>
+                    <p className="text-[10px] text-red-400">
+                      {locale === "ar" ? "حذف حسابك بشكل دائم" : "Permanently remove your account"}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-red-300 group-hover:translate-x-0.5 transition-transform" />
+              </button>
             </div>
           </div>
 
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      {changePasswordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            onClick={() => !changingPassword && setChangePasswordModalOpen(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+          />
+
+          <div className="bg-white rounded-[24px] shadow-premium border border-[#eae7e7] max-w-md w-full relative z-10 overflow-hidden transform transition-all flex flex-col font-stitch-body">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-[#eae7e7] flex justify-between items-center bg-[#fcf9f8]">
+              <div>
+                <h3 className="font-stitch-display text-base font-bold text-[#1b1c1c]">
+                  {locale === "ar" ? "تغيير كلمة المرور" : "Change Password"}
+                </h3>
+                <p className="text-[11px] text-[#3e4949] mt-0.5 font-medium">
+                  {locale === "ar" ? "أدخل كلمة المرور الحالية وقم بتعيين كلمة مرور جديدة." : "Provide your current password and set a new one."}
+                </p>
+              </div>
+              <button
+                disabled={changingPassword}
+                onClick={() => setChangePasswordModalOpen(false)}
+                className="p-1.5 hover:bg-slate-100 rounded-full text-[#6e7979] hover:text-[#2b2b2b] transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#3e4949] mb-2">
+                  {locale === "ar" ? "كلمة المرور الحالية" : "Current Password"}
+                </label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#3e4949] mb-2">
+                  {locale === "ar" ? "كلمة المرور الجديدة" : "New Password"}
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#3e4949] mb-2">
+                  {locale === "ar" ? "تأكيد كلمة المرور الجديدة" : "Confirm New Password"}
+                </label>
+                <input
+                  type="password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full h-12 px-4 bg-white border border-[#eae7e7] rounded-xl text-sm focus:outline-none focus:border-[#1f8a8a] focus:ring-2 focus:ring-[#1f8a8a]/10 transition-all text-[#2b2b2b]"
+                  required
+                />
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex gap-3 pt-4 border-t border-[#eae7e7] mt-6">
+                <button
+                  type="button"
+                  disabled={changingPassword}
+                  onClick={() => setChangePasswordModalOpen(false)}
+                  className="flex-1 h-12 bg-white hover:bg-slate-50 text-[#3e4949] border border-[#eae7e7] rounded-xl text-xs font-bold transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  {locale === "ar" ? "إلغاء" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={changingPassword}
+                  className="flex-1 h-12 bg-[#1f8a8a] hover:bg-[#166f6f] text-white rounded-xl text-xs font-bold shadow-soft transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {changingPassword ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      {locale === "ar" ? "جاري التحديث..." : "Updating..."}
+                    </>
+                  ) : (
+                    locale === "ar" ? "تحديث كلمة المرور" : "Update Password"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Confirmation Dialog */}
+      {confirmDeleteAccountOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            onClick={() => !deletingAccount && setConfirmDeleteAccountOpen(false)}
+            className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+          />
+          <div className="bg-white p-6 rounded-[24px] border border-[#eae7e7] shadow-premium max-w-sm w-full relative z-10 text-center animate-scale-in font-stitch-body">
+            <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <h3 className="font-stitch-display text-base font-bold text-[#1b1c1c]">
+              {locale === "ar" ? "حذف الحساب نهائياً؟" : "Delete Account Permanently?"}
+            </h3>
+            <p className="text-[#3e4949] text-xs mt-2 leading-relaxed font-medium">
+              {locale === "ar" 
+                ? "هل أنت متأكد من رغبتك في حذف حسابك؟ سيؤدي هذا إلى حذف ملفك الشخصي وبياناتك وكل الحجوزات بشكل دائم. لا يمكن التراجع عن هذا الإجراء."
+                : "Are you sure you want to delete your account? This will permanently remove your profile, data, and all bookings. This action cannot be undone."}
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                disabled={deletingAccount}
+                onClick={() => setConfirmDeleteAccountOpen(false)}
+                className="flex-1 h-12 bg-white hover:bg-slate-50 border border-[#eae7e7] rounded-xl text-xs font-bold text-[#3e4949] transition-all cursor-pointer"
+              >
+                {locale === "ar" ? "إلغاء" : "Cancel"}
+              </button>
+              <button
+                disabled={deletingAccount}
+                onClick={handleDeleteAccount}
+                className="flex-1 h-12 bg-red-600 hover:bg-red-700 disabled:bg-red-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {deletingAccount ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    {locale === "ar" ? "جاري الحذف..." : "Deleting..."}
+                  </>
+                ) : (
+                  locale === "ar" ? "نعم، احذف الحساب" : "Yes, Delete Account"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-[#1b1c1c] text-white px-5 py-4 rounded-[16px] shadow-premium border border-[#1f8a8a]/20 z-50 flex items-center justify-between gap-4 max-w-md animate-slide-up">
+          <div className="flex items-center gap-2">
+            <span className="shrink-0">
+              {toast.type === "success" ? (
+                <Check className="w-4 h-4 text-[#aeedd5]" />
+              ) : toast.type === "error" ? (
+                <AlertCircle className="w-4 h-4 text-red-400" />
+              ) : (
+                <Info className="w-4 h-4 text-sky-400" />
+              )}
+            </span>
+            <p className="text-xs font-semibold">{toast.message}</p>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -15,9 +15,14 @@ import {
 import { api } from "@/lib/services/api";
 import { useAuthStore } from "@/store/authStore";
 import Image from "next/image";
+import { useGoogleLogin } from "@react-oauth/google";
 import { useLocale } from "next-intl";
 
 export default function LoginPage() {
+  return <LoginContent />;
+}
+
+function LoginContent() {
   const router = useRouter();
   const locale = useLocale();
   const isAr = locale === "ar";
@@ -33,6 +38,72 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [serverError, setServerError] = useState("");
+
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    if (typeof error === "object" && error !== null) {
+      const maybeResponse = error as {
+        response?: { data?: { message?: string; error?: string } };
+        message?: string;
+      };
+      const message = maybeResponse.response?.data?.message || maybeResponse.response?.data?.error;
+      if (message) return message;
+
+      if (typeof maybeResponse.message === "string" && maybeResponse.message.trim()) {
+        return maybeResponse.message;
+      }
+    }
+
+    if (error instanceof Error && error.message.trim()) {
+      return error.message;
+    }
+
+    return fallback;
+  };
+
+
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      setServerError("");
+      try {
+        const response = await api.post(
+          "/auth/google-signin",
+          {
+            accessToken: tokenResponse.access_token,
+          },
+          {
+            withCredentials: true,
+          }
+        );
+        const data = response.data;
+
+        setSuccess(true);
+      if (data.accessToken) {
+        localStorage.setItem("token", data.accessToken);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        useAuthStore.getState().setAuth(data.user, data.accessToken);
+      }
+
+      setTimeout(() => {
+        const role = data.user.role;
+        if (data.isNewUser || data.needsProfileCompletion) {
+          router.push(role === "companion" ? "/companion/profile" : "/family/profile");
+        } else {
+          router.push(role === "companion" ? "/companion/dashboard" : "/family/dashboard");
+        }
+      }, 1500);
+      } catch (error: unknown) {
+        const message = getErrorMessage(error, "Google Sign-In failed. Please try again.");
+        setServerError(message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: (error) => {
+      console.error("Google login failed:", error);
+      setServerError("Google Sign-In failed. Please try again.");
+    }
+  });
 
   const t = {
     emailRequired: isAr ? "الرجاء إدخال بريد إلكتروني صالح." : "Valid email is required.",
@@ -113,8 +184,8 @@ export default function LoginPage() {
         const role = data.user.role;
         router.push(role === "companion" ? "/companion/dashboard" : "/family/dashboard");
       }, 1500);
-    } catch (err: any) {
-      const message = err.response?.data?.message || err.response?.data?.error || err.message || t.invalidCredentials;
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, t.invalidCredentials);
       setServerError(message);
     } finally {
       setLoading(false);
@@ -278,6 +349,7 @@ export default function LoginPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     type="button"
+                    onClick={() => handleGoogleLogin()}
                     className="flex justify-center items-center h-12 border border-outline-variant rounded-xl bg-white hover:bg-sand-low transition-colors duration-200 text-gray-700 font-bold text-sm cursor-pointer"
                   >
                     <svg className={`w-5 h-5 text-red-500 ${isAr ? "ml-2" : "mr-2"}`} fill="currentColor" viewBox="0 0 24 24">

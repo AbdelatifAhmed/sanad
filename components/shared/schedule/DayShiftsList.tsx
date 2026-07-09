@@ -1,41 +1,25 @@
 "use client";
 
 import React from "react";
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  MapPin, 
-  Phone, 
-  ArrowRight 
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  MapPin,
+  MessageSquare,
+  ArrowRight
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { getAvatarUrl } from "@/lib/avatar";
-
-interface ScheduleItem {
-  bookingId: string;
-  bookingStatus: string;
-  companionId: {
-    _id: string;
-    name: string;
-    avatar?: any;
-    phone?: string;
-  };
-  location: any;
-  date: string;
-  startTime: string;
-  endTime: string;
-  checkInTime?: string;
-  checkOutTime?: string;
-  tasksList: any[];
-  slotIndex: number;
-}
+import type { ScheduleItem, ScheduleRole } from "./types";
+import { getDetailLink } from "./types";
 
 interface DayShiftsListProps {
   selectedDate: Date;
   shifts: ScheduleItem[];
   locale: string;
   isRtl: boolean;
+  role: ScheduleRole;
 }
 
 export default function DayShiftsList({
@@ -43,19 +27,20 @@ export default function DayShiftsList({
   shifts,
   locale,
   isRtl,
+  role,
 }: DayShiftsListProps) {
-  const t = useTranslations("familySchedule");
+  const t = useTranslations("schedule");
 
   const getShiftStatus = (shift: ScheduleItem) => {
     if (shift.checkOutTime) return "completed";
     if (shift.checkInTime) return "active";
-    
+
     // Check if scheduled date/time has passed
     const now = new Date();
     const shiftDate = new Date(shift.date);
     const [hours, minutes] = shift.startTime.split(":").map(Number);
     shiftDate.setHours(hours, minutes, 0, 0);
-    
+
     if (now > shiftDate) return "late";
     return "awaiting";
   };
@@ -72,8 +57,8 @@ export default function DayShiftsList({
       case "active":
         return {
           bg: "bg-teal-50 border border-teal-100 animate-pulse",
-          text: "text-stitch-primary",
-          dot: "bg-stitch-primary",
+          text: "text-[#1f8a8a]",
+          dot: "bg-[#1f8a8a]",
           label: t("statusActive")
         };
       case "late":
@@ -114,25 +99,25 @@ export default function DayShiftsList({
             const statusInfo = getStatusStyles(status);
             const checkInTimeStr = shift.checkInTime ? new Date(shift.checkInTime).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : null;
             const checkOutTimeStr = shift.checkOutTime ? new Date(shift.checkOutTime).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : null;
-            
+
             // Safe evaluation of avatar using shared getAvatarUrl helper
-            const companionAvatar = getAvatarUrl(shift.companionId.avatar);
+            const avatar = getAvatarUrl(shift.counterparty.avatar);
 
             return (
               <div key={idx} className="p-5 bg-[#fbfaf7] border border-[#eae7e7] rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-soft transition-all">
                 <div className="flex items-start gap-4">
-                  {/* Caregiver Avatar */}
-                  {companionAvatar ? (
-                    <img src={companionAvatar} alt={shift.companionId.name} className="w-12 h-12 rounded-full object-cover border border-[#eae7e7]" />
+                  {/* Counterparty Avatar */}
+                  {avatar ? (
+                    <img src={avatar} alt={shift.counterparty.name} className="w-12 h-12 rounded-full object-cover border border-[#eae7e7]" />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-[#1f8a8a]/10 text-[#1f8a8a] flex items-center justify-center font-black border border-[#1f8a8a]/20 text-lg shrink-0">
-                      {shift.companionId.name.charAt(0)}
+                    <div className="w-12 h-12 rounded-full bg-[#1f8a8a]/10 text-[#1f8a8a] flex items-center justify-center font-black border border-[#1f8a8a]/20 text-sm shrink-0">
+                      {shift.counterparty.name.slice(0, 2).toUpperCase()}
                     </div>
                   )}
 
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-bold text-[#1b1c1c] text-base">{shift.companionId.name}</h4>
+                      <h4 className="font-bold text-[#1b1c1c] text-base">{shift.counterparty.name}</h4>
                       <span className="text-[10px] px-2 py-0.5 rounded bg-white border border-[#eae7e7] text-[#3e4949] font-mono">
                         {t("shiftIndex", { index: shift.slotIndex + 1 })}
                       </span>
@@ -166,17 +151,15 @@ export default function DayShiftsList({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {shift.companionId.phone && (
-                    <a
-                      href={`tel:${shift.companionId.phone}`}
-                      className="p-2 border border-[#eae7e7] hover:bg-[#eae7e7]/30 rounded-xl transition-all"
-                      title={shift.companionId.phone}
-                    >
-                      <Phone className="w-4 h-4 text-[#3e4949]" />
-                    </a>
-                  )}
                   <Link
-                    href={`/family/bookings/${shift.bookingId}?from=schedule`}
+                    href={`/${role}/messages?bookingId=${shift.bookingId}`}
+                    className="p-2 border border-[#eae7e7] hover:bg-[#eae7e7]/30 rounded-xl transition-all"
+                    title={t("sendMessage")}
+                  >
+                    <MessageSquare className="w-4 h-4 text-[#3e4949]" />
+                  </Link>
+                  <Link
+                    href={getDetailLink(role, shift.bookingId)}
                     className="px-4 py-2 bg-[#1f8a8a] hover:bg-[#0d8282] text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm border border-[#1f8a8a]/10 cursor-pointer"
                   >
                     <span>{t("viewVisit")}</span>

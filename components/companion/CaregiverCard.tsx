@@ -54,15 +54,21 @@ export default function CaregiverCard({
     return (
       <div className="group bg-white rounded-3xl border border-sand-high/60 shadow-soft hover:shadow-premium transition-all duration-300 overflow-hidden flex flex-col md:flex-row hover:-translate-y-1 p-5 md:p-6 gap-5 md:gap-6">
         {/* Card Image - Small & Proportional */}
-        <div className="relative w-32 h-32 md:w-36 md:h-36 rounded-2xl overflow-hidden bg-sand-low shrink-0 mx-auto md:mx-0 border border-sand-high/40 shadow-sm">
-          <Image
-            src={getAvatarUrl(avatar, "/avatar_1.jpg") || "/avatar_1.jpg"}
-            alt={name}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500 grayscale-[15%] group-hover:grayscale-0"
-            sizes="144px"
-            onError={() => {}}
-          />
+        <div className="relative w-32 h-32 md:w-36 md:h-36 rounded-2xl overflow-hidden bg-sand-low shrink-0 mx-auto md:mx-0 border border-sand-high/40 shadow-sm flex items-center justify-center">
+          {avatar ? (
+            <Image
+              src={getAvatarUrl(avatar) || ""}
+              alt={name}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-500 grayscale-[15%] group-hover:grayscale-0"
+              sizes="144px"
+              onError={() => {}}
+            />
+          ) : (
+            <div className="w-full h-full bg-teal-50 text-stitch-primary flex items-center justify-center font-bold text-2xl border border-teal-100 uppercase">
+              {name ? name.slice(0, 2) : ""}
+            </div>
+          )}
         </div>
 
         {/* Card Body */}
@@ -100,7 +106,7 @@ export default function CaregiverCard({
                 <span className="truncate">{location}</span>
               </div>
               <div className="flex items-center gap-1.5 bg-sand-low text-stitch-primary px-2.5 py-1 rounded-md font-bold text-xs border border-sand-high/30">
-                {t("rateDisplay", { rate: hourlyRate })}
+                {t("rateDisplay", { rate: hourlyRate.toLocaleString(locale === "ar" ? "ar-EG" : "en-US") })}
               </div>
             </div>
 
@@ -156,21 +162,27 @@ export default function CaregiverCard({
   return (
     <div className="group bg-white rounded-3xl border border-sand-high/60 shadow-soft hover:shadow-premium transition-all duration-300 overflow-hidden flex flex-col hover:-translate-y-1">
       {/* Card Image - Small & Proportional */}
-      <div className="relative h-40 overflow-hidden bg-sand-low shrink-0">
-        <Image
-          src={getAvatarUrl(avatar, "/avatar_1.jpg") || "/avatar_1.jpg"}
-          alt={name}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-500 grayscale-[15%] group-hover:grayscale-0"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          onError={() => {}}
-        />
+      <div className="relative h-40 overflow-hidden bg-sand-low shrink-0 flex items-center justify-center">
+        {avatar ? (
+          <Image
+            src={getAvatarUrl(avatar) || ""}
+            alt={name}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-500 grayscale-[15%] group-hover:grayscale-0"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            onError={() => {}}
+          />
+        ) : (
+          <div className="w-full h-full bg-teal-50 text-stitch-primary flex items-center justify-center font-bold text-3xl border border-teal-100 uppercase">
+            {name ? name.slice(0, 2) : ""}
+          </div>
+        )}
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none" />
 
         {/* Rate Badge */}
         <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm text-stitch-primary text-xs font-bold px-3 py-1.5 rounded-full shadow-md border border-stitch-outline/20">
-          {t("rateDisplay", { rate: hourlyRate })}
+          {t("rateDisplay", { rate: hourlyRate.toLocaleString(locale === "ar" ? "ar-EG" : "en-US") })}
         </div>
       </div>
 

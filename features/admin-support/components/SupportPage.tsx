@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { AdminSupportChat } from "./AdminSupportChat";
 
 interface SupportPageProps {
@@ -9,6 +10,14 @@ interface SupportPageProps {
 }
 
 export const SupportPage: React.FC<SupportPageProps> = ({ userRole = "family" }) => {
+  const t = useTranslations("supportPage");
+
+  const infoCards = [
+    { icon: "help", labelKey: "generalInquiries" as const, descKey: "generalInquiriesDesc" as const },
+    { icon: "report_problem", labelKey: "complaints" as const, descKey: "complaintsDesc" as const },
+    { icon: "info", labelKey: "accountSupport" as const, descKey: "accountSupportDesc" as const },
+  ];
+
   return (
     <div className="flex flex-col h-full">
       {/* Page header */}
@@ -18,11 +27,9 @@ export const SupportPage: React.FC<SupportPageProps> = ({ userRole = "family" })
             <span className="material-symbols-outlined text-teal-600 text-xl">support_agent</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Contact Admin</h1>
+            <h1 className="text-xl font-bold text-gray-900">{t("title")}</h1>
             <p className="text-sm text-gray-500">
-              {userRole === "family"
-                ? "Have a question or need help with a booking? Our team is here for you."
-                : "Need support, have a complaint, or want to report something? Reach out to us directly."}
+              {userRole === "family" ? t("familySubtitle") : t("companionSubtitle")}
             </p>
           </div>
         </div>
@@ -30,21 +37,17 @@ export const SupportPage: React.FC<SupportPageProps> = ({ userRole = "family" })
 
       {/* Info cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        {[
-          { icon: "help", label: "General Inquiries", desc: "Questions about the platform" },
-          { icon: "report_problem", label: "Complaints", desc: "Report an issue or concern" },
-          { icon: "info", label: "Account Support", desc: "Help with your account" },
-        ].map((item) => (
+        {infoCards.map((item) => (
           <div
-            key={item.label}
+            key={item.labelKey}
             className="flex items-start gap-3 p-3 bg-white rounded-xl border border-gray-100 shadow-sm"
           >
             <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-teal-600 text-base">{item.icon}</span>
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-700">{item.label}</p>
-              <p className="text-xs text-gray-400">{item.desc}</p>
+              <p className="text-xs font-semibold text-gray-700">{t(item.labelKey)}</p>
+              <p className="text-xs text-gray-400">{t(item.descKey)}</p>
             </div>
           </div>
         ))}

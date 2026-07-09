@@ -77,7 +77,7 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
   const locale = useLocale();
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
 
   const [searchMode, setSearchMode] = useState<"normal" | "ai">("normal");
 
@@ -149,7 +149,7 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
     return raw.map((c: any) => ({
       id: String(c._id ?? c.id ?? ""),
       name: c.userId?.name ?? c.name ?? "Caregiver",
-      avatar: c.userId?.avatar ?? c.avatar ?? "/avatar_1.jpg",
+      avatar: c.userId?.avatar ?? c.avatar ?? null,
       title: c.title || deriveTitle(t, c.specialization, c.companionType),
       rating: c.rating ?? 5.0,
       reviewsCount: c.reviewCount ?? c.reviewsCount ?? 0,
@@ -159,6 +159,7 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
       hourlyRate: c.hourlyRate ?? 0,
       bio: c.bio ?? "",
       specialization: c.specialization ?? "",
+      skills: c.skills ?? [],
     }));
   }, [activeData, searchResults, isAiSearchActive, t]);
 
@@ -188,10 +189,20 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
               {t("subtitle")}
             </p>
           </div>
-          <div className="hidden md:flex items-center gap-1.5 bg-white border border-sand-high/60 rounded-xl p-1 shadow-soft">
+          {/* List and Grid switcher view toggles */}
+          <div className="flex items-center gap-1.5 bg-white border border-sand-high/60 rounded-xl p-1 shadow-soft">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewMode === "list" ? "bg-stitch-primary text-white" : "text-stitch-on-surface-variant hover:bg-sand-low"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[15px]">format_list_bulleted</span>
+              {locale === "ar" ? "القائمة" : "List View"}
+            </button>
             <button
               onClick={() => setViewMode("grid")}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 viewMode === "grid" ? "bg-stitch-primary text-white" : "text-stitch-on-surface-variant hover:bg-sand-low"
               }`}
             >
@@ -204,13 +215,13 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
 
       {/* Modern Switch Toggle segment with sliding backdrop */}
       <div className="flex justify-center my-2">
-        <div className="bg-sand-low/40 dark:bg-zinc-800/40 p-1.5 rounded-2xl border border-sand-high/40 relative flex items-center shadow-inner overflow-hidden w-[310px] h-[52px]">
+        <div className="bg-[#f0ece9] p-1.5 rounded-2xl border border-sand-high/60 relative flex items-center shadow-inner overflow-hidden w-[310px] h-[52px]" dir={locale === "ar" ? "rtl" : "ltr"}>
           {/* Sliding Backdrop */}
           <div
             className={`absolute top-1 bottom-1 rounded-xl shadow-sm border border-sand-high/20 transition-all duration-300 ease-out ${
               searchMode === "normal"
-                ? "left-1.5 w-[146px] bg-white dark:bg-zinc-700"
-                : "left-[156px] w-[146px] bg-stitch-primary"
+                ? locale === "ar" ? "right-1.5 w-[146px] bg-white" : "left-1.5 w-[146px] bg-white"
+                : locale === "ar" ? "right-[156px] w-[146px] bg-stitch-primary" : "left-[156px] w-[146px] bg-stitch-primary"
             }`}
           />
           <button
@@ -224,12 +235,16 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
                 ? "text-stitch-primary"
                 : "text-stitch-on-surface-variant/80 hover:text-stitch-on-surface"
             }`}
+            dir={locale === "ar" ? "rtl" : "ltr"}
           >
             <span className="material-symbols-outlined text-[16px]">search</span>
             {locale === "ar" ? "البحث العادي" : "Normal Search"}
           </button>
           <button
             onClick={() => {
+              // Clear normal search field to avoid conflicts
+              setFilters((prev) => ({ ...prev, search: "" }));
+              setDebouncedSearch("");
               setSearchMode("ai");
               setPage(1);
             }}
@@ -238,6 +253,7 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
                 ? "text-white"
                 : "text-stitch-on-surface-variant/80 hover:text-stitch-on-surface"
             }`}
+            dir={locale === "ar" ? "rtl" : "ltr"}
           >
             <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
             {locale === "ar" ? "البحث بالذكاء الاصطناعي" : "AI Search"}
@@ -258,7 +274,7 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
               value={filters.search}
               onChange={(e) => handleFilterChange("search", e.target.value)}
               placeholder={locale === "ar" ? "ابحث بالاسم، المهارات أو الكلمات الدلالية..." : "Search by name, skills or keywords..."}
-              className="w-full bg-white dark:bg-zinc-800 text-stitch-on-surface rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-stitch-primary/50 border border-sand-high/60 shadow-soft outline-none"
+              className="w-full bg-white text-stitch-on-surface rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-stitch-primary/30 border border-sand-high/70 shadow-soft outline-none font-medium"
               dir={locale === "ar" ? "rtl" : "ltr"}
             />
             <span className={`material-symbols-outlined absolute top-1/2 -translate-y-1/2 text-stitch-on-surface-variant/50 ${locale === "ar" ? "left-4" : "right-4"}`}>
@@ -285,7 +301,7 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
       </div>
 
       {!isLoading && displayList.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-800 rounded-3xl border border-sand-high/60 p-8 text-center max-w-lg mx-auto shadow-soft space-y-4 animate-fade-in mt-12">
+        <div className="bg-white rounded-3xl border border-sand-high/60 p-8 text-center max-w-lg mx-auto shadow-soft space-y-4 animate-fade-in mt-12">
           <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
             <span className="material-symbols-outlined text-3xl">search_off</span>
           </div>
@@ -333,6 +349,7 @@ export default function ClientCompanionsView({ initialData }: { initialData: any
                   hourlyRate={companion.hourlyRate}
                   bio={companion.bio}
                   specialization={companion.specialization}
+                  skills={companion.skills}
                   viewMode={viewMode}
                 />
               ))}

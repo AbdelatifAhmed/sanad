@@ -78,12 +78,18 @@ export default function WhoNeedsCare({
                 }`}
               >
                 {/* Profile Avatar */}
-                <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 bg-sand-low border border-sand-high">
-                  <img 
-                    src={member.avatar || fallbackAvatar} 
-                    alt={member.name} 
-                    className="w-full h-full object-cover" 
-                  />
+                <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 bg-sand-low border border-sand-high flex items-center justify-center">
+                  {member.avatar ? (
+                    <img 
+                      src={member.avatar} 
+                      alt={member.name} 
+                      className="w-full h-full object-cover" 
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-600 font-bold text-lg uppercase">
+                      {member.name.slice(0, 2)}
+                    </div>
+                  )}
                 </div>
 
                 {/* Info */}

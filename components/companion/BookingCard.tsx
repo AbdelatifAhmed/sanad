@@ -71,7 +71,7 @@ export default async function BookingCard({ job }: BookingCardProps) {
   }
 
   // Unify Location
-  const locationName = job.location?.city || job.location?.governorate || job.locationName || "";
+  const locationName = job.location?.readableAddress || job.location?.city || job.location?.governorate || job.locationName || "";
 
   // Unify Budget Rate
   const rate = job.budgetPerHour || job.rate || 0;

@@ -1,15 +1,12 @@
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
-import type { BookingScheduleEntry, UserData } from "@/types";
-import { getServerAuthToken } from "@/lib/serverAuth";
-import {
-  getCompanionDashboardStats,
-  getCompanionSchedule,
-  getMyCompanionProfile,
-} from "@/lib/API";
+import type { UserData } from "@/types";
+import { isNextRedirectError, ServerFetchError, serverFetch } from "@/lib/serverAuth";
+import { mergeScheduleDerivedStats } from "@/lib/companionDashboard";
+import { calculateCompanionProfileCompletion, type CompanionProfileCompletionInput } from "@/lib/profileCompletion";
 import { StatsSection, ProfileCompletion, type DashboardStats } from "@/components/dashboard/companion/StatsOverview";
 import { RecentActivity } from "@/components/dashboard/companion/RecentActivity";
-import { ScheduleOverview } from "@/components/dashboard/companion/ScheduleOverview";
+import { ScheduleOverview, type Booking } from "@/components/dashboard/companion/ScheduleOverview";
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -20,7 +17,7 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
   const viewMode = (searchParamsVal.view as "list" | "timeline") || "list";
 
   let stats: DashboardStats | null = null;
-  let schedule: any[] = [];
+  let schedule: Booking[] = [];
   let profile: { userId?: UserData; [key: string]: unknown } | null = null;
   let errorStatus: number | null = null;
   let errorMessage = "";
@@ -28,32 +25,45 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
   const t = await getTranslations("companionDashboard");
   const locale = await getLocale();
 
-  try {
-    const accessToken = await getServerAuthToken();
-    const config = {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Language": locale,
-      },
-    };
+  const fetchOptions = {
+    headers: {
+      "Accept-Language": locale,
+    },
+  };
 
+  try {
     const [statsData, scheduleData, profileData] = await Promise.all([
-      getCompanionDashboardStats(config),
-      getCompanionSchedule(config),
-      getMyCompanionProfile(config),
+      serverFetch("/companion/me/dashboard-stats", fetchOptions),
+      serverFetch("/companion/me/schedule", fetchOptions),
+      serverFetch("/companion/me", fetchOptions),
     ]);
 
     stats = statsData;
     schedule = scheduleData?.schedule || [];
     profile = profileData?.companion;
+
+    stats = mergeScheduleDerivedStats(statsData, schedule, locale);
+    if (stats && profile) {
+      stats = {
+        ...stats,
+        profileCompletion: calculateCompanionProfileCompletion(profile as CompanionProfileCompletionInput),
+      };
+    }
   } catch (err: unknown) {
-    const error = err as { response?: { status?: number; data?: { message?: string } }; status?: number; message?: string };
+    if (isNextRedirectError(err)) {
+      throw err;
+    }
     console.error("Error loading dashboard data:", err);
-    errorStatus = error.response?.status || error.status || 500;
-    errorMessage = error.response?.data?.message || error.message || "Failed to load dashboard data. Please try again later.";
+    if (err instanceof ServerFetchError) {
+      errorStatus = err.status;
+      errorMessage = err.message;
+    } else {
+      const error = err as { response?: { status?: number; data?: { message?: string } }; status?: number; message?: string };
+      errorStatus = error.response?.status || error.status || 500;
+      errorMessage = error.response?.data?.message || error.message || "Failed to load dashboard data. Please try again later.";
+    }
   }
 
-  // Handle Missing Profile (404 Companion Profile Not Found)
   if (errorStatus === 404) {
     return (
       <div className="flex items-center justify-center min-h-[400px] p-6 animate-fade-in font-stitch-body">
@@ -66,21 +76,20 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
               {t("completeProfile")}
             </h2>
             <p className="text-stitch-on-surface-variant/75 text-sm leading-relaxed">
-               {errorMessage || t("completeProfileDesc")}
+              {errorMessage || t("completeProfileDesc")}
             </p>
           </div>
           <Link
             href="/companion/profile"
             className="block w-full py-3 px-4 bg-stitch-primary text-white font-bold rounded-xl hover:bg-stitch-primary/95 transition-colors text-center text-sm shadow-sm"
           >
-             {t("completeNow")}
+            {t("completeNow")}
           </Link>
         </div>
       </div>
     );
   }
 
-  // Handle general API errors
   if (errorStatus) {
     return (
       <div className="flex items-center justify-center min-h-[400px] p-6 animate-fade-in font-stitch-body">
@@ -90,7 +99,7 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
           </div>
           <div className="space-y-2">
             <h2 className="text-xl font-bold text-stitch-on-surface">
-               {t("errorTitle")}
+              {t("errorTitle")}
             </h2>
             <p className="text-stitch-on-surface-variant/75 text-sm leading-relaxed">
               {errorMessage}
@@ -100,7 +109,7 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
             href="/companion/dashboard"
             className="block w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-stitch-on-surface font-semibold rounded-xl transition-colors text-sm text-center"
           >
-             {t("retry")}
+            {t("retry")}
           </Link>
         </div>
       </div>
@@ -109,19 +118,16 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-8 animate-fade-in font-stitch-body select-none">
-      
-      {/* Header section */}
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-stitch-display font-bold text-stitch-on-surface tracking-tight">
-             {t("welcomeBack", { name: profile?.userId?.name || "Dr. Amina" })}
+            {t("welcomeBack", { name: profile?.userId?.name || "Dr. Amina" })}
           </h1>
           <p className="text-stitch-on-surface-variant/70 text-sm mt-1">
-             {t("subtitle")}
+            {t("subtitle")}
           </p>
         </div>
-        
-        {/* Action Icons */}
+
         <div className="flex items-center gap-3">
           <button className="w-10 h-10 bg-white border border-stitch-outline/20 rounded-full flex items-center justify-center text-stitch-on-surface hover:bg-stitch-secondary-container/10 transition-colors shadow-sm cursor-pointer">
             <span className="material-symbols-outlined text-xl">search</span>
@@ -133,18 +139,13 @@ export default async function CompanionDashboard({ searchParams }: PageProps) {
         </div>
       </div>
 
-      {/* Stats Cards Section */}
       <StatsSection stats={stats} />
 
-      {/* Middle Cards Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile Completion Card */}
         <ProfileCompletion stats={stats} />
-        {/* Recent Activity Card */}
         <RecentActivity />
       </div>
 
-      {/* Schedule Overview Section */}
       <ScheduleOverview schedule={schedule} viewMode={viewMode} />
     </div>
   );
