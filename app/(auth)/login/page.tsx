@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Mail,
   Lock,
@@ -24,6 +24,8 @@ export default function LoginPage() {
 
 function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isMcp = searchParams.get("mcp") === "true";
   const locale = useLocale();
   const isAr = locale === "ar";
   const [showPassword, setShowPassword] = useState(false);
@@ -70,6 +72,7 @@ function LoginContent() {
           "/auth/google-signin",
           {
             accessToken: tokenResponse.access_token,
+            mcp: isMcp,
           },
           {
             withCredentials: true,
@@ -166,6 +169,7 @@ function LoginContent() {
         {
           email: formData.email,
           password: formData.password,
+          mcp: isMcp,
         },
         {
           withCredentials: true,
