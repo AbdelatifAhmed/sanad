@@ -17,7 +17,7 @@ export default function CompanionProfessionalInfo() {
     companionType: z.enum(["general", "specialized"]),
     specialization: z.enum(["none", "nursing", "physiotherapy", "companionship_companion"]),
     bio: z.string().min(20, isAr ? "يرجى كتابة سيرة ذاتية لا تقل عن 20 حرفاً" : "Please provide a bio with at least 20 characters"),
-    hourlyRate: z.coerce.number().min(1, isAr ? "يجب أن يكون سعر الساعة 1 على الأقل" : "Hourly rate must be at least 1"),
+    hourlyRate: z.number().min(1, isAr ? "يجب أن يكون سعر الساعة 1 على الأقل" : "Hourly rate must be at least 1"),
   }), [isAr]);
 
   type ProfessionalInfoData = z.infer<typeof professionalInfoSchema>;
