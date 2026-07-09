@@ -3,9 +3,10 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "../../store/authStore";
 
 export const api: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL
-    ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-    : "/api",
+  // Use relative path in browser to trigger Next.js rewrite proxy, avoiding cross-site cookie blocking.
+  baseURL: typeof window !== "undefined"
+    ? "/api"
+    : (process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/api` : "http://localhost:5000/api"),
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
