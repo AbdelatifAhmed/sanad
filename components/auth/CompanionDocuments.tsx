@@ -4,6 +4,7 @@ import { useRegisterStore } from "@/store/registerStore";
 import { ArrowLeft, ArrowRight, CheckCircle, Loader2, Trash2, Upload } from "lucide-react";
 import React, { useState } from "react";
 import { uploadPublicFile } from "@/lib/api/upload.api";
+import { useLocale } from "next-intl";
 
 interface FileUploaderProps {
   label: string;
@@ -11,24 +12,35 @@ interface FileUploaderProps {
   onRemove: () => void;
   currentUrl?: string;
   required?: boolean;
+  isAr: boolean;
 }
 
-const FileUploader = ({ label, onUpload, onRemove, currentUrl, required }: FileUploaderProps) => {
+const FileUploader = ({ label, onUpload, onRemove, currentUrl, required, isAr }: FileUploaderProps) => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const t = {
+    allowedTypes: isAr ? "يسمح فقط بملفات JPEG و PNG و PDF." : "Only JPEG, PNG, and PDF are allowed.",
+    exceedsSize: isAr ? "حجم الملف يتجاوز الحد الأقصى 5 ميجابايت." : "File size exceeds 5MB limit.",
+    failedUpload: isAr ? "فشل الرفع. يرجى المحاولة مرة أخرى." : "Failed to upload. Please try again.",
+    uploaded: isAr ? "تم رفع المستند بنجاح" : "Document Uploaded",
+    readyVerify: isAr ? "جاهز للتحقق والمراجعة" : "Ready for verification",
+    uploading: isAr ? "جاري الرفع..." : "Uploading...",
+    clickToUpload: isAr ? "اضغط لرفع المستند" : "Click to upload document",
+    formatHelp: isAr ? "PDF أو JPG أو PNG (الحد الأقصى 5 ميجابايت)" : "PDF, JPG or PNG (max. 5MB)",
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate type and size (5MB limit)
     const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
     if (!allowedTypes.includes(file.type)) {
-      setError("Only JPEG, PNG, and PDF are allowed.");
+      setError(t.allowedTypes);
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setError("File size exceeds 5MB limit.");
+      setError(t.exceedsSize);
       return;
     }
 
@@ -39,7 +51,7 @@ const FileUploader = ({ label, onUpload, onRemove, currentUrl, required }: FileU
       const result = await uploadPublicFile(file);
       onUpload(result);
     } catch (err) {
-      setError("Failed to upload. Please try again.");
+      setError(t.failedUpload);
     } finally {
       setUploading(false);
     }
@@ -47,19 +59,19 @@ const FileUploader = ({ label, onUpload, onRemove, currentUrl, required }: FileU
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-bold text-gray-700 block">
+      <label className={`text-sm font-bold text-gray-700 block ${isAr ? "text-right" : "text-left"}`}>
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       
       {currentUrl ? (
-        <div className="flex items-center justify-between p-4 bg-teal-50/30 border border-teal-100 rounded-xl animate-fade-in">
-          <div className="flex items-center gap-3">
+        <div className={`flex items-center justify-between p-4 bg-teal-50/30 border border-teal-100 rounded-xl animate-fade-in ${isAr ? "flex-row-reverse" : "flex-row"}`}>
+          <div className={`flex items-center gap-3 ${isAr ? "flex-row-reverse text-right" : "flex-row text-left"}`}>
             <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center text-primary">
               <CheckCircle className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-bold text-gray-800">Document Uploaded</p>
-              <p className="text-[10px] text-gray-400 font-bold uppercase">Ready for verification</p>
+              <p className="text-sm font-bold text-gray-800">{t.uploaded}</p>
+              <p className="text-[10px] text-gray-400 font-bold uppercase">{t.readyVerify}</p>
             </div>
           </div>
           <button
@@ -89,9 +101,9 @@ const FileUploader = ({ label, onUpload, onRemove, currentUrl, required }: FileU
             )}
             <div>
               <p className={`text-xs font-bold ${error ? 'text-red-500' : 'text-primary'}`}>
-                {uploading ? "Uploading..." : error || "Click to upload document"}
+                {uploading ? t.uploading : error || t.clickToUpload}
               </p>
-              <p className="text-[10px] text-gray-400 font-medium mt-1">PDF, JPG or PNG (max. 5MB)</p>
+              <p className="text-[10px] text-gray-400 font-medium mt-1">{t.formatHelp}</p>
             </div>
           </label>
         </>
@@ -102,6 +114,8 @@ const FileUploader = ({ label, onUpload, onRemove, currentUrl, required }: FileU
 
 export default function CompanionDocuments() {
   const { companionData, updateCompanionData, nextStep, prevStep } = useRegisterStore();
+  const locale = useLocale();
+  const isAr = locale === "ar";
 
   const handleUpload = (field: keyof typeof companionData.documents, fileData: { url: string; public_id: string }) => {
     updateCompanionData({
@@ -120,34 +134,49 @@ export default function CompanionDocuments() {
 
   const isComplete = companionData.documents.nationalIdCard && companionData.documents.criminalRecord;
 
+  const labels = {
+    title: isAr ? "وثائق التحقق والمراجعة" : "Verification Documents",
+    desc: isAr 
+      ? "يرجى رفع صور واضحة من وثائقك الرسمية لبدء عملية توثيق الحساب." 
+      : "Please upload clear photos of your official documents for our verification process.",
+    nationalId: isAr ? "بطاقة الرقم القومي" : "National ID Card",
+    criminalRecord: isAr ? "صحيفة الحالة الجنائية (الفيش الجنائي)" : "Criminal Record (الفيش الجنائي)",
+    syndicateCard: isAr ? "كارنيه النقابة (اختياري)" : "Syndicate Card (Optional)",
+    back: isAr ? "رجوع" : "Back",
+    next: isAr ? "الخطوة التالية" : "Next Step",
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" dir={isAr ? "rtl" : "ltr"}>
       <div className="space-y-2">
-        <h2 className="text-xl font-bold text-primary">Verification Documents</h2>
-        <p className="text-sm text-gray-500 font-medium leading-relaxed">
-          Please upload clear photos of your official documents for our verification process.
+        <h2 className={`text-xl font-bold text-primary ${isAr ? "text-right" : "text-left"}`}>{labels.title}</h2>
+        <p className={`text-sm text-gray-500 font-medium leading-relaxed ${isAr ? "text-right" : "text-left"}`}>
+          {labels.desc}
         </p>
       </div>
 
       <div className="space-y-6">
         <FileUploader
-          label="National ID Card"
+          label={labels.nationalId}
           required
+          isAr={isAr}
           currentUrl={companionData.documents.nationalIdCard?.url}
           onUpload={(fileData) => handleUpload("nationalIdCard", fileData)}
           onRemove={() => handleRemove("nationalIdCard")}
         />
 
         <FileUploader
-          label="Criminal Record (الفيش الجنائي)"
+          label={labels.criminalRecord}
           required
+          isAr={isAr}
           currentUrl={companionData.documents.criminalRecord?.url}
           onUpload={(fileData) => handleUpload("criminalRecord", fileData)}
           onRemove={() => handleRemove("criminalRecord")}
         />
 
         <FileUploader
-          label="Syndicate Card (Optional)"
+          label={labels.syndicateCard}
+          isAr={isAr}
           currentUrl={companionData.documents.syndicateCard?.url}
           onUpload={(fileData) => handleUpload("syndicateCard", fileData)}
           onRemove={() => handleRemove("syndicateCard")}
@@ -160,8 +189,8 @@ export default function CompanionDocuments() {
           onClick={prevStep}
           className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-sm font-bold text-gray-500 hover:text-primary hover:bg-gray-50 transition-all cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back
+          {isAr ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+          {labels.back}
         </button>
         <button
           type="button"
@@ -169,8 +198,8 @@ export default function CompanionDocuments() {
           disabled={!isComplete}
           className="group flex items-center justify-center gap-1.5 px-8 py-3.5 bg-primary text-white rounded-xl font-bold text-base shadow-md hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
         >
-          Next Step
-          <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          {labels.next}
+          {isAr ? <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> : <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />}
         </button>
       </div>
     </div>
