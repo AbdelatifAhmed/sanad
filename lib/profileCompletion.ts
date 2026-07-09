@@ -12,7 +12,9 @@ export interface CompanionProfileCompletionInput {
 export interface ProfileCompletionResult {
   percentage: number;
   missingFields: string[];
-  message: string;
+  message?: string;
+  /** Translation key inside companionDashboard namespace */
+  messageKey?: string;
 }
 
 const hasUploadedDocument = (document?: { url?: string | null; public_id?: string | null } | null) => {
@@ -48,12 +50,16 @@ export function calculateCompanionProfileCompletion(
   const percentage = checks.reduce((total, check) => total + (check.complete ? check.weight : 0), 0);
   const missingFields = checks.filter((check) => !check.complete).map((check) => check.key);
 
+  const hasMissingDocuments = missingFields.includes("nationalIdCard") || missingFields.includes("criminalRecord");
+
   return {
     percentage: Math.min(percentage, 100),
     missingFields,
-    message:
+    messageKey:
       missingFields.length === 0
-        ? "Your profile is complete."
-        : "Complete your profile to increase visibility to families.",
+        ? "profileCompletionComplete"
+        : hasMissingDocuments
+          ? "profileCompletionIdentificationDocuments"
+          : "profileCompletionSpecializedCertificates",
   };
 }

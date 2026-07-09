@@ -20,7 +20,9 @@ export interface DashboardStats {
   };
   profileCompletion: {
     percentage: number;
-    message: string;
+    message?: string;
+    /** key inside companionDashboard, e.g. "profileCompletionComplete" */
+    messageKey?: string;
     missingFields: string[];
   };
 }
@@ -191,7 +193,13 @@ export async function ProfileCompletion({ stats }: StatsProps) {
 
         <div className="space-y-1 max-w-[170px]">
           <p className="text-xs text-stitch-on-surface-variant/75 leading-relaxed font-medium">
-            {stats?.profileCompletion?.message || t("profileCompletionDefault")}
+            {(() => {
+              const key = stats?.profileCompletion?.messageKey;
+              if (key === "profileCompletionComplete") return t("profileCompletionComplete");
+              if (key === "profileCompletionSpecializedCertificates") return t("profileCompletionSpecializedCertificates");
+              if (key === "profileCompletionIdentificationDocuments") return t("profileCompletionIdentificationDocuments");
+              return stats?.profileCompletion?.message || t("profileCompletionDefault");
+            })()}
           </p>
           {percentage < 100 && (
             <Link href="/companion/profile" className="text-xs font-bold text-stitch-primary hover:underline block mt-1">
