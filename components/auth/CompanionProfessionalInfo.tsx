@@ -1,23 +1,26 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { ArrowLeft, ArrowRight, DollarSign, Briefcase, FileText } from "lucide-react";
 import { useRegisterStore } from "@/store/registerStore";
-
-const professionalInfoSchema = z.object({
-  companionType: z.enum(["general", "specialized"]),
-  specialization: z.enum(["none", "nursing", "physiotherapy", "companionship_companion"]),
-  bio: z.string().min(20, "Please provide a bio with at least 20 characters"),
-  hourlyRate: z.number().min(1, "Hourly rate must be at least 1"),
-});
-
-type ProfessionalInfoData = z.infer<typeof professionalInfoSchema>;
+import { useLocale } from "next-intl";
 
 export default function CompanionProfessionalInfo() {
   const { companionData, updateCompanionData, nextStep, prevStep } = useRegisterStore();
+  const locale = useLocale();
+  const isAr = locale === "ar";
+
+  const professionalInfoSchema = useMemo(() => z.object({
+    companionType: z.enum(["general", "specialized"]),
+    specialization: z.enum(["none", "nursing", "physiotherapy", "companionship_companion"]),
+    bio: z.string().min(20, isAr ? "يرجى كتابة سيرة ذاتية لا تقل عن 20 حرفاً" : "Please provide a bio with at least 20 characters"),
+    hourlyRate: z.number({ invalid_type_error: isAr ? "سعر الساعة يجب أن يكون رقماً" : "Hourly rate must be a number" }).min(1, isAr ? "يجب أن يكون سعر الساعة 1 على الأقل" : "Hourly rate must be at least 1"),
+  }), [isAr]);
+
+  type ProfessionalInfoData = z.infer<typeof professionalInfoSchema>;
 
   const {
     register,
@@ -42,12 +45,35 @@ export default function CompanionProfessionalInfo() {
     nextStep();
   };
 
+  const labels = {
+    typeLabel: isAr ? "أنا:" : "I am a:",
+    generalTitle: isAr ? "مرافق رعاية عام" : "General Caregiver",
+    generalDesc: isAr ? "دعم غير طبي وزيارات رفقة" : "Non-medical support",
+    specialTitle: isAr ? "رعاية تخصصية" : "Specialized Care",
+    specialDesc: isAr ? "دعم طبي أو علاج طبيعي" : "Medical/Therapy support",
+    specialization: isAr ? "التخصص" : "Specialization",
+    selectSpecialization: isAr ? "اختر التخصص" : "Select specialization",
+    specNursing: isAr ? "تمريض" : "Nursing",
+    specPhysio: isAr ? "علاج طبيعي" : "Physiotherapy",
+    specCompanion: isAr ? "مرافق طبي متمرس" : "Companionship Companion",
+    rateLabel: isAr ? "سعر الساعة (ج.م)" : "Hourly Rate (EGP)",
+    ratePlaceholder: isAr ? "مثال: 150" : "e.g. 150",
+    bioLabel: isAr ? "نبذة تعريفية عنك / سيرة ذاتية" : "Bio / About You",
+    bioPlaceholder: isAr 
+      ? "شاركنا خبرتك، شغفك بالرعاية، وما يجعلك مرافقاً رائعاً..." 
+      : "Share your experience, passion for care, and what makes you a great companion...",
+    back: isAr ? "رجوع" : "Back",
+    next: isAr ? "الخطوة التالية" : "Next Step",
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir={isAr ? "rtl" : "ltr"}>
       <div className="space-y-6">
         {/* Companion Type */}
         <div className="space-y-2.5">
-          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">I am a:</label>
+          <label className={`block text-xs font-bold uppercase tracking-wider text-gray-500 ${isAr ? "text-right" : "text-left"}`}>
+            {labels.typeLabel}
+          </label>
           <div className="grid grid-cols-2 gap-4">
             <button
               type="button"
@@ -61,8 +87,8 @@ export default function CompanionProfessionalInfo() {
                   : "border-outline-variant bg-white text-gray-500 hover:border-gray-400"
               }`}
             >
-              <span className="text-sm font-bold block">General Caregiver</span>
-              <span className="text-[10px] text-gray-400 font-semibold">Non-medical support</span>
+              <span className="text-sm font-bold block">{labels.generalTitle}</span>
+              <span className="text-[10px] text-gray-400 font-semibold">{labels.generalDesc}</span>
             </button>
 
             <button
@@ -74,61 +100,61 @@ export default function CompanionProfessionalInfo() {
                   : "border-outline-variant bg-white text-gray-500 hover:border-gray-400"
               }`}
             >
-              <span className="text-sm font-bold block">Specialized Care</span>
-              <span className="text-[10px] text-gray-400 font-semibold">Medical/Therapy support</span>
+              <span className="text-sm font-bold block">{labels.specialTitle}</span>
+              <span className="text-[10px] text-gray-400 font-semibold">{labels.specialDesc}</span>
             </button>
           </div>
-          {errors.companionType && <p className="text-red-500 text-xs font-semibold">{errors.companionType.message}</p>}
+          {errors.companionType && <p className={`text-red-500 text-xs font-semibold ${isAr ? "text-right" : "text-left"}`}>{errors.companionType.message}</p>}
         </div>
 
         {/* Specialization (if specialized) */}
         {companionType === "specialized" && (
           <div className="space-y-1.5 animate-fade-in">
-            <label className="block text-sm font-bold text-gray-700">Specialization</label>
+            <label className={`block text-sm font-bold text-gray-700 ${isAr ? "text-right" : "text-left"}`}>{labels.specialization}</label>
             <div className="relative">
-              <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Briefcase className={`absolute ${isAr ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5`} />
               <select
                 {...register("specialization")}
-                className="w-full pl-12 pr-4 py-3.5 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium appearance-none"
+                className={`w-full py-3.5 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium appearance-none ${isAr ? "pr-12 pl-4 text-right" : "pl-12 pr-4 text-left"}`}
               >
-                <option value="none">Select specialization</option>
-                <option value="nursing">Nursing</option>
-                <option value="physiotherapy">Physiotherapy</option>
-                <option value="companionship_companion">Companionship Companion</option>
+                <option value="none">{labels.selectSpecialization}</option>
+                <option value="nursing">{labels.specNursing}</option>
+                <option value="physiotherapy">{labels.specPhysio}</option>
+                <option value="companionship_companion">{labels.specCompanion}</option>
               </select>
             </div>
-            {errors.specialization && <p className="text-red-500 text-xs font-semibold">{errors.specialization.message}</p>}
+            {errors.specialization && <p className={`text-red-500 text-xs font-semibold ${isAr ? "text-right" : "text-left"}`}>{errors.specialization.message}</p>}
           </div>
         )}
 
         {/* Hourly Rate */}
         <div className="space-y-1.5">
-          <label className="block text-sm font-bold text-gray-700">Hourly Rate ($)</label>
+          <label className={`block text-sm font-bold text-gray-700 ${isAr ? "text-right" : "text-left"}`}>{labels.rateLabel}</label>
           <div className="relative">
-            <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <DollarSign className={`absolute ${isAr ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5`} />
             <input
               {...register("hourlyRate", { valueAsNumber: true })}
               type="number"
-              className="w-full pl-12 pr-4 py-3.5 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all placeholder:text-gray-400 text-sm"
-              placeholder="e.g. 150"
+              className={`w-full py-3.5 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all placeholder:text-gray-400 text-sm ${isAr ? "pr-12 pl-4 text-right" : "pl-12 pr-4 text-left"}`}
+              placeholder={labels.ratePlaceholder}
             />
           </div>
-          {errors.hourlyRate && <p className="text-red-500 text-xs font-semibold">{errors.hourlyRate.message}</p>}
+          {errors.hourlyRate && <p className={`text-red-500 text-xs font-semibold ${isAr ? "text-right" : "text-left"}`}>{errors.hourlyRate.message}</p>}
         </div>
 
         {/* Bio */}
         <div className="space-y-1.5">
-          <label className="block text-sm font-bold text-gray-700">Bio / About You</label>
+          <label className={`block text-sm font-bold text-gray-700 ${isAr ? "text-right" : "text-left"}`}>{labels.bioLabel}</label>
           <div className="relative">
-            <FileText className="absolute left-4 top-4 text-gray-400 w-5 h-5" />
+            <FileText className={`absolute ${isAr ? "right-4" : "left-4"} top-4 text-gray-400 w-5 h-5`} />
             <textarea
               {...register("bio")}
               rows={4}
-              className="w-full pl-12 pr-4 py-3.5 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all placeholder:text-gray-400 text-sm leading-relaxed resize-none"
-              placeholder="Share your experience, passion for care, and what makes you a great companion..."
+              className={`w-full py-3.5 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all placeholder:text-gray-400 text-sm leading-relaxed resize-none ${isAr ? "pr-12 pl-4 text-right" : "pl-12 pr-4 text-left"}`}
+              placeholder={labels.bioPlaceholder}
             />
           </div>
-          {errors.bio && <p className="text-red-500 text-xs font-semibold">{errors.bio.message}</p>}
+          {errors.bio && <p className={`text-red-500 text-xs font-semibold ${isAr ? "text-right" : "text-left"}`}>{errors.bio.message}</p>}
         </div>
       </div>
 
@@ -138,15 +164,15 @@ export default function CompanionProfessionalInfo() {
           onClick={prevStep}
           className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-sm font-bold text-gray-500 hover:text-primary hover:bg-gray-50 transition-all cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back
+          {isAr ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+          {labels.back}
         </button>
         <button
           type="submit"
           className="group flex items-center justify-center gap-1.5 px-8 py-3.5 bg-primary text-white rounded-xl font-bold text-base shadow-md hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer"
         >
-          Next Step
-          <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          {labels.next}
+          {isAr ? <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> : <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />}
         </button>
       </div>
     </form>

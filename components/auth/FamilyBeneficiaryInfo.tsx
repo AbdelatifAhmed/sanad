@@ -1,25 +1,28 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { ArrowLeft, ArrowRight, User, Heart, Plus, Trash2, HeartHandshake } from "lucide-react";
+import { ArrowLeft, ArrowRight, User, Plus, Trash2 } from "lucide-react";
 import { useRegisterStore } from "@/store/registerStore";
-
-const beneficiarySchema = z.object({
-  name: z.string().min(1, "Beneficiary name is required"),
-  age: z.number().min(1, "Please enter a valid age"),
-  gender: z.enum(["male", "female"]),
-  category: z.enum(["elderly", "special_needs"]),
-  conditionDetails: z.string().min(10, "Please provide some condition details (min 10 characters)"),
-});
-
-type BeneficiaryData = z.infer<typeof beneficiarySchema>;
+import { useLocale } from "next-intl";
 
 export default function FamilyBeneficiaryInfo() {
   const { familyData, updateFamilyData, nextStep, prevStep } = useRegisterStore();
   const [isAdding, setIsAdding] = useState(familyData.beneficiaries.length === 0);
+  const locale = useLocale();
+  const isAr = locale === "ar";
+
+  const beneficiarySchema = useMemo(() => z.object({
+    name: z.string().min(1, isAr ? "اسم المستفيد مطلوب" : "Beneficiary name is required"),
+    age: z.number({ invalid_type_error: isAr ? "يرجى إدخال عمر صحيح" : "Please enter a valid age" }).min(1, isAr ? "يرجى إدخال عمر صحيح" : "Please enter a valid age"),
+    gender: z.enum(["male", "female"]),
+    category: z.enum(["elderly", "special_needs"]),
+    conditionDetails: z.string().min(10, isAr ? "يرجى كتابة تفاصيل الحالة (10 أحرف على الأقل)" : "Please provide some condition details (min 10 characters)"),
+  }), [isAr]);
+
+  type BeneficiaryData = z.infer<typeof beneficiarySchema>;
 
   const {
     register,
@@ -54,8 +57,30 @@ export default function FamilyBeneficiaryInfo() {
     if (newList.length === 0) setIsAdding(true);
   };
 
+  const labels = {
+    ageText: isAr ? "سنة" : "years",
+    elderly: isAr ? "كبير سن" : "Elderly",
+    specialNeeds: isAr ? "ذوي احتياجات خاصة" : "Special Needs",
+    nameLabel: isAr ? "الاسم" : "Name",
+    namePlaceholder: isAr ? "الاسم الكامل للمستفيد" : "Full Name",
+    ageLabel: isAr ? "العمر" : "Age",
+    genderLabel: isAr ? "الجنس" : "Gender",
+    male: isAr ? "ذكر" : "Male",
+    female: isAr ? "أنثى" : "Female",
+    categoryLabel: isAr ? "الفئة" : "Category",
+    detailsLabel: isAr ? "تفاصيل الحالة الصحية" : "Condition Details",
+    detailsPlaceholder: isAr 
+      ? "صف الاحتياجات اليومية، القدرة على الحركة، أو الحالات الطبية..." 
+      : "Describe daily needs, mobility, or medical conditions...",
+    addBtn: isAr ? "إضافة مستفيد" : "Add Beneficiary",
+    cancelBtn: isAr ? "إلغاء" : "Cancel",
+    addAnotherBtn: isAr ? "إضافة مستفيد آخر" : "Add Another Beneficiary",
+    back: isAr ? "رجوع" : "Back",
+    next: isAr ? "الخطوة التالية" : "Next Step",
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" dir={isAr ? "rtl" : "ltr"}>
       <div className="space-y-3">
         {familyData.beneficiaries.map((b, idx) => (
           <div key={idx} className="flex items-center justify-between p-3.5 bg-white border border-sand-high rounded-2xl custom-shadow animate-fade-in">
@@ -63,10 +88,10 @@ export default function FamilyBeneficiaryInfo() {
               <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-primary">
                 <User className="w-5 h-5" />
               </div>
-              <div className="text-left">
+              <div className={isAr ? "text-right" : "text-left"}>
                 <p className="text-sm font-bold text-gray-800">{b.name}</p>
                 <p className="text-[10px] text-gray-400 font-bold uppercase">
-                  {b.age} years • {b.category === 'elderly' ? 'Elderly' : 'Special Needs'}
+                  {b.age} {labels.ageText} • {b.category === 'elderly' ? labels.elderly : labels.specialNeeds}
                 </p>
               </div>
             </div>
@@ -83,31 +108,31 @@ export default function FamilyBeneficiaryInfo() {
         {isAdding ? (
           <form onSubmit={handleSubmit(addBeneficiary)} className="bg-white rounded-3xl border border-sand-high p-4 space-y-3.5 animate-fade-in shadow-sm">
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1 text-left">
-                <label className="text-xs font-bold text-gray-700">Name</label>
+              <div className={`space-y-1 ${isAr ? "text-right" : "text-left"}`}>
+                <label className="text-xs font-bold text-gray-700">{labels.nameLabel}</label>
                 <input
                   {...register("name")}
-                  className="w-full px-4 py-2 bg-gray-50 border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium"
-                  placeholder="Full Name"
+                  className={`w-full px-4 py-2 bg-gray-50 border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium ${isAr ? "text-right" : "text-left"}`}
+                  placeholder={labels.namePlaceholder}
                 />
-                {errors.name && <p className="text-red-500 text-[10px] font-semibold">{errors.name.message}</p>}
+                {errors.name && <p className={`text-red-500 text-[10px] font-semibold ${isAr ? "text-right" : "text-left"}`}>{errors.name.message}</p>}
               </div>
 
-              <div className="space-y-1 text-left">
-                <label className="text-xs font-bold text-gray-700">Age</label>
+              <div className={`space-y-1 ${isAr ? "text-right" : "text-left"}`}>
+                <label className="text-xs font-bold text-gray-700">{labels.ageLabel}</label>
                 <input
                   {...register("age", { valueAsNumber: true })}
                   type="number"
-                  className="w-full px-4 py-2 bg-gray-50 border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium"
-                  placeholder="Age"
+                  className={`w-full px-4 py-2 bg-gray-50 border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium ${isAr ? "text-right" : "text-left"}`}
+                  placeholder={labels.ageLabel}
                 />
-                {errors.age && <p className="text-red-500 text-[10px] font-semibold">{errors.age.message}</p>}
+                {errors.age && <p className={`text-red-500 text-[10px] font-semibold ${isAr ? "text-right" : "text-left"}`}>{errors.age.message}</p>}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1 text-left">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Gender</label>
+              <div className={`space-y-1 ${isAr ? "text-right" : "text-left"}`}>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{labels.genderLabel}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -116,7 +141,7 @@ export default function FamilyBeneficiaryInfo() {
                       gender === "male" ? "border-button bg-button/5 text-button" : "border-gray-100 bg-white text-gray-400"
                     }`}
                   >
-                    Male
+                    {labels.male}
                   </button>
                   <button
                     type="button"
@@ -125,13 +150,13 @@ export default function FamilyBeneficiaryInfo() {
                       gender === "female" ? "border-button bg-button/5 text-button" : "border-gray-100 bg-white text-gray-400"
                     }`}
                   >
-                    Female
+                    {labels.female}
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-1 text-left">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Category</label>
+              <div className={`space-y-1 ${isAr ? "text-right" : "text-left"}`}>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{labels.categoryLabel}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -140,7 +165,7 @@ export default function FamilyBeneficiaryInfo() {
                       category === "elderly" ? "border-button bg-button/5 text-button" : "border-gray-100 bg-white text-gray-400"
                     }`}
                   >
-                    Elderly
+                    {labels.elderly}
                   </button>
                   <button
                     type="button"
@@ -149,21 +174,21 @@ export default function FamilyBeneficiaryInfo() {
                       category === "special_needs" ? "border-button bg-button/5 text-button" : "border-gray-100 bg-white text-gray-400"
                     }`}
                   >
-                    Special Needs
+                    {labels.specialNeeds}
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-1 text-left">
-              <label className="text-xs font-bold text-gray-700">Condition Details</label>
+            <div className={`space-y-1 ${isAr ? "text-right" : "text-left"}`}>
+              <label className="text-xs font-bold text-gray-700">{labels.detailsLabel}</label>
               <textarea
                 {...register("conditionDetails")}
                 rows={2}
-                className="w-full px-4 py-2 bg-gray-50 border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium resize-none leading-relaxed"
-                placeholder="Describe daily needs, mobility, or medical conditions..."
+                className={`w-full px-4 py-2 bg-gray-50 border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm font-medium resize-none leading-relaxed ${isAr ? "text-right" : "text-left"}`}
+                placeholder={labels.detailsPlaceholder}
               />
-              {errors.conditionDetails && <p className="text-red-500 text-[10px] font-semibold">{errors.conditionDetails.message}</p>}
+              {errors.conditionDetails && <p className={`text-red-500 text-[10px] font-semibold ${isAr ? "text-right" : "text-left"}`}>{errors.conditionDetails.message}</p>}
             </div>
 
             <div className="flex gap-3">
@@ -172,7 +197,7 @@ export default function FamilyBeneficiaryInfo() {
                 className="flex-1 bg-primary text-white py-2 rounded-xl font-bold text-sm hover:opacity-95 transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                Add Beneficiary
+                {labels.addBtn}
               </button>
               {familyData.beneficiaries.length > 0 && (
                 <button
@@ -180,7 +205,7 @@ export default function FamilyBeneficiaryInfo() {
                   onClick={() => setIsAdding(false)}
                   className="px-4 py-2 border border-gray-200 text-gray-500 rounded-xl font-bold text-sm hover:bg-gray-50 transition-all cursor-pointer"
                 >
-                  Cancel
+                  {labels.cancelBtn}
                 </button>
               )}
             </div>
@@ -192,7 +217,7 @@ export default function FamilyBeneficiaryInfo() {
             className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-bold text-sm hover:border-primary hover:text-primary hover:bg-teal-50/5 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Add Another Beneficiary
+            {labels.addAnotherBtn}
           </button>
         )}
       </div>
@@ -203,8 +228,8 @@ export default function FamilyBeneficiaryInfo() {
           onClick={prevStep}
           className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:text-primary hover:bg-gray-50 transition-all cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back
+          {isAr ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+          {labels.back}
         </button>
         <button
           type="button"
@@ -212,8 +237,8 @@ export default function FamilyBeneficiaryInfo() {
           disabled={familyData.beneficiaries.length === 0 || isAdding}
           className="group flex items-center justify-center gap-1.5 px-8 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-md hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
         >
-          Next Step
-          <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          {labels.next}
+          {isAr ? <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> : <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />}
         </button>
       </div>
     </div>
