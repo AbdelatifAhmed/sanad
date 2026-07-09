@@ -85,8 +85,36 @@ const refundCharge = async (paymentIntentId, amount) => {
   }
 };
 
+const createConnectedAccountLoginLink = async (connectedAccountId) => {
+  try {
+    const loginLink = await stripe.accounts.createLoginLink(connectedAccountId);
+    return loginLink.url;
+  } catch (error) {
+    console.error("Stripe createConnectedAccountLoginLink error:", error);
+    throw error;
+  }
+};
+
 const verifyWebhookSignature = (rawBody, signature, webhookSecret) => {
   return stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+};
+
+const checkAccountTransfersCapability = async (connectedAccountId) => {
+  try {
+    const account = await stripe.accounts.retrieve(connectedAccountId);
+    const capability = account.capabilities?.transfers;
+    const detailsSubmitted = account.details_submitted;
+    return {
+      isActive: capability === "active",
+      capability,
+      detailsSubmitted,
+      chargesEnabled: account.charges_enabled,
+      payoutsEnabled: account.payouts_enabled,
+    };
+  } catch (error) {
+    console.error("Stripe checkAccountTransfersCapability error:", error);
+    throw error;
+  }
 };
 
 module.exports = {
@@ -94,6 +122,8 @@ module.exports = {
   createPaymentIntent,
   createConnectedAccount,
   createAccountOnboardingLink,
+  createConnectedAccountLoginLink,
+  checkAccountTransfersCapability,
   releasePayoutToCompanion,
   refundCharge,
   verifyWebhookSignature,
