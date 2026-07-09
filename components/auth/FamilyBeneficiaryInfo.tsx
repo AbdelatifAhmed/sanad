@@ -16,7 +16,7 @@ export default function FamilyBeneficiaryInfo() {
 
   const beneficiarySchema = useMemo(() => z.object({
     name: z.string().min(1, isAr ? "اسم المستفيد مطلوب" : "Beneficiary name is required"),
-    age: z.number({ invalid_type_error: isAr ? "يرجى إدخال عمر صحيح" : "Please enter a valid age" }).min(1, isAr ? "يرجى إدخال عمر صحيح" : "Please enter a valid age"),
+    age: z.coerce.number().min(1, isAr ? "يرجى إدخال عمر صحيح" : "Please enter a valid age"),
     gender: z.enum(["male", "female"]),
     category: z.enum(["elderly", "special_needs"]),
     conditionDetails: z.string().min(10, isAr ? "يرجى كتابة تفاصيل الحالة (10 أحرف على الأقل)" : "Please provide some condition details (min 10 characters)"),
