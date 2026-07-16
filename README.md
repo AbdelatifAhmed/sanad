@@ -7,6 +7,10 @@ Sanad is a comprehensive healthcare and companion booking platform designed to b
 
 Finding trustworthy, qualified, and location-appropriate caregivers can be a stressful and manual process. Sanad solves this by providing a smart ecosystem featuring intelligent search, automated care plan generation, and a secure environment for families and companions to connect.
 
+## Screenshots
+**[Check Screenshots from here 📸](https://drive.google.com/drive/folders/1btnUPc8KuE3MqZOzT7i2F3bDDfcx8LR7?usp=sharing)**
+
+
 ## ✨ Platform Features & Capabilities
 
 ### 🧠 Advanced AI Features (In the User App)

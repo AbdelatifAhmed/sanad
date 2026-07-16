@@ -504,42 +504,7 @@ export default function EditableProfile({ initialData }: EditableProfileProps) {
         </div>
 
         {/* Top Right Actions */}
-        <div className="flex flex-col items-center md:items-end gap-4 shrink-0">
-          <div className="flex items-center gap-3 bg-gray-100 px-4 py-2 rounded-full">
-            <span className="text-sm font-bold text-gray-700">{t("status")}</span>
-            <div className="flex flex-col text-xs">
-              <span className={`font-bold transition-colors ${isOnline ? "text-teal-600" : "text-gray-500"}`}>
-                {isOnline ? "Online" : "Offline"}
-              </span>
-              <span className="font-bold text-gray-900">{t("online")}</span>
-            </div>
-            {/* Fake toggle for UI matching */}
-            <div className="w-10 h-6 bg-gray-300 rounded-full flex items-center p-1 cursor-not-allowed opacity-50">
-              <div className={`w-4 h-4 bg-white rounded-full shadow-sm ${isRtl ? "-translate-x-4" : "translate-x-4"}`}></div>
-            </div>
-            {/* Interactive Toggle */}
-            <button 
-              onClick={toggleOnlineStatus}
-              className={`w-10 h-6 rounded-full flex items-center p-1 transition-all duration-300 ${isOnline ? "bg-teal-500 justify-end" : "bg-gray-300 justify-start"}`}
-              title="Toggle Online Status"
-            >
-              <div className="w-4 h-4 bg-white rounded-full shadow-md transition-all duration-300"></div>
-            </button>
-          </div>
-          <button 
-            onClick={() => {
-              if (profile?._id) {
-                router.push(`/family/companions/${profile._id}`);
-              } else {
-                setToast({ message: "Unable to resolve profile ID", type: "error" });
-              }
-            }}
-            disabled={!profile?._id}
-            className="px-6 py-3 bg-stitch-primary text-white font-bold rounded-xl hover:bg-stitch-primary-container transition-colors shadow-sm w-full md:w-auto disabled:opacity-50"
-          >
-            {t("viewPublicProfile")}
-          </button>
-        </div>
+        
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
